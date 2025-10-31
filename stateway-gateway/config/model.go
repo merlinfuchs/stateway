@@ -7,6 +7,7 @@ import (
 type Config struct {
 	Logging  LoggingConfig  `toml:"logging"`
 	Database DatabaseConfig `toml:"database"`
+	Broker   BrokerConfig   `toml:"broker"`
 }
 
 func (cfg *Config) Validate() error {
@@ -35,4 +36,12 @@ type PostgresConfig struct {
 	DBName   string `toml:"db_name" validate:"required"`
 	User     string `toml:"user" validate:"required"`
 	Password string `toml:"password"`
+}
+
+type BrokerConfig struct {
+	NATS NATSConfig `toml:"nats"`
+}
+
+type NATSConfig struct {
+	URL string `toml:"url" validate:"required"`
 }

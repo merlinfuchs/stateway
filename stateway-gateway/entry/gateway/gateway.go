@@ -3,22 +3,43 @@ package gateway
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/merlinfuchs/stateway/stateway-gateway/app"
 	"github.com/merlinfuchs/stateway/stateway-gateway/config"
 	"github.com/merlinfuchs/stateway/stateway-gateway/db/postgres"
+	"github.com/merlinfuchs/stateway/stateway-lib/broker"
 	"github.com/merlinfuchs/stateway/stateway-lib/event"
 )
 
 type eventHandler struct {
+	broker broker.Broker
 }
 
 func (h *eventHandler) HandleEvent(event event.Event) {
-	fmt.Println(event.EventType())
+	err := h.broker.PublishEvent(event)
+	if err != nil {
+		slog.Error(
+			"Failed to publish event",
+			slog.String("event_id", event.EventID().String()),
+			slog.String("event_type", string(event.EventType())),
+			slog.String("error", err.Error()),
+		)
+	}
 }
 
 func Run(ctx context.Context, pg *postgres.Client, cfg *config.Config) error {
-	appManager := app.NewAppManager(pg, &eventHandler{})
+	broker, err := broker.NewNATSBroker(cfg.Broker.NATS.URL)
+	if err != nil {
+		return fmt.Errorf("failed to create NATS broker: %w", err)
+	}
+
+	err = broker.CreateGatewayStream()
+	if err != nil {
+		return fmt.Errorf("failed to create gateway stream: %w", err)
+	}
+
+	appManager := app.NewAppManager(pg, &eventHandler{broker: broker})
 
 	appManager.Run(ctx)
 	return nil

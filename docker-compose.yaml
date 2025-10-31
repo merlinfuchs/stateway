@@ -25,6 +25,16 @@ services:
     volumes:
       - stateway-local-minio:/data
 
+  nats:
+    image: nats:latest
+    command: ["-js", "-m", "8222", "-sd", "/data"]
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    volumes:
+      - stateway-local-nats:/data
+
 volumes:
   stateway-local-postgres:
   stateway-local-minio:
+  stateway-local-nats:

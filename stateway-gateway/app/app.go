@@ -2,7 +2,9 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/disgoorg/disgo"
@@ -10,6 +12,7 @@ import (
 	"github.com/disgoorg/disgo/events"
 	"github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/disgo/sharding"
+	"github.com/disgoorg/snowflake/v2"
 	"github.com/merlinfuchs/stateway/stateway-gateway/model"
 	"github.com/merlinfuchs/stateway/stateway-gateway/store"
 	"github.com/merlinfuchs/stateway/stateway-lib/event"
@@ -50,8 +53,18 @@ func (a *App) Run(ctx context.Context) {
 			)
 		}),
 		bot.WithEventListenerFunc(func(e bot.Event) {
-			a.eventHandler.HandleEvent(&event.DiscordDispatchEvent{
+			eventType := fmt.Sprintf("%T", e)
+			// Remove package prefix (e.g., "events." or "bot.")
+			if idx := strings.LastIndex(eventType, "."); idx != -1 {
+				eventType = eventType[idx+1:]
+			}
+			// Convert to snake_case or lowercase
+			eventType = strings.ToLower(eventType)
+
+			a.eventHandler.HandleEvent(&event.GatewayEvent{
+				ID:    snowflake.New(time.Now().UTC()),
 				AppID: a.model.ID,
+				Type:  eventType,
 				Data:  e,
 			})
 		}),

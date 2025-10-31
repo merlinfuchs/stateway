@@ -3,9 +3,12 @@ package broker
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/merlinfuchs/stateway/stateway-lib/event"
 )
 
 type Broker interface {
+	PublishEvent(event event.Event) error
 	Request(service ServiceType, method string, request any) (Response, error)
 }
 
