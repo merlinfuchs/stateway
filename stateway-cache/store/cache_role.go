@@ -8,23 +8,24 @@ import (
 	"github.com/disgoorg/snowflake/v2"
 )
 
-type UpsertGuildParams struct {
+type UpsertRoleParams struct {
 	GroupID   string
 	ClientID  snowflake.ID
 	GuildID   snowflake.ID
+	RoleID    snowflake.ID
 	Data      json.RawMessage
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
 
-type GuildIdentifier struct {
+type RoleIdentifier struct {
 	GroupID  string
 	ClientID snowflake.ID
 	GuildID  snowflake.ID
+	RoleID   snowflake.ID
 }
 
-type CacheGuildStore interface {
-	UpsertGuilds(ctx context.Context, guilds ...UpsertGuildParams) error
-	MarkGuildUnavailable(ctx context.Context, params GuildIdentifier) error
-	DeleteGuild(ctx context.Context, params GuildIdentifier) error
+type CacheRoleStore interface {
+	UpsertRoles(ctx context.Context, roles ...UpsertRoleParams) error
+	DeleteRole(ctx context.Context, params RoleIdentifier) error
 }

@@ -22,7 +22,7 @@ func Run(ctx context.Context, pg *postgres.Client, cfg *config.CacheConfig) erro
 	}
 
 	err = broker.Listen(ctx, br, &CacheListener{
-		guildCacheStore: pg,
+		cacheStore: pg,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to listen to gateway events: %w", err)
@@ -33,7 +33,7 @@ func Run(ctx context.Context, pg *postgres.Client, cfg *config.CacheConfig) erro
 }
 
 type CacheListener struct {
-	guildCacheStore store.CacheGuildStore
+	cacheStore store.CacheStore
 }
 
 func (l *CacheListener) BalanceKey() string {
@@ -56,21 +56,206 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 	}
 
 	switch e := e.(type) {
+	case gateway.EventReady:
+		err = l.cacheStore.MarkShardEntitiesTainted(ctx, store.MarkShardEntitiesTaintedParams{
+			GroupID:    event.GroupID,
+			ClientID:   event.ClientID,
+			ShardCount: e.Shard[1],
+			ShardID:    e.Shard[0],
+		})
+		if err != nil {
+			return fmt.Errorf("failed to mark shard guilds as tainted: %w", err)
+		}
 	case gateway.EventGuildCreate:
 		data, err := json.Marshal(e.Guild)
 		if err != nil {
 			return fmt.Errorf("failed to marshal guild data: %w", err)
 		}
 
-		err = l.guildCacheStore.UpsertGuild(ctx, store.UpsertGuildParams{
-			ID:        e.Guild.ID,
-			AppID:     event.AppID,
+		err = l.cacheStore.UpsertGuilds(ctx, store.UpsertGuildParams{
+			GroupID:   event.GroupID,
+			ClientID:  event.ClientID,
+			GuildID:   e.Guild.ID,
 			Data:      data,
 			CreatedAt: time.Now().UTC(),
 			UpdatedAt: time.Now().UTC(),
 		})
 		if err != nil {
 			return fmt.Errorf("failed to upsert guild: %w", err)
+		}
+
+		roles := make([]store.UpsertRoleParams, len(e.Roles))
+		for i, role := range e.Roles {
+			data, err := json.Marshal(role)
+			if err != nil {
+				return fmt.Errorf("failed to marshal role data: %w", err)
+			}
+
+			roles[i] = store.UpsertRoleParams{
+				GroupID:   event.GroupID,
+				ClientID:  event.ClientID,
+				GuildID:   e.ID,
+				RoleID:    role.ID,
+				Data:      data,
+				CreatedAt: time.Now().UTC(),
+				UpdatedAt: time.Now().UTC(),
+			}
+		}
+
+		err = l.cacheStore.UpsertRoles(ctx, roles...)
+		if err != nil {
+			return fmt.Errorf("failed to upsert roles: %w", err)
+		}
+
+		channels := make([]store.UpsertChannelParams, len(e.Channels))
+		for i, channel := range e.Channels {
+			data, err := json.Marshal(channel)
+			if err != nil {
+				return fmt.Errorf("failed to marshal channel data: %w", err)
+			}
+			channels[i] = store.UpsertChannelParams{
+				GroupID:   event.GroupID,
+				ClientID:  event.ClientID,
+				GuildID:   e.ID,
+				ChannelID: channel.ID(),
+				Data:      data,
+				CreatedAt: time.Now().UTC(),
+				UpdatedAt: time.Now().UTC(),
+			}
+		}
+
+		err = l.cacheStore.UpsertChannels(ctx, channels...)
+		if err != nil {
+			return fmt.Errorf("failed to upsert channels: %w", err)
+		}
+	case gateway.EventGuildUpdate:
+		data, err := json.Marshal(e.Guild)
+		if err != nil {
+			return fmt.Errorf("failed to marshal guild data: %w", err)
+		}
+
+		err = l.cacheStore.UpsertGuilds(ctx, store.UpsertGuildParams{
+			GroupID:   event.GroupID,
+			ClientID:  event.ClientID,
+			GuildID:   e.Guild.ID,
+			Data:      data,
+			CreatedAt: time.Now().UTC(),
+			UpdatedAt: time.Now().UTC(),
+		})
+		if err != nil {
+			return fmt.Errorf("failed to upsert guild: %w", err)
+		}
+	case gateway.EventGuildDelete:
+		if !e.Unavailable {
+			err = l.cacheStore.MarkGuildUnavailable(ctx, store.GuildIdentifier{
+				GroupID:  event.GroupID,
+				ClientID: event.ClientID,
+				GuildID:  e.ID,
+			})
+			if err != nil {
+				return fmt.Errorf("failed to mark guild as unavailable: %w", err)
+			}
+		} else {
+			err = l.cacheStore.DeleteGuild(ctx, store.GuildIdentifier{
+				GroupID:  event.GroupID,
+				ClientID: event.ClientID,
+				GuildID:  e.ID,
+			})
+			if err != nil {
+				return fmt.Errorf("failed to delete guild: %w", err)
+			}
+		}
+	case gateway.EventGuildRoleCreate:
+		data, err := json.Marshal(e.Role)
+		if err != nil {
+			return fmt.Errorf("failed to marshal role data: %w", err)
+		}
+
+		err = l.cacheStore.UpsertRoles(ctx, store.UpsertRoleParams{
+			GroupID:   event.GroupID,
+			ClientID:  event.ClientID,
+			GuildID:   e.GuildID,
+			RoleID:    e.Role.ID,
+			Data:      data,
+			CreatedAt: time.Now().UTC(),
+			UpdatedAt: time.Now().UTC(),
+		})
+		if err != nil {
+			return fmt.Errorf("failed to upsert role: %w", err)
+		}
+	case gateway.EventGuildRoleUpdate:
+		data, err := json.Marshal(e.Role)
+		if err != nil {
+			return fmt.Errorf("failed to marshal role data: %w", err)
+		}
+
+		err = l.cacheStore.UpsertRoles(ctx, store.UpsertRoleParams{
+			GroupID:   event.GroupID,
+			ClientID:  event.ClientID,
+			GuildID:   e.GuildID,
+			RoleID:    e.Role.ID,
+			Data:      data,
+			CreatedAt: time.Now().UTC(),
+			UpdatedAt: time.Now().UTC(),
+		})
+		if err != nil {
+			return fmt.Errorf("failed to upsert role: %w", err)
+		}
+	case gateway.EventGuildRoleDelete:
+		err = l.cacheStore.DeleteRole(ctx, store.RoleIdentifier{
+			GroupID:  event.GroupID,
+			ClientID: event.ClientID,
+			GuildID:  e.GuildID,
+			RoleID:   e.RoleID,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to delete role: %w", err)
+		}
+	case gateway.EventChannelCreate:
+		data, err := json.Marshal(e.GuildChannel)
+		if err != nil {
+			return fmt.Errorf("failed to marshal channel data: %w", err)
+		}
+
+		err = l.cacheStore.UpsertChannels(ctx, store.UpsertChannelParams{
+			GroupID:   event.GroupID,
+			ClientID:  event.ClientID,
+			GuildID:   e.GuildID(),
+			ChannelID: e.ID(),
+			Data:      data,
+			CreatedAt: time.Now().UTC(),
+			UpdatedAt: time.Now().UTC(),
+		})
+		if err != nil {
+			return fmt.Errorf("failed to upsert channel: %w", err)
+		}
+	case gateway.EventChannelUpdate:
+		data, err := json.Marshal(e.GuildChannel)
+		if err != nil {
+			return fmt.Errorf("failed to marshal channel data: %w", err)
+		}
+
+		err = l.cacheStore.UpsertChannels(ctx, store.UpsertChannelParams{
+			GroupID:   event.GroupID,
+			ClientID:  event.ClientID,
+			GuildID:   e.GuildID(),
+			ChannelID: e.ID(),
+			Data:      data,
+			CreatedAt: time.Now().UTC(),
+			UpdatedAt: time.Now().UTC(),
+		})
+		if err != nil {
+			return fmt.Errorf("failed to upsert channel: %w", err)
+		}
+	case gateway.EventChannelDelete:
+		err = l.cacheStore.DeleteChannel(ctx, store.ChannelIdentifier{
+			GroupID:   event.GroupID,
+			ClientID:  event.ClientID,
+			GuildID:   e.GuildID(),
+			ChannelID: e.ID(),
+		})
+		if err != nil {
+			return fmt.Errorf("failed to delete channel: %w", err)
 		}
 	}
 

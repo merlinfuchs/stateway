@@ -8,10 +8,35 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type CacheGuild struct {
-	ID        int64
-	AppID     int64
+type CacheChannel struct {
+	GroupID   string
+	ClientID  int64
+	GuildID   int64
+	ChannelID int64
 	Data      []byte
+	Tainted   bool
+	CreatedAt pgtype.Timestamp
+	UpdatedAt pgtype.Timestamp
+}
+
+type CacheGuild struct {
+	GroupID     string
+	ClientID    int64
+	GuildID     int64
+	Data        []byte
+	Unavailable bool
+	Tainted     bool
+	CreatedAt   pgtype.Timestamp
+	UpdatedAt   pgtype.Timestamp
+}
+
+type CacheRole struct {
+	GroupID   string
+	ClientID  int64
+	GuildID   int64
+	RoleID    int64
+	Data      []byte
+	Tainted   bool
 	CreatedAt pgtype.Timestamp
 	UpdatedAt pgtype.Timestamp
 }

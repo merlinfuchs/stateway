@@ -7,38 +7,55 @@ package pgmodel
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const upsertGuild = `-- name: UpsertGuild :exec
-INSERT INTO cache.guilds (
-    id, 
-    app_id, 
-    data, 
-    created_at, 
-    updated_at
-) VALUES ($1, $2, $3, $4, $5) 
-ON CONFLICT (id, app_id) DO UPDATE SET 
-    data = EXCLUDED.data, 
-    updated_at = EXCLUDED.updated_at
+const deleteGuild = `-- name: DeleteGuild :exec
+DELETE FROM cache.guilds WHERE group_id = $1 AND client_id = $2 AND guild_id = $3
 `
 
-type UpsertGuildParams struct {
-	ID        int64
-	AppID     int64
-	Data      []byte
-	CreatedAt pgtype.Timestamp
-	UpdatedAt pgtype.Timestamp
+type DeleteGuildParams struct {
+	GroupID  string
+	ClientID int64
+	GuildID  int64
 }
 
-func (q *Queries) UpsertGuild(ctx context.Context, arg UpsertGuildParams) error {
-	_, err := q.db.Exec(ctx, upsertGuild,
-		arg.ID,
-		arg.AppID,
-		arg.Data,
-		arg.CreatedAt,
-		arg.UpdatedAt,
+func (q *Queries) DeleteGuild(ctx context.Context, arg DeleteGuildParams) error {
+	_, err := q.db.Exec(ctx, deleteGuild, arg.GroupID, arg.ClientID, arg.GuildID)
+	return err
+}
+
+const markGuildUnavailable = `-- name: MarkGuildUnavailable :exec
+UPDATE cache.guilds SET unavailable = TRUE WHERE group_id = $1 AND client_id = $2 AND guild_id = $3
+`
+
+type MarkGuildUnavailableParams struct {
+	GroupID  string
+	ClientID int64
+	GuildID  int64
+}
+
+func (q *Queries) MarkGuildUnavailable(ctx context.Context, arg MarkGuildUnavailableParams) error {
+	_, err := q.db.Exec(ctx, markGuildUnavailable, arg.GroupID, arg.ClientID, arg.GuildID)
+	return err
+}
+
+const markShardGuildsTainted = `-- name: MarkShardGuildsTainted :exec
+UPDATE cache.guilds SET tainted = TRUE WHERE group_id = $1 AND client_id = $2 AND guild_id % $3 = $4
+`
+
+type MarkShardGuildsTaintedParams struct {
+	GroupID    string
+	ClientID   int64
+	ShardCount int64
+	ShardID    int64
+}
+
+func (q *Queries) MarkShardGuildsTainted(ctx context.Context, arg MarkShardGuildsTaintedParams) error {
+	_, err := q.db.Exec(ctx, markShardGuildsTainted,
+		arg.GroupID,
+		arg.ClientID,
+		arg.ShardCount,
+		arg.ShardID,
 	)
 	return err
 }

@@ -133,7 +133,7 @@ func (b *NATSBroker) Listen(ctx context.Context, listener GenericListener) error
 				slog.String("subject", msg.Subject()),
 				slog.String("error", err.Error()),
 			)
-			err = msg.Nak()
+			err = msg.NakWithDelay(time.Second)
 			if err != nil {
 				slog.Error(
 					"Failed to nak message",
@@ -151,7 +151,7 @@ func (b *NATSBroker) Listen(ctx context.Context, listener GenericListener) error
 				slog.String("subject", msg.Subject()),
 				slog.String("error", err.Error()),
 			)
-			err = msg.Nak()
+			err = msg.NakWithDelay(time.Second)
 			if err != nil {
 				slog.Error(
 					"Failed to nak message",
