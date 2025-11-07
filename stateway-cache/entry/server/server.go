@@ -64,8 +64,7 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 	switch e := e.(type) {
 	case gateway.EventReady:
 		err = l.cacheStore.MarkShardEntitiesTainted(ctx, store.MarkShardEntitiesTaintedParams{
-			GroupID:    event.GroupID,
-			ClientID:   event.ClientID,
+			AppID:      event.AppID,
 			ShardCount: e.Shard[1],
 			ShardID:    e.Shard[0],
 		})
@@ -79,8 +78,7 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 		}
 
 		err = l.cacheStore.UpsertGuilds(ctx, store.UpsertGuildParams{
-			GroupID:   event.GroupID,
-			ClientID:  event.ClientID,
+			AppID:     event.AppID,
 			GuildID:   e.Guild.ID,
 			Data:      data,
 			CreatedAt: time.Now().UTC(),
@@ -98,8 +96,7 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 			}
 
 			roles[i] = store.UpsertRoleParams{
-				GroupID:   event.GroupID,
-				ClientID:  event.ClientID,
+				AppID:     event.AppID,
 				GuildID:   e.ID,
 				RoleID:    role.ID,
 				Data:      data,
@@ -120,8 +117,7 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 				return fmt.Errorf("failed to marshal channel data: %w", err)
 			}
 			channels[i] = store.UpsertChannelParams{
-				GroupID:   event.GroupID,
-				ClientID:  event.ClientID,
+				AppID:     event.AppID,
 				GuildID:   e.ID,
 				ChannelID: channel.ID(),
 				Data:      data,
@@ -141,8 +137,7 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 		}
 
 		err = l.cacheStore.UpsertGuilds(ctx, store.UpsertGuildParams{
-			GroupID:   event.GroupID,
-			ClientID:  event.ClientID,
+			AppID:     event.AppID,
 			GuildID:   e.Guild.ID,
 			Data:      data,
 			CreatedAt: time.Now().UTC(),
@@ -154,18 +149,16 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 	case gateway.EventGuildDelete:
 		if !e.Unavailable {
 			err = l.cacheStore.MarkGuildUnavailable(ctx, store.GuildIdentifier{
-				GroupID:  event.GroupID,
-				ClientID: event.ClientID,
-				GuildID:  e.ID,
+				AppID:   event.AppID,
+				GuildID: e.ID,
 			})
 			if err != nil {
 				return fmt.Errorf("failed to mark guild as unavailable: %w", err)
 			}
 		} else {
 			err = l.cacheStore.DeleteGuild(ctx, store.GuildIdentifier{
-				GroupID:  event.GroupID,
-				ClientID: event.ClientID,
-				GuildID:  e.ID,
+				AppID:   event.AppID,
+				GuildID: e.ID,
 			})
 			if err != nil {
 				return fmt.Errorf("failed to delete guild: %w", err)
@@ -178,8 +171,7 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 		}
 
 		err = l.cacheStore.UpsertRoles(ctx, store.UpsertRoleParams{
-			GroupID:   event.GroupID,
-			ClientID:  event.ClientID,
+			AppID:     event.AppID,
 			GuildID:   e.GuildID,
 			RoleID:    e.Role.ID,
 			Data:      data,
@@ -196,8 +188,7 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 		}
 
 		err = l.cacheStore.UpsertRoles(ctx, store.UpsertRoleParams{
-			GroupID:   event.GroupID,
-			ClientID:  event.ClientID,
+			AppID:     event.AppID,
 			GuildID:   e.GuildID,
 			RoleID:    e.Role.ID,
 			Data:      data,
@@ -209,10 +200,9 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 		}
 	case gateway.EventGuildRoleDelete:
 		err = l.cacheStore.DeleteRole(ctx, store.RoleIdentifier{
-			GroupID:  event.GroupID,
-			ClientID: event.ClientID,
-			GuildID:  e.GuildID,
-			RoleID:   e.RoleID,
+			AppID:   event.AppID,
+			GuildID: e.GuildID,
+			RoleID:  e.RoleID,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to delete role: %w", err)
@@ -224,8 +214,7 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 		}
 
 		err = l.cacheStore.UpsertChannels(ctx, store.UpsertChannelParams{
-			GroupID:   event.GroupID,
-			ClientID:  event.ClientID,
+			AppID:     event.AppID,
 			GuildID:   e.GuildID(),
 			ChannelID: e.ID(),
 			Data:      data,
@@ -242,8 +231,7 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 		}
 
 		err = l.cacheStore.UpsertChannels(ctx, store.UpsertChannelParams{
-			GroupID:   event.GroupID,
-			ClientID:  event.ClientID,
+			AppID:     event.AppID,
 			GuildID:   e.GuildID(),
 			ChannelID: e.ID(),
 			Data:      data,
@@ -255,8 +243,7 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 		}
 	case gateway.EventChannelDelete:
 		err = l.cacheStore.DeleteChannel(ctx, store.ChannelIdentifier{
-			GroupID:   event.GroupID,
-			ClientID:  event.ClientID,
+			AppID:     event.AppID,
 			GuildID:   e.GuildID(),
 			ChannelID: e.ID(),
 		})

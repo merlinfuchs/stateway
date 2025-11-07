@@ -1,6 +1,5 @@
 CREATE TABLE IF NOT EXISTS cache.guilds (
-    group_id TEXT NOT NULL,
-    client_id BIGINT NOT NULL,
+    app_id BIGINT NOT NULL,
     guild_id BIGINT NOT NULL,
     data JSONB NOT NULL,
     unavailable BOOLEAN NOT NULL DEFAULT FALSE,
@@ -8,5 +7,5 @@ CREATE TABLE IF NOT EXISTS cache.guilds (
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP NOT NULL,
 
-    PRIMARY KEY (group_id, client_id, guild_id)
+    PRIMARY KEY (app_id, guild_id)
 );

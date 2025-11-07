@@ -25,32 +25,33 @@ RETURNING *;
 
 -- name: UpdateApp :one
 UPDATE gateway.apps SET 
-    display_name = $2, 
-    discord_client_id = $3, 
-    discord_bot_token = $4, 
-    discord_public_key = $5, 
-    discord_client_secret = $6,
-    disabled = $7,
-    disabled_code = $8,
-    disabled_message = $9,
-    updated_at = $10
-WHERE group_id = $1 AND discord_client_id = $2
+    group_id = $2,
+    display_name = $3, 
+    discord_client_id = $4, 
+    discord_bot_token = $5, 
+    discord_public_key = $6, 
+    discord_client_secret = $7,
+    disabled = $8,
+    disabled_code = $9,
+    disabled_message = $10,
+    updated_at = $11
+WHERE id = $1
 RETURNING *;
 
 -- name: DisableApp :one
 UPDATE gateway.apps SET 
     disabled = TRUE,
-    disabled_code = $3,
-    disabled_message = $4,
-    updated_at = $5
-WHERE group_id = $1 AND discord_client_id = $2
+    disabled_code = $2,
+    disabled_message = $3,
+    updated_at = $4
+WHERE id = $1
 RETURNING *;
 
 -- name: DeleteApp :exec
-DELETE FROM gateway.apps WHERE group_id = $1 AND discord_client_id = $2;
+DELETE FROM gateway.apps WHERE id = $1;
 
 -- name: GetApp :one
-SELECT * FROM gateway.apps WHERE group_id = $1 AND discord_client_id = $2 LIMIT 1;
+SELECT * FROM gateway.apps WHERE id = $1 LIMIT 1;
 
 -- name: GetApps :many
 SELECT * FROM gateway.apps;

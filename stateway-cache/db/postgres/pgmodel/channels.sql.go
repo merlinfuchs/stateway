@@ -10,43 +10,31 @@ import (
 )
 
 const deleteChannel = `-- name: DeleteChannel :exec
-DELETE FROM cache.channels WHERE group_id = $1 AND client_id = $2 AND guild_id = $3 AND channel_id = $4
+DELETE FROM cache.channels WHERE app_id = $1 AND guild_id = $2 AND channel_id = $3
 `
 
 type DeleteChannelParams struct {
-	GroupID   string
-	ClientID  int64
+	AppID     int64
 	GuildID   int64
 	ChannelID int64
 }
 
 func (q *Queries) DeleteChannel(ctx context.Context, arg DeleteChannelParams) error {
-	_, err := q.db.Exec(ctx, deleteChannel,
-		arg.GroupID,
-		arg.ClientID,
-		arg.GuildID,
-		arg.ChannelID,
-	)
+	_, err := q.db.Exec(ctx, deleteChannel, arg.AppID, arg.GuildID, arg.ChannelID)
 	return err
 }
 
 const markShardChannelsTainted = `-- name: MarkShardChannelsTainted :exec
-UPDATE cache.channels SET tainted = TRUE WHERE group_id = $1 AND client_id = $2 AND guild_id % $3 = $4
+UPDATE cache.channels SET tainted = TRUE WHERE app_id = $1 AND guild_id % $2 = $3
 `
 
 type MarkShardChannelsTaintedParams struct {
-	GroupID    string
-	ClientID   int64
+	AppID      int64
 	ShardCount int64
 	ShardID    int64
 }
 
 func (q *Queries) MarkShardChannelsTainted(ctx context.Context, arg MarkShardChannelsTaintedParams) error {
-	_, err := q.db.Exec(ctx, markShardChannelsTainted,
-		arg.GroupID,
-		arg.ClientID,
-		arg.ShardCount,
-		arg.ShardID,
-	)
+	_, err := q.db.Exec(ctx, markShardChannelsTainted, arg.AppID, arg.ShardCount, arg.ShardID)
 	return err
 }

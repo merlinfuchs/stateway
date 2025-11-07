@@ -16,11 +16,10 @@ func (c *Client) UpsertRoles(ctx context.Context, roles ...store.UpsertRoleParam
 	params := make([]pgmodel.UpsertRolesParams, len(roles))
 	for i, role := range roles {
 		params[i] = pgmodel.UpsertRolesParams{
-			GroupID:  role.GroupID,
-			ClientID: int64(role.ClientID),
-			GuildID:  int64(role.GuildID),
-			RoleID:   int64(role.RoleID),
-			Data:     role.Data,
+			AppID:   int64(role.AppID),
+			GuildID: int64(role.GuildID),
+			RoleID:  int64(role.RoleID),
+			Data:    role.Data,
 			CreatedAt: pgtype.Timestamp{
 				Time:  role.CreatedAt,
 				Valid: true,
@@ -37,9 +36,8 @@ func (c *Client) UpsertRoles(ctx context.Context, roles ...store.UpsertRoleParam
 
 func (c *Client) DeleteRole(ctx context.Context, params store.RoleIdentifier) error {
 	return c.Q.DeleteRole(ctx, pgmodel.DeleteRoleParams{
-		GroupID:  params.GroupID,
-		ClientID: int64(params.ClientID),
-		GuildID:  int64(params.GuildID),
-		RoleID:   int64(params.RoleID),
+		AppID:   int64(params.AppID),
+		GuildID: int64(params.GuildID),
+		RoleID:  int64(params.RoleID),
 	})
 }

@@ -9,8 +9,7 @@ import (
 )
 
 type CacheChannel struct {
-	GroupID   string
-	ClientID  int64
+	AppID     int64
 	GuildID   int64
 	ChannelID int64
 	Data      []byte
@@ -20,8 +19,7 @@ type CacheChannel struct {
 }
 
 type CacheGuild struct {
-	GroupID     string
-	ClientID    int64
+	AppID       int64
 	GuildID     int64
 	Data        []byte
 	Unavailable bool
@@ -31,8 +29,7 @@ type CacheGuild struct {
 }
 
 type CacheRole struct {
-	GroupID   string
-	ClientID  int64
+	AppID     int64
 	GuildID   int64
 	RoleID    int64
 	Data      []byte

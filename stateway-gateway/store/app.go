@@ -35,19 +35,18 @@ type UpdateAppParams struct {
 }
 
 type DisableAppParams struct {
-	GroupID         string
-	DiscordClientID snowflake.ID
+	ID              snowflake.ID
 	DisabledCode    model.AppDisabledCode
 	DisabledMessage null.String
 	UpdatedAt       time.Time
 }
 
 type AppStore interface {
-	GetApp(ctx context.Context, groupID string, discordClientID snowflake.ID) (*model.App, error)
+	GetApp(ctx context.Context, id snowflake.ID) (*model.App, error)
 	GetApps(ctx context.Context) ([]*model.App, error)
 	GetEnabledApps(ctx context.Context) ([]*model.App, error)
 	CreateApp(ctx context.Context, params CreateAppParams) (*model.App, error)
 	UpdateApp(ctx context.Context, params UpdateAppParams) (*model.App, error)
 	DisableApp(ctx context.Context, params DisableAppParams) (*model.App, error)
-	DeleteApp(ctx context.Context, groupID string, discordClientID snowflake.ID) error
+	DeleteApp(ctx context.Context, id snowflake.ID) error
 }

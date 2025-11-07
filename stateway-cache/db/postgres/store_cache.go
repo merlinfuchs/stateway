@@ -17,8 +17,7 @@ func (c *Client) MarkShardEntitiesTainted(ctx context.Context, params store.Mark
 
 	q := c.Q.WithTx(tx)
 	err = q.MarkShardGuildsTainted(ctx, pgmodel.MarkShardGuildsTaintedParams{
-		GroupID:    params.GroupID,
-		ClientID:   int64(params.ClientID),
+		AppID:      int64(params.AppID),
 		ShardCount: int64(params.ShardCount),
 		ShardID:    int64(params.ShardID),
 	})
@@ -27,8 +26,7 @@ func (c *Client) MarkShardEntitiesTainted(ctx context.Context, params store.Mark
 	}
 
 	err = q.MarkShardRolesTainted(ctx, pgmodel.MarkShardRolesTaintedParams{
-		GroupID:    params.GroupID,
-		ClientID:   int64(params.ClientID),
+		AppID:      int64(params.AppID),
 		ShardCount: int64(params.ShardCount),
 		ShardID:    int64(params.ShardID),
 	})
@@ -37,8 +35,7 @@ func (c *Client) MarkShardEntitiesTainted(ctx context.Context, params store.Mark
 	}
 
 	err = q.MarkShardChannelsTainted(ctx, pgmodel.MarkShardChannelsTaintedParams{
-		GroupID:    params.GroupID,
-		ClientID:   int64(params.ClientID),
+		AppID:      int64(params.AppID),
 		ShardCount: int64(params.ShardCount),
 		ShardID:    int64(params.ShardID),
 	})

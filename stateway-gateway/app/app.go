@@ -104,8 +104,7 @@ func (a *App) Update(ctx context.Context, model *model.App) {
 
 func (a *App) disable(ctx context.Context, code model.AppDisabledCode, message string) {
 	_, err := a.appStore.DisableApp(ctx, store.DisableAppParams{
-		GroupID:         a.model.GroupID,
-		DiscordClientID: a.model.DiscordClientID,
+		ID:              a.model.ID,
 		DisabledCode:    code,
 		DisabledMessage: null.NewString(message, message != ""),
 		UpdatedAt:       time.Now().UTC(),
@@ -113,8 +112,8 @@ func (a *App) disable(ctx context.Context, code model.AppDisabledCode, message s
 	if err != nil {
 		slog.Error(
 			"Failed to disable app",
+			slog.String("app_id", a.model.ID.String()),
 			slog.String("group_id", a.model.GroupID),
-			slog.String("client_id", a.model.DiscordClientID.String()),
 			slog.String("code", string(code)),
 			slog.String("message", message),
 			slog.Any("error", err),

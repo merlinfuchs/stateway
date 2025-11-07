@@ -28,3 +28,9 @@ type App struct {
 	CreatedAt           time.Time       `json:"created_at"`
 	UpdatedAt           time.Time       `json:"updated_at"`
 }
+
+type AppConstraints struct {
+	MaxShards null.Int `json:"max_shards,omitzero"`
+	MaxGuilds null.Int `json:"max_guilds,omitzero"`
+	Intents   null.Int `json:"intents,omitzero"`
+}

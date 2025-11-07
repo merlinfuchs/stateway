@@ -10,8 +10,7 @@ import (
 )
 
 type UpsertGuildParams struct {
-	GroupID   string
-	ClientID  snowflake.ID
+	AppID     snowflake.ID
 	GuildID   snowflake.ID
 	Data      json.RawMessage
 	CreatedAt time.Time
@@ -19,9 +18,8 @@ type UpsertGuildParams struct {
 }
 
 type GuildIdentifier struct {
-	GroupID  string
-	ClientID snowflake.ID
-	GuildID  snowflake.ID
+	AppID   snowflake.ID
+	GuildID snowflake.ID
 }
 
 type CacheGuildStore interface {

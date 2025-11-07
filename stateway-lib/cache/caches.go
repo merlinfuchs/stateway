@@ -7,8 +7,7 @@ type Caches interface {
 }
 
 type CacheOptions struct {
-	GroupID  string       `json:"group_id"`
-	ClientID snowflake.ID `json:"client_id"`
+	AppID snowflake.ID `json:"app_id"`
 }
 
 func ResolveOptions(opts ...CacheOption) CacheOptions {
@@ -21,25 +20,16 @@ func ResolveOptions(opts ...CacheOption) CacheOptions {
 
 func (o CacheOptions) Destructure() []CacheOption {
 	res := []CacheOption{}
-	if o.GroupID != "" {
-		res = append(res, WithGroupID(o.GroupID))
-	}
-	if o.ClientID != 0 {
-		res = append(res, WithClientID(o.ClientID))
+	if o.AppID != 0 {
+		res = append(res, WithAppID(o.AppID))
 	}
 	return res
 }
 
 type CacheOption func(*CacheOptions)
 
-func WithGroupID(groupID string) CacheOption {
+func WithAppID(appID snowflake.ID) CacheOption {
 	return func(o *CacheOptions) {
-		o.GroupID = groupID
-	}
-}
-
-func WithClientID(clientID snowflake.ID) CacheOption {
-	return func(o *CacheOptions) {
-		o.ClientID = clientID
+		o.AppID = appID
 	}
 }

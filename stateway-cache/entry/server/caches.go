@@ -24,9 +24,8 @@ func (c *Caches) GetGuild(ctx context.Context, id snowflake.ID, opts ...cache.Ca
 	options := cache.ResolveOptions(opts...)
 
 	mod, err := c.cacheStore.GetGuild(ctx, store.GuildIdentifier{
-		GroupID:  options.GroupID,
-		ClientID: options.ClientID,
-		GuildID:  id,
+		AppID:   options.AppID,
+		GuildID: id,
 	})
 	if err != nil {
 		return nil, err

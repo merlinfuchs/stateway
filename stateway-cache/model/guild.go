@@ -8,8 +8,7 @@ import (
 )
 
 type Guild struct {
-	GroupID     string
-	ClientID    snowflake.ID
+	AppID       snowflake.ID
 	GuildID     snowflake.ID
 	Data        json.RawMessage
 	Unavailable bool

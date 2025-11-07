@@ -10,36 +10,33 @@ import (
 )
 
 const deleteGuild = `-- name: DeleteGuild :exec
-DELETE FROM cache.guilds WHERE group_id = $1 AND client_id = $2 AND guild_id = $3
+DELETE FROM cache.guilds WHERE app_id = $1 AND guild_id = $2
 `
 
 type DeleteGuildParams struct {
-	GroupID  string
-	ClientID int64
-	GuildID  int64
+	AppID   int64
+	GuildID int64
 }
 
 func (q *Queries) DeleteGuild(ctx context.Context, arg DeleteGuildParams) error {
-	_, err := q.db.Exec(ctx, deleteGuild, arg.GroupID, arg.ClientID, arg.GuildID)
+	_, err := q.db.Exec(ctx, deleteGuild, arg.AppID, arg.GuildID)
 	return err
 }
 
 const getGuild = `-- name: GetGuild :one
-SELECT group_id, client_id, guild_id, data, unavailable, tainted, created_at, updated_at FROM cache.guilds WHERE group_id = $1 AND client_id = $2 AND guild_id = $3 LIMIT 1
+SELECT app_id, guild_id, data, unavailable, tainted, created_at, updated_at FROM cache.guilds WHERE app_id = $1 AND guild_id = $2 LIMIT 1
 `
 
 type GetGuildParams struct {
-	GroupID  string
-	ClientID int64
-	GuildID  int64
+	AppID   int64
+	GuildID int64
 }
 
 func (q *Queries) GetGuild(ctx context.Context, arg GetGuildParams) (CacheGuild, error) {
-	row := q.db.QueryRow(ctx, getGuild, arg.GroupID, arg.ClientID, arg.GuildID)
+	row := q.db.QueryRow(ctx, getGuild, arg.AppID, arg.GuildID)
 	var i CacheGuild
 	err := row.Scan(
-		&i.GroupID,
-		&i.ClientID,
+		&i.AppID,
 		&i.GuildID,
 		&i.Data,
 		&i.Unavailable,
@@ -51,37 +48,30 @@ func (q *Queries) GetGuild(ctx context.Context, arg GetGuildParams) (CacheGuild,
 }
 
 const markGuildUnavailable = `-- name: MarkGuildUnavailable :exec
-UPDATE cache.guilds SET unavailable = TRUE WHERE group_id = $1 AND client_id = $2 AND guild_id = $3
+UPDATE cache.guilds SET unavailable = TRUE WHERE app_id = $1 AND guild_id = $2
 `
 
 type MarkGuildUnavailableParams struct {
-	GroupID  string
-	ClientID int64
-	GuildID  int64
+	AppID   int64
+	GuildID int64
 }
 
 func (q *Queries) MarkGuildUnavailable(ctx context.Context, arg MarkGuildUnavailableParams) error {
-	_, err := q.db.Exec(ctx, markGuildUnavailable, arg.GroupID, arg.ClientID, arg.GuildID)
+	_, err := q.db.Exec(ctx, markGuildUnavailable, arg.AppID, arg.GuildID)
 	return err
 }
 
 const markShardGuildsTainted = `-- name: MarkShardGuildsTainted :exec
-UPDATE cache.guilds SET tainted = TRUE WHERE group_id = $1 AND client_id = $2 AND guild_id % $3 = $4
+UPDATE cache.guilds SET tainted = TRUE WHERE app_id = $1 AND guild_id % $2 = $3
 `
 
 type MarkShardGuildsTaintedParams struct {
-	GroupID    string
-	ClientID   int64
+	AppID      int64
 	ShardCount int64
 	ShardID    int64
 }
 
 func (q *Queries) MarkShardGuildsTainted(ctx context.Context, arg MarkShardGuildsTaintedParams) error {
-	_, err := q.db.Exec(ctx, markShardGuildsTainted,
-		arg.GroupID,
-		arg.ClientID,
-		arg.ShardCount,
-		arg.ShardID,
-	)
+	_, err := q.db.Exec(ctx, markShardGuildsTainted, arg.AppID, arg.ShardCount, arg.ShardID)
 	return err
 }

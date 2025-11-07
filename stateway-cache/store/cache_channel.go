@@ -9,8 +9,7 @@ import (
 )
 
 type UpsertChannelParams struct {
-	GroupID   string
-	ClientID  snowflake.ID
+	AppID     snowflake.ID
 	GuildID   snowflake.ID
 	ChannelID snowflake.ID
 	Data      json.RawMessage
@@ -19,8 +18,7 @@ type UpsertChannelParams struct {
 }
 
 type ChannelIdentifier struct {
-	GroupID   string
-	ClientID  snowflake.ID
+	AppID     snowflake.ID
 	GuildID   snowflake.ID
 	ChannelID snowflake.ID
 }

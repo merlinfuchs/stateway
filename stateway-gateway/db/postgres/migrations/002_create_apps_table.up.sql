@@ -10,7 +10,5 @@ CREATE TABLE IF NOT EXISTS gateway.apps (
     disabled_code TEXT,
     disabled_message TEXT,
     created_at TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP NOT NULL,
-
-    UNIQUE (group_id, discord_client_id)
+    updated_at TIMESTAMP NOT NULL
 );

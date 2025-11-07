@@ -9,8 +9,7 @@ import (
 )
 
 type UpsertRoleParams struct {
-	GroupID   string
-	ClientID  snowflake.ID
+	AppID     snowflake.ID
 	GuildID   snowflake.ID
 	RoleID    snowflake.ID
 	Data      json.RawMessage
@@ -19,10 +18,9 @@ type UpsertRoleParams struct {
 }
 
 type RoleIdentifier struct {
-	GroupID  string
-	ClientID snowflake.ID
-	GuildID  snowflake.ID
-	RoleID   snowflake.ID
+	AppID   snowflake.ID
+	GuildID snowflake.ID
+	RoleID  snowflake.ID
 }
 
 type CacheRoleStore interface {

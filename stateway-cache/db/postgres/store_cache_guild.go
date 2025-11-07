@@ -14,9 +14,8 @@ import (
 
 func (c *Client) GetGuild(ctx context.Context, guild store.GuildIdentifier) (*model.Guild, error) {
 	row, err := c.Q.GetGuild(ctx, pgmodel.GetGuildParams{
-		GroupID:  guild.GroupID,
-		ClientID: int64(guild.ClientID),
-		GuildID:  int64(guild.GuildID),
+		AppID:   int64(guild.AppID),
+		GuildID: int64(guild.GuildID),
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -35,10 +34,9 @@ func (c *Client) UpsertGuilds(ctx context.Context, guilds ...store.UpsertGuildPa
 	params := make([]pgmodel.UpsertGuildsParams, len(guilds))
 	for i, guild := range guilds {
 		params[i] = pgmodel.UpsertGuildsParams{
-			GroupID:  guild.GroupID,
-			ClientID: int64(guild.ClientID),
-			GuildID:  int64(guild.GuildID),
-			Data:     guild.Data,
+			AppID:   int64(guild.AppID),
+			GuildID: int64(guild.GuildID),
+			Data:    guild.Data,
 			CreatedAt: pgtype.Timestamp{
 				Time:  guild.CreatedAt,
 				Valid: true,
@@ -55,24 +53,21 @@ func (c *Client) UpsertGuilds(ctx context.Context, guilds ...store.UpsertGuildPa
 
 func (c *Client) MarkGuildUnavailable(ctx context.Context, params store.GuildIdentifier) error {
 	return c.Q.MarkGuildUnavailable(ctx, pgmodel.MarkGuildUnavailableParams{
-		GroupID:  params.GroupID,
-		ClientID: int64(params.ClientID),
-		GuildID:  int64(params.GuildID),
+		AppID:   int64(params.AppID),
+		GuildID: int64(params.GuildID),
 	})
 }
 
 func (c *Client) DeleteGuild(ctx context.Context, params store.GuildIdentifier) error {
 	return c.Q.DeleteGuild(ctx, pgmodel.DeleteGuildParams{
-		GroupID:  params.GroupID,
-		ClientID: int64(params.ClientID),
-		GuildID:  int64(params.GuildID),
+		AppID:   int64(params.AppID),
+		GuildID: int64(params.GuildID),
 	})
 }
 
 func rowToGuild(row pgmodel.CacheGuild) *model.Guild {
 	return &model.Guild{
-		GroupID:     row.GroupID,
-		ClientID:    snowflake.ID(row.ClientID),
+		AppID:       snowflake.ID(row.AppID),
 		GuildID:     snowflake.ID(row.GuildID),
 		Data:        row.Data,
 		Unavailable: row.Unavailable,

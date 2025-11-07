@@ -7,8 +7,7 @@ import (
 )
 
 type MarkShardEntitiesTaintedParams struct {
-	GroupID    string
-	ClientID   snowflake.ID
+	AppID      snowflake.ID
 	ShardCount int
 	ShardID    int
 }

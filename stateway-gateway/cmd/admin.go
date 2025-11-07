@@ -73,7 +73,7 @@ var adminCMD = cli.Command{
 							return fmt.Errorf("failed to parse app ID: %w", err)
 						}
 
-						err = admin.GetApp(ctx, env.pg, c.String("group"), appID)
+						err = admin.GetApp(ctx, env.pg, appID)
 						if err != nil {
 							return fmt.Errorf("failed to get app: %w", err)
 						}
@@ -149,7 +149,7 @@ var adminCMD = cli.Command{
 							return fmt.Errorf("failed to parse app ID: %w", err)
 						}
 
-						err = admin.DeleteApp(ctx, env.pg, c.String("group"), appID)
+						err = admin.DeleteApp(ctx, env.pg, appID)
 						if err != nil {
 							return fmt.Errorf("failed to delete app: %w", err)
 						}
@@ -195,7 +195,7 @@ var adminCMD = cli.Command{
 							return fmt.Errorf("failed to parse app ID: %w", err)
 						}
 
-						err = admin.DisableApp(ctx, env.pg, c.String("group"), appID, model.AppDisabledCode(c.String("code")), c.String("message"))
+						err = admin.DisableApp(ctx, env.pg, appID, model.AppDisabledCode(c.String("code")), c.String("message"))
 						if err != nil {
 							return fmt.Errorf("failed to disable app: %w", err)
 						}

@@ -19,15 +19,14 @@ var (
 
 const upsertChannels = `-- name: UpsertChannels :batchexec
 INSERT INTO cache.channels (
-    group_id, 
-    client_id, 
+    app_id, 
     guild_id, 
     channel_id, 
     data, 
     created_at, 
     updated_at
-) VALUES ($1, $2, $3, $4, $5, $6, $7) 
-ON CONFLICT (group_id, client_id, guild_id, channel_id) DO UPDATE SET 
+) VALUES ($1, $2, $3, $4, $5, $6) 
+ON CONFLICT (app_id, guild_id, channel_id) DO UPDATE SET 
     data = EXCLUDED.data, 
     tainted = FALSE,
     updated_at = EXCLUDED.updated_at
@@ -40,8 +39,7 @@ type UpsertChannelsBatchResults struct {
 }
 
 type UpsertChannelsParams struct {
-	GroupID   string
-	ClientID  int64
+	AppID     int64
 	GuildID   int64
 	ChannelID int64
 	Data      []byte
@@ -53,8 +51,7 @@ func (q *Queries) UpsertChannels(ctx context.Context, arg []UpsertChannelsParams
 	batch := &pgx.Batch{}
 	for _, a := range arg {
 		vals := []interface{}{
-			a.GroupID,
-			a.ClientID,
+			a.AppID,
 			a.GuildID,
 			a.ChannelID,
 			a.Data,
@@ -90,14 +87,13 @@ func (b *UpsertChannelsBatchResults) Close() error {
 
 const upsertGuilds = `-- name: UpsertGuilds :batchexec
 INSERT INTO cache.guilds (
-    group_id, 
-    client_id, 
+    app_id, 
     guild_id, 
     data, 
     created_at, 
     updated_at
-) VALUES ($1, $2, $3, $4, $5, $6) 
-ON CONFLICT (group_id, client_id, guild_id) DO UPDATE SET 
+) VALUES ($1, $2, $3, $4, $5) 
+ON CONFLICT (app_id, guild_id) DO UPDATE SET 
     data = EXCLUDED.data, 
     tainted = FALSE,
     updated_at = EXCLUDED.updated_at
@@ -110,8 +106,7 @@ type UpsertGuildsBatchResults struct {
 }
 
 type UpsertGuildsParams struct {
-	GroupID   string
-	ClientID  int64
+	AppID     int64
 	GuildID   int64
 	Data      []byte
 	CreatedAt pgtype.Timestamp
@@ -122,8 +117,7 @@ func (q *Queries) UpsertGuilds(ctx context.Context, arg []UpsertGuildsParams) *U
 	batch := &pgx.Batch{}
 	for _, a := range arg {
 		vals := []interface{}{
-			a.GroupID,
-			a.ClientID,
+			a.AppID,
 			a.GuildID,
 			a.Data,
 			a.CreatedAt,
@@ -158,15 +152,14 @@ func (b *UpsertGuildsBatchResults) Close() error {
 
 const upsertRoles = `-- name: UpsertRoles :batchexec
 INSERT INTO cache.roles (
-    group_id, 
-    client_id, 
+    app_id, 
     guild_id, 
     role_id, 
     data, 
     created_at, 
     updated_at
-) VALUES ($1, $2, $3, $4, $5, $6, $7) 
-ON CONFLICT (group_id, client_id, guild_id, role_id) DO UPDATE SET 
+) VALUES ($1, $2, $3, $4, $5, $6) 
+ON CONFLICT (app_id, guild_id, role_id) DO UPDATE SET 
     data = EXCLUDED.data, 
     tainted = FALSE,
     updated_at = EXCLUDED.updated_at
@@ -179,8 +172,7 @@ type UpsertRolesBatchResults struct {
 }
 
 type UpsertRolesParams struct {
-	GroupID   string
-	ClientID  int64
+	AppID     int64
 	GuildID   int64
 	RoleID    int64
 	Data      []byte
@@ -192,8 +184,7 @@ func (q *Queries) UpsertRoles(ctx context.Context, arg []UpsertRolesParams) *Ups
 	batch := &pgx.Batch{}
 	for _, a := range arg {
 		vals := []interface{}{
-			a.GroupID,
-			a.ClientID,
+			a.AppID,
 			a.GuildID,
 			a.RoleID,
 			a.Data,

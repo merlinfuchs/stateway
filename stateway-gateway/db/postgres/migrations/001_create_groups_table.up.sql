@@ -1,6 +1,7 @@
 CREATE TABLE IF NOT EXISTS gateway.groups (
     id TEXT PRIMARY KEY,
     display_name TEXT NOT NULL,
+    constraints JSONB,
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP NOT NULL
 );
