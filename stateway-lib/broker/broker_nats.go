@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/merlinfuchs/stateway/stateway-lib/event"
+	"github.com/merlinfuchs/stateway/stateway-lib/service"
 	"github.com/nats-io/nats.go"
 )
 
@@ -103,7 +104,7 @@ func (b *NATSBroker) CreateGatewayStream() error {
 	return nil
 }
 
-func (b *NATSBroker) PublishEvent(evt event.Event) error {
+func (b *NATSBroker) Publish(ctx context.Context, evt event.Event) error {
 	switch e := evt.(type) {
 	case *event.GatewayEvent:
 		rawEvent, err := json.Marshal(e)
@@ -113,7 +114,7 @@ func (b *NATSBroker) PublishEvent(evt event.Event) error {
 
 		subject := fmt.Sprintf("gateway.%s", e.Type)
 
-		_, err = b.js.Publish(subject, rawEvent)
+		_, err = b.js.Publish(subject, rawEvent, nats.Context(ctx))
 		if err != nil {
 			// Check if error is due to stream not existing
 			if errors.Is(err, nats.ErrNoStreamResponse) {
@@ -127,7 +128,11 @@ func (b *NATSBroker) PublishEvent(evt event.Event) error {
 	}
 }
 
-func (b *NATSBroker) Request(service ServiceType, method string, request any, opts ...RequestOption) (Response, error) {
+func (b *NATSBroker) Listen(ctx context.Context, listener GenericListener) error {
+	return nil
+}
+
+func (b *NATSBroker) Request(ctx context.Context, service service.ServiceType, method string, request any, opts ...RequestOption) (Response, error) {
 	subject := fmt.Sprintf("%s.%s", service, method)
 
 	options := &RequestOptions{

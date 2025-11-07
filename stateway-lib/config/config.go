@@ -18,7 +18,7 @@ import (
 	"github.com/knadh/koanf/v2"
 )
 
-const ConfigFile = "nook.toml"
+const ConfigFile = "stateway.toml"
 
 //go:embed default.toml
 var defaultConfig []byte

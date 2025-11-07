@@ -6,11 +6,13 @@ import (
 	"fmt"
 
 	"github.com/merlinfuchs/stateway/stateway-lib/event"
+	"github.com/merlinfuchs/stateway/stateway-lib/service"
 )
 
 type Broker interface {
-	PublishEvent(event event.Event) error
-	Request(service ServiceType, method string, request any, opts ...RequestOption) (Response, error)
+	Publish(ctx context.Context, event event.Event) error
+	Listen(ctx context.Context, listener GenericListener) error
+	Request(ctx context.Context, service service.ServiceType, method string, request any, opts ...RequestOption) (Response, error)
 	Provide(ctx context.Context, service GenericBrokerService) error
 }
 

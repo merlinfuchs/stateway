@@ -1,4 +1,4 @@
-package gateway
+package server
 
 import (
 	"context"
@@ -17,12 +17,12 @@ type eventHandler struct {
 }
 
 func (h *eventHandler) HandleEvent(event event.Event) {
-	err := h.broker.PublishEvent(event)
+	err := h.broker.Publish(context.Background(), event)
 	if err != nil {
 		slog.Error(
 			"Failed to publish event",
 			slog.String("event_id", event.EventID().String()),
-			slog.String("event_type", string(event.EventType())),
+			slog.String("service_type", string(event.ServiceType())),
 			slog.String("error", err.Error()),
 		)
 	}

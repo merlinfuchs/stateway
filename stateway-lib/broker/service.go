@@ -3,17 +3,12 @@ package broker
 import (
 	"context"
 	"encoding/json"
-)
 
-type ServiceType string
-
-const (
-	SerivceTypeGateway ServiceType = "gateway"
-	ServiceTypeCache   ServiceType = "cache"
+	"github.com/merlinfuchs/stateway/stateway-lib/service"
 )
 
 type GenericBrokerService interface {
-	ServiceType() ServiceType
+	ServiceType() service.ServiceType
 	HandleRequest(method string, request json.RawMessage) (any, error)
 }
 
@@ -21,7 +16,7 @@ type genericBrokerService[REQUEST any, RESPONSE any] struct {
 	inner BrokerService[REQUEST, RESPONSE]
 }
 
-func (s *genericBrokerService[REQUEST, RESPONSE]) ServiceType() ServiceType {
+func (s *genericBrokerService[REQUEST, RESPONSE]) ServiceType() service.ServiceType {
 	return s.inner.ServiceType()
 }
 
@@ -41,10 +36,10 @@ func (s *genericBrokerService[REQUEST, RESPONSE]) HandleRequest(method string, r
 }
 
 type BrokerService[REQUEST any, RESPONSE any] interface {
-	ServiceType() ServiceType
+	ServiceType() service.ServiceType
 	HandleRequest(method string, request REQUEST) (RESPONSE, error)
 }
 
-func Provide[REQUEST any, RESPONSE any](b Broker, ctx context.Context, server BrokerService[REQUEST, RESPONSE]) error {
+func Provide[REQUEST any, RESPONSE any](ctx context.Context, b Broker, server BrokerService[REQUEST, RESPONSE]) error {
 	return b.Provide(ctx, &genericBrokerService[REQUEST, RESPONSE]{inner: server})
 }

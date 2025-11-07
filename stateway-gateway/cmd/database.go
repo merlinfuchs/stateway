@@ -155,7 +155,7 @@ func init() {
 
 	databaseCMD = cli.Command{
 		Name:  "database",
-		Usage: "Manage and migrate databases used by Nook.",
+		Usage: "Manage and migrate databases used by Stateway.",
 		Subcommands: []*cli.Command{
 			{
 				Name:        "migrate",

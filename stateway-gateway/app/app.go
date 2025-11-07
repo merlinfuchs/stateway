@@ -65,6 +65,7 @@ func (a *App) Run(ctx context.Context) {
 
 			a.eventHandler.HandleEvent(&event.GatewayEvent{
 				ID:       snowflake.New(time.Now().UTC()),
+				AppID:    a.model.ID,
 				GroupID:  a.model.GroupID,
 				ClientID: a.model.DiscordClientID,
 				Type:     eventType,

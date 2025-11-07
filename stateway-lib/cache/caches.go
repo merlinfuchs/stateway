@@ -11,6 +11,25 @@ type CacheOptions struct {
 	ClientID snowflake.ID `json:"client_id"`
 }
 
+func ResolveOptions(opts ...CacheOption) CacheOptions {
+	options := CacheOptions{}
+	for _, opt := range opts {
+		opt(&options)
+	}
+	return options
+}
+
+func (o CacheOptions) Destructure() []CacheOption {
+	res := []CacheOption{}
+	if o.GroupID != "" {
+		res = append(res, WithGroupID(o.GroupID))
+	}
+	if o.ClientID != 0 {
+		res = append(res, WithClientID(o.ClientID))
+	}
+	return res
+}
+
 type CacheOption func(*CacheOptions)
 
 func WithGroupID(groupID string) CacheOption {
