@@ -24,6 +24,32 @@ func (q *Queries) DeleteGuild(ctx context.Context, arg DeleteGuildParams) error 
 	return err
 }
 
+const getGuild = `-- name: GetGuild :one
+SELECT group_id, client_id, guild_id, data, unavailable, tainted, created_at, updated_at FROM cache.guilds WHERE group_id = $1 AND client_id = $2 AND guild_id = $3 LIMIT 1
+`
+
+type GetGuildParams struct {
+	GroupID  string
+	ClientID int64
+	GuildID  int64
+}
+
+func (q *Queries) GetGuild(ctx context.Context, arg GetGuildParams) (CacheGuild, error) {
+	row := q.db.QueryRow(ctx, getGuild, arg.GroupID, arg.ClientID, arg.GuildID)
+	var i CacheGuild
+	err := row.Scan(
+		&i.GroupID,
+		&i.ClientID,
+		&i.GuildID,
+		&i.Data,
+		&i.Unavailable,
+		&i.Tainted,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const markGuildUnavailable = `-- name: MarkGuildUnavailable :exec
 UPDATE cache.guilds SET unavailable = TRUE WHERE group_id = $1 AND client_id = $2 AND guild_id = $3
 `

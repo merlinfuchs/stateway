@@ -8,5 +8,5 @@ import (
 )
 
 type GuildCache interface {
-	GetGuild(ctx context.Context, id snowflake.ID, opts ...CacheOption) (discord.Guild, error)
+	GetGuild(ctx context.Context, id snowflake.ID, opts ...CacheOption) (*discord.Guild, error)
 }

@@ -2,11 +2,30 @@ package postgres
 
 import (
 	"context"
+	"errors"
 
+	"github.com/disgoorg/snowflake/v2"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/merlinfuchs/stateway/stateway-cache/db/postgres/pgmodel"
+	"github.com/merlinfuchs/stateway/stateway-cache/model"
 	"github.com/merlinfuchs/stateway/stateway-cache/store"
 )
+
+func (c *Client) GetGuild(ctx context.Context, guild store.GuildIdentifier) (*model.Guild, error) {
+	row, err := c.Q.GetGuild(ctx, pgmodel.GetGuildParams{
+		GroupID:  guild.GroupID,
+		ClientID: int64(guild.ClientID),
+		GuildID:  int64(guild.GuildID),
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, store.ErrNotFound
+		}
+		return nil, err
+	}
+	return rowToGuild(row), nil
+}
 
 func (c *Client) UpsertGuilds(ctx context.Context, guilds ...store.UpsertGuildParams) error {
 	if len(guilds) == 0 {
@@ -48,4 +67,17 @@ func (c *Client) DeleteGuild(ctx context.Context, params store.GuildIdentifier) 
 		ClientID: int64(params.ClientID),
 		GuildID:  int64(params.GuildID),
 	})
+}
+
+func rowToGuild(row pgmodel.CacheGuild) *model.Guild {
+	return &model.Guild{
+		GroupID:     row.GroupID,
+		ClientID:    snowflake.ID(row.ClientID),
+		GuildID:     snowflake.ID(row.GuildID),
+		Data:        row.Data,
+		Unavailable: row.Unavailable,
+		Tainted:     row.Tainted,
+		CreatedAt:   row.CreatedAt.Time,
+		UpdatedAt:   row.UpdatedAt.Time,
+	}
 }

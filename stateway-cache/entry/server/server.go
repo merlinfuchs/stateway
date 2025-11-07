@@ -28,6 +28,12 @@ func Run(ctx context.Context, pg *postgres.Client, cfg *config.CacheConfig) erro
 		return fmt.Errorf("failed to listen to gateway events: %w", err)
 	}
 
+	cacheService := broker.NewCacheService(NewCaches(pg))
+	err = broker.Provide(ctx, br, cacheService)
+	if err != nil {
+		return fmt.Errorf("failed to provide cache service: %w", err)
+	}
+
 	<-ctx.Done()
 	return nil
 }

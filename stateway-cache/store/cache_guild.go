@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/disgoorg/snowflake/v2"
+	"github.com/merlinfuchs/stateway/stateway-cache/model"
 )
 
 type UpsertGuildParams struct {
@@ -24,6 +25,7 @@ type GuildIdentifier struct {
 }
 
 type CacheGuildStore interface {
+	GetGuild(ctx context.Context, guild GuildIdentifier) (*model.Guild, error)
 	UpsertGuilds(ctx context.Context, guilds ...UpsertGuildParams) error
 	MarkGuildUnavailable(ctx context.Context, params GuildIdentifier) error
 	DeleteGuild(ctx context.Context, params GuildIdentifier) error

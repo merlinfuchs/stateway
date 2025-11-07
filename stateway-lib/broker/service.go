@@ -9,7 +9,7 @@ import (
 
 type GenericBrokerService interface {
 	ServiceType() service.ServiceType
-	HandleRequest(method string, request json.RawMessage) (any, error)
+	HandleRequest(ctx context.Context, method string, request json.RawMessage) (any, error)
 }
 
 type genericBrokerService[REQUEST any, RESPONSE any] struct {
@@ -20,14 +20,14 @@ func (s *genericBrokerService[REQUEST, RESPONSE]) ServiceType() service.ServiceT
 	return s.inner.ServiceType()
 }
 
-func (s *genericBrokerService[REQUEST, RESPONSE]) HandleRequest(method string, request json.RawMessage) (any, error) {
+func (s *genericBrokerService[REQUEST, RESPONSE]) HandleRequest(ctx context.Context, method string, request json.RawMessage) (any, error) {
 	var req REQUEST
 	err := json.Unmarshal(request, &req)
 	if err != nil {
 		return nil, err
 	}
 
-	response, err := s.inner.HandleRequest(method, req)
+	response, err := s.inner.HandleRequest(ctx, method, req)
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +37,7 @@ func (s *genericBrokerService[REQUEST, RESPONSE]) HandleRequest(method string, r
 
 type BrokerService[REQUEST any, RESPONSE any] interface {
 	ServiceType() service.ServiceType
-	HandleRequest(method string, request REQUEST) (RESPONSE, error)
+	HandleRequest(ctx context.Context, method string, request REQUEST) (RESPONSE, error)
 }
 
 func Provide[REQUEST any, RESPONSE any](ctx context.Context, b Broker, server BrokerService[REQUEST, RESPONSE]) error {

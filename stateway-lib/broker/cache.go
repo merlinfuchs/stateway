@@ -52,12 +52,16 @@ type CacheService struct {
 	caches cache.Caches
 }
 
+func NewCacheService(caches cache.Caches) *CacheService {
+	return &CacheService{caches: caches}
+}
+
 func (s *CacheService) ServiceType() service.ServiceType {
 	return service.ServiceTypeCache
 }
 
-func (s *CacheService) HandleRequest(ctx context.Context, method CacheMethod, request CacheRequest) (any, error) {
-	switch method {
+func (s *CacheService) HandleRequest(ctx context.Context, method string, request CacheRequest) (any, error) {
+	switch CacheMethod(method) {
 	case CacheMethodGetGuild:
 		return s.caches.GetGuild(ctx, *request.EntityID, request.Options.Destructure()...)
 	}
