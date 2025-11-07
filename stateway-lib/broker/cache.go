@@ -14,7 +14,7 @@ import (
 type CacheMethod string
 
 const (
-	CacheMethodGetGuild CacheMethod = "get_guild"
+	CacheMethodGetGuild CacheMethod = "guild.get"
 )
 
 type CacheRequest struct {
@@ -23,11 +23,22 @@ type CacheRequest struct {
 }
 
 type CacheClient struct {
-	b Broker
+	b       Broker
+	options cache.CacheOptions
+}
+
+func (c *CacheClient) WithOptions(opts ...cache.CacheOption) *CacheClient {
+	return &CacheClient{
+		b:       c.b,
+		options: cache.ResolveOptions(opts...),
+	}
 }
 
 func (c *CacheClient) GetGuild(ctx context.Context, id snowflake.ID, opts ...cache.CacheOption) (*discord.Guild, error) {
-	options := cache.ResolveOptions(opts...)
+	options := c.options
+	for _, opt := range opts {
+		opt(&options)
+	}
 
 	return cacheRequest[discord.Guild](ctx, c.b, CacheMethodGetGuild, CacheRequest{
 		EntityID: &id,
@@ -35,7 +46,7 @@ func (c *CacheClient) GetGuild(ctx context.Context, id snowflake.ID, opts ...cac
 	})
 }
 
-func cacheRequest[R any](ctx context.Context, b Broker, method CacheMethod, request any) (*R, error) {
+func cacheRequest[R any](ctx context.Context, b Broker, method CacheMethod, request CacheRequest) (*R, error) {
 	response, err := b.Request(ctx, service.ServiceTypeCache, string(method), request)
 	if err != nil {
 		return new(R), err
