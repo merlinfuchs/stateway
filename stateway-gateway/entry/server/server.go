@@ -34,7 +34,7 @@ func Run(ctx context.Context, pg *postgres.Client, cfg *config.GatewayConfig) er
 		return fmt.Errorf("failed to create NATS broker: %w", err)
 	}
 
-	err = broker.CreateGatewayStream()
+	err = broker.CreateGatewayStream(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to create gateway stream: %w", err)
 	}

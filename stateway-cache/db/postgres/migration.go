@@ -71,13 +71,13 @@ func (pgs *Client) GetMigrater() (*Migrater, error) {
 	}
 	defer db.Close()
 
-	_, err = db.Exec("CREATE SCHEMA IF NOT EXISTS gateway")
+	_, err = db.Exec("CREATE SCHEMA IF NOT EXISTS cache")
 	if err != nil {
-		return nil, fmt.Errorf("failed to create gateway schema: %w", err)
+		return nil, fmt.Errorf("failed to create cache schema: %w", err)
 	}
 
 	driver, err := postgres.WithInstance(db, &postgres.Config{
-		SchemaName: "gateway",
+		SchemaName: "cache",
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to open postgres migration: %w", err)

@@ -6,22 +6,33 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/merlinfuchs/stateway/stateway-lib/event"
 	"github.com/merlinfuchs/stateway/stateway-lib/service"
 	"github.com/nats-io/nats.go"
+	"github.com/nats-io/nats.go/jetstream"
 )
 
 type NATSBroker struct {
 	nc *nats.Conn
-	js nats.JetStreamContext
+	js jetstream.JetStream
 }
 
 const (
 	gatewayStreamName = "GATEWAY"
 	gatewaySubject    = "gateway.>"
 )
+
+func streamFromService(st service.ServiceType) (string, error) {
+	switch st {
+	case service.ServiceTypeGateway:
+		return gatewayStreamName, nil
+	default:
+		return "", fmt.Errorf("unknown service type: %s", st)
+	}
+}
 
 func NewNATSBroker(url string) (*NATSBroker, error) {
 	if url == "" {
@@ -33,13 +44,13 @@ func NewNATSBroker(url string) (*NATSBroker, error) {
 		return nil, fmt.Errorf("failed to connect to NATS: %w", err)
 	}
 
-	js, err := nc.JetStream(nats.PublishAsyncMaxPending(256))
+	js, err := jetstream.New(nc)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create JetStream context: %w", err)
 	}
 
 	// Verify JetStream is available by checking account info
-	_, err = js.AccountInfo()
+	_, err = js.AccountInfo(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("JetStream is not available: %w (ensure NATS server is started with -js flag)", err)
 	}
@@ -49,56 +60,19 @@ func NewNATSBroker(url string) (*NATSBroker, error) {
 	return broker, nil
 }
 
-func (b *NATSBroker) CreateGatewayStream() error {
-	// Create the stream configuration
-	streamConfig := &nats.StreamConfig{
+func (b *NATSBroker) CreateGatewayStream(ctx context.Context) error {
+	_, err := b.js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{
 		Name:      gatewayStreamName,
 		Subjects:  []string{gatewaySubject},
-		Retention: nats.InterestPolicy,
+		Retention: jetstream.InterestPolicy,
 		MaxAge:    1 * time.Hour,
 		MaxBytes:  4 * 1024 * 1024 * 1024, // 4GB
-		Discard:   nats.DiscardOld,
-		Storage:   nats.FileStorage,
+		Discard:   jetstream.DiscardOld,
+		Storage:   jetstream.FileStorage,
 		Replicas:  1,
-	}
-
-	// Check if stream already exists
-	stream, err := b.js.StreamInfo(gatewayStreamName)
-	if err != nil && !errors.Is(err, nats.ErrStreamNotFound) {
-		return fmt.Errorf("failed to check stream info: %w", err)
-	}
-
-	// Stream already exists
-	if stream != nil {
-		slog.Info("JetStream stream already exists, updating it", slog.String("stream", gatewayStreamName))
-		_, err = b.js.UpdateStream(streamConfig)
-		if err != nil {
-			return fmt.Errorf("failed to update stream: %w", err)
-		}
-		slog.Info("JetStream stream updated successfully", slog.String("stream", gatewayStreamName))
-		return nil
-	}
-
-	slog.Info("Creating JetStream stream", slog.String("stream", gatewayStreamName), slog.String("subject", gatewaySubject))
-	stream, err = b.js.AddStream(streamConfig)
-	if err != nil {
-		return fmt.Errorf("failed to create stream: %w", err)
-	}
-
-	// Verify stream was created successfully
-	if stream == nil {
-		return fmt.Errorf("stream creation returned nil")
-	}
-
-	slog.Info("JetStream stream created successfully", slog.String("stream", gatewayStreamName))
-
-	// Verify the stream exists by querying it again
-	stream, err = b.js.StreamInfo(gatewayStreamName)
-	if err != nil {
-		return fmt.Errorf("stream was created but cannot be verified: %w", err)
-	}
-	if stream == nil {
-		return fmt.Errorf("stream was created but verification returned nil")
+	})
+	if err != nil && !errors.Is(err, jetstream.ErrStreamNotFound) {
+		return fmt.Errorf("failed to create or update stream: %w", err)
 	}
 
 	return nil
@@ -107,14 +81,15 @@ func (b *NATSBroker) CreateGatewayStream() error {
 func (b *NATSBroker) Publish(ctx context.Context, evt event.Event) error {
 	switch e := evt.(type) {
 	case *event.GatewayEvent:
-		rawEvent, err := json.Marshal(e)
+		rawEvent, err := event.MarshalEvent(e)
 		if err != nil {
 			return fmt.Errorf("failed to marshal event: %w", err)
 		}
 
-		subject := fmt.Sprintf("gateway.%s", e.Type)
+		eventType := strings.ToLower(strings.ReplaceAll(e.EventType(), "_", "."))
+		subject := fmt.Sprintf("gateway.%s", eventType)
 
-		_, err = b.js.Publish(subject, rawEvent, nats.Context(ctx))
+		_, err = b.js.Publish(ctx, subject, rawEvent)
 		if err != nil {
 			// Check if error is due to stream not existing
 			if errors.Is(err, nats.ErrNoStreamResponse) {
@@ -129,6 +104,87 @@ func (b *NATSBroker) Publish(ctx context.Context, evt event.Event) error {
 }
 
 func (b *NATSBroker) Listen(ctx context.Context, listener GenericListener) error {
+	stream, err := streamFromService(listener.ServiceType())
+	if err != nil {
+		return fmt.Errorf("failed to get stream from service: %w", err)
+	}
+
+	filterSubjects := make([]string, len(listener.EventFilters()))
+	for i, filter := range listener.EventFilters() {
+		filterSubjects[i] = fmt.Sprintf("%s.%s", listener.ServiceType(), filter)
+	}
+
+	consumer, err := b.js.CreateOrUpdateConsumer(ctx, stream, jetstream.ConsumerConfig{
+		Name:           listener.BalanceKey(),
+		Durable:        listener.BalanceKey(),
+		FilterSubjects: filterSubjects,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create or update consumer: %w", err)
+	}
+
+	subject := fmt.Sprintf("%s.>", listener.ServiceType())
+
+	cc, err := consumer.Consume(func(msg jetstream.Msg) {
+		event, err := event.UnmarshalEvent(msg.Data())
+		if err != nil {
+			slog.Error(
+				"Failed to unmarshal event",
+				slog.String("subject", msg.Subject()),
+				slog.String("error", err.Error()),
+			)
+			err = msg.Nak()
+			if err != nil {
+				slog.Error(
+					"Failed to nak message",
+					slog.String("subject", msg.Subject()),
+					slog.String("error", err.Error()),
+				)
+			}
+			return
+		}
+
+		err = listener.HandleEvent(ctx, event)
+		if err != nil {
+			slog.Error(
+				"Failed to handle event",
+				slog.String("subject", msg.Subject()),
+				slog.String("error", err.Error()),
+			)
+			err = msg.Nak()
+			if err != nil {
+				slog.Error(
+					"Failed to nak message",
+					slog.String("subject", msg.Subject()),
+					slog.String("error", err.Error()),
+				)
+			}
+			return
+		}
+
+		err = msg.Ack()
+		if err != nil {
+			slog.Error(
+				"Failed to ack message",
+				slog.String("subject", msg.Subject()),
+				slog.String("error", err.Error()),
+			)
+		}
+	}, jetstream.ConsumeErrHandler(func(consumeCtx jetstream.ConsumeContext, err error) {
+		slog.Error(
+			"Failed to consume message",
+			slog.String("error", err.Error()),
+		)
+	}))
+	if err != nil {
+		return fmt.Errorf("failed to subscribe to %s: %w", subject, err)
+	}
+
+	go func() {
+		<-ctx.Done()
+		cc.Stop()
+	}()
+
 	return nil
 }
 
@@ -176,7 +232,7 @@ func (b *NATSBroker) Request(ctx context.Context, service service.ServiceType, m
 func (b *NATSBroker) Provide(ctx context.Context, service GenericBrokerService) error {
 	subject := fmt.Sprintf("%s.>", service.ServiceType())
 
-	sub, err := b.js.Subscribe(subject, func(msg *nats.Msg) {
+	sub, err := b.nc.Subscribe(subject, func(msg *nats.Msg) {
 		var request json.RawMessage
 		err := json.Unmarshal(msg.Data, &request)
 		if err != nil {

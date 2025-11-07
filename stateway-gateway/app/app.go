@@ -2,9 +2,8 @@ package app
 
 import (
 	"context"
-	"fmt"
+	"io"
 	"log/slog"
-	"strings"
 	"time"
 
 	"github.com/disgoorg/disgo"
@@ -43,6 +42,7 @@ func (a *App) Run(ctx context.Context) {
 			sharding.WithGatewayConfigOpts(
 				gateway.WithIntents(gateway.IntentGuilds, gateway.IntentGuildMessages, gateway.IntentDirectMessages),
 				gateway.WithCompression(gateway.CompressionZstdStream),
+				gateway.WithEnableRawEvents(true),
 			),
 		),
 		bot.WithEventListenerFunc(func(event *events.Ready) {
@@ -54,22 +54,21 @@ func (a *App) Run(ctx context.Context) {
 				slog.String("display_name", a.model.DisplayName),
 			)
 		}),
-		bot.WithEventListenerFunc(func(e bot.Event) {
-			eventType := fmt.Sprintf("%T", e)
-			// Remove package prefix (e.g., "events." or "bot.")
-			if idx := strings.LastIndex(eventType, "."); idx != -1 {
-				eventType = eventType[idx+1:]
+		bot.WithEventListenerFunc(func(e *events.Raw) {
+			data, err := io.ReadAll(e.Payload)
+			if err != nil {
+				slog.Error("Failed to read event payload", slog.Any("error", err))
+				return
 			}
-			// Convert to snake_case or lowercase
-			eventType = strings.ToLower(eventType)
 
 			a.eventHandler.HandleEvent(&event.GatewayEvent{
 				ID:       snowflake.New(time.Now().UTC()),
 				AppID:    a.model.ID,
 				GroupID:  a.model.GroupID,
 				ClientID: a.model.DiscordClientID,
-				Type:     eventType,
-				Data:     e,
+				ShardID:  e.ShardID(),
+				Type:     string(e.EventType),
+				Data:     data,
 			})
 		}),
 	)

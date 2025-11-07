@@ -9,8 +9,9 @@ import (
 )
 
 type GenericListener interface {
+	BalanceKey() string
 	ServiceType() service.ServiceType
-	EventFilters() []EventFilter
+	EventFilters() []string
 	HandleEvent(ctx context.Context, event event.Event) error
 }
 
@@ -19,11 +20,15 @@ type genericEventListener[E event.Event] struct {
 	inner       EventListener[E]
 }
 
+func (l *genericEventListener[E]) BalanceKey() string {
+	return l.inner.BalanceKey()
+}
+
 func (l *genericEventListener[E]) ServiceType() service.ServiceType {
 	return l.serviceType
 }
 
-func (l *genericEventListener[E]) EventFilters() []EventFilter {
+func (l *genericEventListener[E]) EventFilters() []string {
 	return l.inner.EventFilters()
 }
 
@@ -37,7 +42,8 @@ func (l *genericEventListener[E]) HandleEvent(ctx context.Context, event event.E
 }
 
 type EventListener[E event.Event] interface {
-	EventFilters() []EventFilter
+	BalanceKey() string
+	EventFilters() []string
 	HandleEvent(ctx context.Context, event E) error
 }
 

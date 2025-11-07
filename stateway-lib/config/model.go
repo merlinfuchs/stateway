@@ -16,8 +16,9 @@ func (cfg *GatewayConfig) Validate() error {
 }
 
 type CacheConfig struct {
-	Logging LoggingConfig `toml:"logging"`
-	Broker  BrokerConfig  `toml:"broker"`
+	Logging  LoggingConfig  `toml:"logging"`
+	Database DatabaseConfig `toml:"database"`
+	Broker   BrokerConfig   `toml:"broker"`
 }
 
 func (cfg *CacheConfig) Validate() error {
