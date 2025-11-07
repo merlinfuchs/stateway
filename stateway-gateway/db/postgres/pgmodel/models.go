@@ -10,6 +10,7 @@ import (
 
 type GatewayApp struct {
 	ID                  int64
+	GroupID             string
 	DisplayName         string
 	DiscordClientID     int64
 	DiscordBotToken     string
@@ -20,4 +21,11 @@ type GatewayApp struct {
 	DisabledMessage     pgtype.Text
 	CreatedAt           pgtype.Timestamp
 	UpdatedAt           pgtype.Timestamp
+}
+
+type GatewayGroup struct {
+	ID          string
+	DisplayName string
+	CreatedAt   pgtype.Timestamp
+	UpdatedAt   pgtype.Timestamp
 }

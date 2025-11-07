@@ -17,12 +17,13 @@ type Event interface {
 }
 
 type GatewayEvent struct {
-	ID      snowflake.ID  `json:"id"`
-	AppID   snowflake.ID  `json:"app_id"`
-	ShardID int           `json:"shard_id"`
-	GuildID *snowflake.ID `json:"guild_id"`
-	Type    string        `json:"type"`
-	Data    bot.Event     `json:"data"`
+	ID       snowflake.ID  `json:"id"`
+	GroupID  string        `json:"group_id"`
+	ClientID snowflake.ID  `json:"client_id"`
+	ShardID  int           `json:"shard_id"`
+	GuildID  *snowflake.ID `json:"guild_id"`
+	Type     string        `json:"type"`
+	Data     bot.Event     `json:"data"`
 }
 
 func (e *GatewayEvent) EventID() snowflake.ID {

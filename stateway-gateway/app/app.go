@@ -47,8 +47,10 @@ func (a *App) Run(ctx context.Context) {
 		),
 		bot.WithEventListenerFunc(func(event *events.Ready) {
 			slog.Info(
-				"Discord app ready",
+				"Discord client ready",
 				slog.String("app_id", a.model.ID.String()),
+				slog.String("group_id", a.model.GroupID),
+				slog.String("client_id", a.model.DiscordClientID.String()),
 				slog.String("display_name", a.model.DisplayName),
 			)
 		}),
@@ -62,10 +64,11 @@ func (a *App) Run(ctx context.Context) {
 			eventType = strings.ToLower(eventType)
 
 			a.eventHandler.HandleEvent(&event.GatewayEvent{
-				ID:    snowflake.New(time.Now().UTC()),
-				AppID: a.model.ID,
-				Type:  eventType,
-				Data:  e,
+				ID:       snowflake.New(time.Now().UTC()),
+				GroupID:  a.model.GroupID,
+				ClientID: a.model.DiscordClientID,
+				Type:     eventType,
+				Data:     e,
 			})
 		}),
 	)
@@ -101,7 +104,8 @@ func (a *App) Update(ctx context.Context, model *model.App) {
 
 func (a *App) disable(ctx context.Context, code model.AppDisabledCode, message string) {
 	_, err := a.appStore.DisableApp(ctx, store.DisableAppParams{
-		ID:              a.model.ID,
+		GroupID:         a.model.GroupID,
+		DiscordClientID: a.model.DiscordClientID,
 		DisabledCode:    code,
 		DisabledMessage: null.NewString(message, message != ""),
 		UpdatedAt:       time.Now().UTC(),
@@ -109,7 +113,8 @@ func (a *App) disable(ctx context.Context, code model.AppDisabledCode, message s
 	if err != nil {
 		slog.Error(
 			"Failed to disable app",
-			slog.String("app_id", a.model.ID.String()),
+			slog.String("group_id", a.model.GroupID),
+			slog.String("client_id", a.model.DiscordClientID.String()),
 			slog.String("code", string(code)),
 			slog.String("message", message),
 			slog.Any("error", err),

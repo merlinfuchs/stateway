@@ -13,8 +13,11 @@ import (
 	"gopkg.in/guregu/null.v4"
 )
 
-func (c *Client) GetApp(ctx context.Context, id snowflake.ID) (*model.App, error) {
-	row, err := c.Q.GetApp(ctx, int64(id))
+func (c *Client) GetApp(ctx context.Context, groupID string, discordClientID snowflake.ID) (*model.App, error) {
+	row, err := c.Q.GetApp(ctx, pgmodel.GetAppParams{
+		GroupID:         groupID,
+		DiscordClientID: int64(discordClientID),
+	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, store.ErrNotFound
@@ -52,6 +55,7 @@ func (c *Client) GetEnabledApps(ctx context.Context) ([]*model.App, error) {
 func (c *Client) CreateApp(ctx context.Context, params store.CreateAppParams) (*model.App, error) {
 	row, err := c.Q.CreateApp(ctx, pgmodel.CreateAppParams{
 		ID:               int64(params.ID),
+		GroupID:          params.GroupID,
 		DisplayName:      params.DisplayName,
 		DiscordClientID:  int64(params.DiscordClientID),
 		DiscordBotToken:  params.DiscordBotToken,
@@ -77,7 +81,7 @@ func (c *Client) CreateApp(ctx context.Context, params store.CreateAppParams) (*
 
 func (c *Client) UpdateApp(ctx context.Context, params store.UpdateAppParams) (*model.App, error) {
 	row, err := c.Q.UpdateApp(ctx, pgmodel.UpdateAppParams{
-		ID:               int64(params.ID),
+		GroupID:          params.GroupID,
 		DisplayName:      params.DisplayName,
 		DiscordClientID:  int64(params.DiscordClientID),
 		DiscordBotToken:  params.DiscordBotToken,
@@ -108,7 +112,8 @@ func (c *Client) UpdateApp(ctx context.Context, params store.UpdateAppParams) (*
 
 func (c *Client) DisableApp(ctx context.Context, params store.DisableAppParams) (*model.App, error) {
 	row, err := c.Q.DisableApp(ctx, pgmodel.DisableAppParams{
-		ID: int64(params.ID),
+		GroupID:         params.GroupID,
+		DiscordClientID: int64(params.DiscordClientID),
 		DisabledCode: pgtype.Text{
 			String: string(params.DisabledCode),
 			Valid:  params.DisabledCode != "",
@@ -128,8 +133,11 @@ func (c *Client) DisableApp(ctx context.Context, params store.DisableAppParams) 
 	return rowToApp(row), nil
 }
 
-func (c *Client) DeleteApp(ctx context.Context, id snowflake.ID) error {
-	err := c.Q.DeleteApp(ctx, int64(id))
+func (c *Client) DeleteApp(ctx context.Context, groupID string, discordClientID snowflake.ID) error {
+	err := c.Q.DeleteApp(ctx, pgmodel.DeleteAppParams{
+		GroupID:         groupID,
+		DiscordClientID: int64(discordClientID),
+	})
 	if err != nil {
 		return err
 	}
@@ -139,6 +147,7 @@ func (c *Client) DeleteApp(ctx context.Context, id snowflake.ID) error {
 func rowToApp(row pgmodel.GatewayApp) *model.App {
 	return &model.App{
 		ID:                  snowflake.ID(row.ID),
+		GroupID:             row.GroupID,
 		DisplayName:         row.DisplayName,
 		DiscordClientID:     snowflake.ID(row.DiscordClientID),
 		DiscordBotToken:     row.DiscordBotToken,

@@ -16,6 +16,7 @@ const (
 
 type App struct {
 	ID                  snowflake.ID    `json:"id"`
+	GroupID             string          `json:"group_id"`
 	DisplayName         string          `json:"display_name"`
 	DiscordClientID     snowflake.ID    `json:"discord_client_id"`
 	DiscordBotToken     string          `json:"discord_bot_token"`

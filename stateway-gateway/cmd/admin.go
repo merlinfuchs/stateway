@@ -49,6 +49,11 @@ var adminCMD = cli.Command{
 					Usage: "Get an app.",
 					Flags: []cli.Flag{
 						&cli.StringFlag{
+							Name:     "group",
+							Usage:    "The group of the app to get.",
+							Required: false,
+						},
+						&cli.StringFlag{
 							Name:     "id",
 							Usage:    "The ID of the app to get.",
 							Required: true,
@@ -68,7 +73,7 @@ var adminCMD = cli.Command{
 							return fmt.Errorf("failed to parse app ID: %w", err)
 						}
 
-						err = admin.GetApp(ctx, env.pg, appID)
+						err = admin.GetApp(ctx, env.pg, c.String("group"), appID)
 						if err != nil {
 							return fmt.Errorf("failed to get app: %w", err)
 						}
@@ -79,6 +84,11 @@ var adminCMD = cli.Command{
 					Name:  "create",
 					Usage: "Create a new app.",
 					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:     "group",
+							Usage:    "The group of the app to create.",
+							Required: false,
+						},
 						&cli.StringFlag{
 							Name:     "token",
 							Usage:    "The token of the app to create.",
@@ -98,7 +108,7 @@ var adminCMD = cli.Command{
 							return fmt.Errorf("failed to setup environment: %w", err)
 						}
 
-						err = admin.CreateApp(ctx, env.pg, c.String("token"), c.String("client-secret"))
+						err = admin.CreateApp(ctx, env.pg, c.String("group"), c.String("token"), c.String("client-secret"))
 						if err != nil {
 							return fmt.Errorf("failed to create app: %w", err)
 						}
@@ -109,6 +119,11 @@ var adminCMD = cli.Command{
 					Name:  "delete",
 					Usage: "Delete an app.",
 					Flags: []cli.Flag{
+						&cli.StringFlag{
+							Name:     "group",
+							Usage:    "The group of the app to delete.",
+							Required: false,
+						},
 						&cli.StringFlag{
 							Name:     "id",
 							Usage:    "The ID of the app to delete.",
@@ -134,7 +149,7 @@ var adminCMD = cli.Command{
 							return fmt.Errorf("failed to parse app ID: %w", err)
 						}
 
-						err = admin.DeleteApp(ctx, env.pg, appID)
+						err = admin.DeleteApp(ctx, env.pg, c.String("group"), appID)
 						if err != nil {
 							return fmt.Errorf("failed to delete app: %w", err)
 						}
@@ -146,8 +161,13 @@ var adminCMD = cli.Command{
 					Usage: "Disable an app.",
 					Flags: []cli.Flag{
 						&cli.StringFlag{
+							Name:     "group",
+							Usage:    "The group of the app to disable.",
+							Required: false,
+						},
+						&cli.StringFlag{
 							Name:     "id",
-							Usage:    "The ID of the app to disable.",
+							Usage:    "The Discord client ID of the app to disable.",
 							Required: true,
 						},
 						&cli.StringFlag{
@@ -175,7 +195,7 @@ var adminCMD = cli.Command{
 							return fmt.Errorf("failed to parse app ID: %w", err)
 						}
 
-						err = admin.DisableApp(ctx, env.pg, appID, model.AppDisabledCode(c.String("code")), c.String("message"))
+						err = admin.DisableApp(ctx, env.pg, c.String("group"), appID, model.AppDisabledCode(c.String("code")), c.String("message"))
 						if err != nil {
 							return fmt.Errorf("failed to disable app: %w", err)
 						}

@@ -1,6 +1,7 @@
 -- name: CreateApp :one
 INSERT INTO gateway.apps (
-    id, 
+    id,
+    group_id,
     display_name, 
     discord_client_id, 
     discord_bot_token, 
@@ -17,7 +18,8 @@ VALUES (
     $5, 
     $6, 
     $7,
-    $8
+    $8,
+    $9
 )
 RETURNING *;
 
@@ -32,23 +34,23 @@ UPDATE gateway.apps SET
     disabled_code = $8,
     disabled_message = $9,
     updated_at = $10
-WHERE id = $1
+WHERE group_id = $1 AND discord_client_id = $2
 RETURNING *;
 
 -- name: DisableApp :one
 UPDATE gateway.apps SET 
     disabled = TRUE,
-    disabled_code = $2,
-    disabled_message = $3,
-    updated_at = $4
-WHERE id = $1
+    disabled_code = $3,
+    disabled_message = $4,
+    updated_at = $5
+WHERE group_id = $1 AND discord_client_id = $2
 RETURNING *;
 
 -- name: DeleteApp :exec
-DELETE FROM gateway.apps WHERE id = $1;
+DELETE FROM gateway.apps WHERE group_id = $1 AND discord_client_id = $2;
 
 -- name: GetApp :one
-SELECT * FROM gateway.apps WHERE id = $1 LIMIT 1;
+SELECT * FROM gateway.apps WHERE group_id = $1 AND discord_client_id = $2 LIMIT 1;
 
 -- name: GetApps :many
 SELECT * FROM gateway.apps;

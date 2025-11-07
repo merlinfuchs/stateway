@@ -36,8 +36,12 @@ func ListApps(ctx context.Context, appStore store.AppStore, enabledOnly bool) er
 	return nil
 }
 
-func GetApp(ctx context.Context, appStore store.AppStore, id snowflake.ID) error {
-	app, err := appStore.GetApp(ctx, id)
+func GetApp(ctx context.Context, appStore store.AppStore, groupID string, discordClientID snowflake.ID) error {
+	if groupID == "" {
+		groupID = "default"
+	}
+
+	app, err := appStore.GetApp(ctx, groupID, discordClientID)
 	if err != nil {
 		return fmt.Errorf("failed to get app: %w", err)
 	}
@@ -50,7 +54,7 @@ func GetApp(ctx context.Context, appStore store.AppStore, id snowflake.ID) error
 	return nil
 }
 
-func CreateApp(ctx context.Context, appStore store.AppStore, token string, clientSecret string) error {
+func CreateApp(ctx context.Context, appStore store.AppStore, groupID string, token string, clientSecret string) error {
 	client := rest.New(rest.NewClient(token))
 
 	discordApp, err := client.GetCurrentApplication(rest.WithCtx(ctx))
@@ -58,8 +62,13 @@ func CreateApp(ctx context.Context, appStore store.AppStore, token string, clien
 		return fmt.Errorf("failed to get current app: %w", err)
 	}
 
+	if groupID == "" {
+		groupID = "default"
+	}
+
 	app, err := appStore.CreateApp(ctx, store.CreateAppParams{
-		ID:                  snowflake.ID(discordApp.ID),
+		ID:                  snowflake.New(time.Now().UTC()),
+		GroupID:             groupID,
 		DisplayName:         discordApp.Name,
 		DiscordClientID:     snowflake.ID(discordApp.ID),
 		DiscordBotToken:     token,
@@ -80,17 +89,26 @@ func CreateApp(ctx context.Context, appStore store.AppStore, token string, clien
 	return nil
 }
 
-func DeleteApp(ctx context.Context, appStore store.AppStore, id snowflake.ID) error {
-	err := appStore.DeleteApp(ctx, id)
+func DeleteApp(ctx context.Context, appStore store.AppStore, groupID string, discordClientID snowflake.ID) error {
+	if groupID == "" {
+		groupID = "default"
+	}
+
+	err := appStore.DeleteApp(ctx, groupID, discordClientID)
 	if err != nil {
 		return fmt.Errorf("failed to delete app: %w", err)
 	}
 	return nil
 }
 
-func DisableApp(ctx context.Context, appStore store.AppStore, id snowflake.ID, code model.AppDisabledCode, message string) error {
+func DisableApp(ctx context.Context, appStore store.AppStore, groupID string, discordClientID snowflake.ID, code model.AppDisabledCode, message string) error {
+	if groupID == "" {
+		groupID = "default"
+	}
+
 	app, err := appStore.DisableApp(ctx, store.DisableAppParams{
-		ID:              id,
+		GroupID:         groupID,
+		DiscordClientID: discordClientID,
 		DisabledCode:    code,
 		DisabledMessage: null.NewString(message, message != ""),
 	})
@@ -106,10 +124,10 @@ func DisableApp(ctx context.Context, appStore store.AppStore, id snowflake.ID, c
 
 func renderAppsTable(apps []*model.App) error {
 	table := tablewriter.NewWriter(os.Stdout)
-	table.Header([]string{"ID", "Display Name", "Disabled", "Disabled Code", "Disabled Message", "Created At", "Updated At"})
+	table.Header([]string{"Group", "Name", "Disabled", "Disabled Code", "Disabled Message", "Created At", "Updated At"})
 	for _, app := range apps {
 		err := table.Append([]string{
-			app.ID.String(),
+			app.GroupID,
 			app.DisplayName,
 			app.DiscordClientID.String(),
 			strconv.FormatBool(app.Disabled),
