@@ -27,10 +27,10 @@ type Validate interface {
 	Validate() error
 }
 
-func loadConfig[T Validate](basePath string) (T, error) {
+func LoadConfig[T Validate]() (T, error) {
 	var res T
 
-	k, err := loadBase(basePath)
+	k, err := loadBase(".")
 	if err != nil {
 		return res, fmt.Errorf("Failed to load base config: %v", err)
 	}

@@ -1,6 +1,7 @@
 package broker
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -126,10 +127,113 @@ func (b *NATSBroker) PublishEvent(evt event.Event) error {
 	}
 }
 
-func (b *NATSBroker) Request(service ServiceType, method string, request any) (Response, error) {
-	return Response{
-		Success: true,
-		Error:   nil,
-		Data:    nil,
-	}, nil
+func (b *NATSBroker) Request(service ServiceType, method string, request any, opts ...RequestOption) (Response, error) {
+	subject := fmt.Sprintf("%s.%s", service, method)
+
+	options := &RequestOptions{
+		Timeout: 5 * time.Second,
+	}
+	for _, opt := range opts {
+		opt(options)
+	}
+
+	rawRequest, err := json.Marshal(request)
+	if err != nil {
+		return Response{
+			Success: false,
+			Error:   &Error{Message: err.Error(), Code: "request_failed"},
+			Data:    nil,
+		}, err
+	}
+
+	response, err := b.nc.Request(subject, rawRequest, options.Timeout)
+	if err != nil {
+		return Response{
+			Success: false,
+			Error:   &Error{Message: err.Error(), Code: "request_failed"},
+			Data:    nil,
+		}, err
+	}
+
+	var resp Response
+	err = json.Unmarshal(response.Data, &resp)
+	if err != nil {
+		return Response{
+			Success: false,
+			Error:   &Error{Message: err.Error(), Code: "response_failed"},
+			Data:    nil,
+		}, err
+	}
+
+	return resp, nil
+}
+
+func (b *NATSBroker) Provide(ctx context.Context, service GenericBrokerService) error {
+	subject := fmt.Sprintf("%s.>", service.ServiceType())
+
+	sub, err := b.js.Subscribe(subject, func(msg *nats.Msg) {
+		var request json.RawMessage
+		err := json.Unmarshal(msg.Data, &request)
+		if err != nil {
+			return
+		}
+
+		data, err := service.HandleRequest(msg.Subject, request)
+
+		var resp Response
+		if err == nil {
+			rawData, err := json.Marshal(data)
+			if err != nil {
+				slog.Error(
+					"Failed to marshal response",
+					slog.String("subject", msg.Subject),
+					slog.String("error", err.Error()),
+				)
+				return
+			}
+			resp = Response{
+				Success: true,
+				Error:   nil,
+				Data:    rawData,
+			}
+		} else {
+			resp = Response{
+				Success: false,
+				Error:   &Error{Message: err.Error(), Code: "request_failed"},
+				Data:    nil,
+			}
+		}
+
+		rawResp, err := json.Marshal(resp)
+		if err != nil {
+			slog.Error(
+				"Failed to marshal response",
+				slog.String("subject", msg.Subject),
+				slog.String("error", err.Error()),
+			)
+			return
+		}
+
+		err = msg.Respond(rawResp)
+		if err != nil {
+			slog.Error(
+				"Failed to respond to %s: %w",
+				slog.String("subject", msg.Subject),
+				slog.String("error", err.Error()),
+			)
+		}
+	})
+	if err != nil {
+		return fmt.Errorf("failed to subscribe to %s: %w", subject, err)
+	}
+
+	go func() {
+		<-ctx.Done()
+		err := sub.Unsubscribe()
+		if err != nil {
+			slog.Error("failed to unsubscribe from %s: %s", subject, err.Error())
+		}
+	}()
+
+	return nil
 }

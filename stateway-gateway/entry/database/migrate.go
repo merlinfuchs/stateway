@@ -7,14 +7,14 @@ import (
 	"os"
 
 	"github.com/golang-migrate/migrate/v4"
-	"github.com/merlinfuchs/stateway/stateway-gateway/config"
 	"github.com/merlinfuchs/stateway/stateway-gateway/db/postgres"
-	"github.com/merlinfuchs/stateway/stateway-gateway/logging"
 	"github.com/merlinfuchs/stateway/stateway-gateway/store"
+	"github.com/merlinfuchs/stateway/stateway-lib/config"
+	"github.com/merlinfuchs/stateway/stateway-lib/logging"
 )
 
 func RunMigrations(ctx context.Context, db string, opts DatabaseMigrationOpts) error {
-	cfg, err := config.LoadConfig(".")
+	cfg, err := config.LoadConfig[*config.GatewayConfig]()
 	if err != nil {
 		return fmt.Errorf("Failed to load server config: %v", err)
 	}

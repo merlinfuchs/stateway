@@ -4,19 +4,26 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-type Config struct {
+type GatewayConfig struct {
 	Logging  LoggingConfig  `toml:"logging"`
 	Database DatabaseConfig `toml:"database"`
 	Broker   BrokerConfig   `toml:"broker"`
 }
 
-func (cfg *Config) Validate() error {
+func (cfg *GatewayConfig) Validate() error {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 	return validate.Struct(cfg)
 }
 
-func LoadConfig(basePath string) (*Config, error) {
-	return loadConfig[*Config](basePath)
+type CacheConfig struct {
+	Logging  LoggingConfig  `toml:"logging"`
+	Database DatabaseConfig `toml:"database"`
+	Broker   BrokerConfig   `toml:"broker"`
+}
+
+func (cfg *CacheConfig) Validate() error {
+	validate := validator.New(validator.WithRequiredStructEnabled())
+	return validate.Struct(cfg)
 }
 
 type DatabaseConfig struct {

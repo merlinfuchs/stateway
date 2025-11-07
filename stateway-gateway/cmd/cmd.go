@@ -8,10 +8,10 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/merlinfuchs/stateway/stateway-gateway/config"
 	"github.com/merlinfuchs/stateway/stateway-gateway/db/postgres"
 	"github.com/merlinfuchs/stateway/stateway-gateway/entry/gateway"
-	"github.com/merlinfuchs/stateway/stateway-gateway/logging"
+	"github.com/merlinfuchs/stateway/stateway-lib/config"
+	"github.com/merlinfuchs/stateway/stateway-lib/logging"
 	"github.com/urfave/cli/v2"
 )
 
@@ -51,11 +51,11 @@ func Execute() {
 
 type env struct {
 	pg  *postgres.Client
-	cfg *config.Config
+	cfg *config.GatewayConfig
 }
 
 func setupEnv(ctx context.Context) (*env, error) {
-	cfg, err := config.LoadConfig(config.ConfigFile)
+	cfg, err := config.LoadConfig[*config.GatewayConfig]()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load config: %w", err)
 	}

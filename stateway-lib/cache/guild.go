@@ -6,5 +6,5 @@ import (
 )
 
 type GuildCache interface {
-	GetGuild(id snowflake.ID) (discord.Guild, error)
+	GetGuild(id snowflake.ID, opts ...CacheOption) (discord.Guild, error)
 }
