@@ -55,4 +55,32 @@ func Listen[E event.Event](ctx context.Context, b Broker, listener EventListener
 	})
 }
 
-type EventFilter struct{}
+type FuncListener[E event.Event] struct {
+	balanceKey   string
+	eventFilters []string
+	handleEvent  func(ctx context.Context, event E) error
+}
+
+func NewFuncListener[E event.Event](
+	balanceKey string,
+	eventFilters []string,
+	handleEvent func(ctx context.Context, event E) error,
+) *FuncListener[E] {
+	return &FuncListener[E]{
+		balanceKey:   balanceKey,
+		eventFilters: eventFilters,
+		handleEvent:  handleEvent,
+	}
+}
+
+func (l *FuncListener[E]) BalanceKey() string {
+	return l.balanceKey
+}
+
+func (l *FuncListener[E]) EventFilters() []string {
+	return l.eventFilters
+}
+
+func (l *FuncListener[E]) HandleEvent(ctx context.Context, event E) error {
+	return l.handleEvent(ctx, event)
+}
