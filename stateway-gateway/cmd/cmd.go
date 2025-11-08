@@ -24,12 +24,12 @@ var CLI = cli.App{
 			Usage: "Start the Stateway Gateway Server.",
 			Flags: []cli.Flag{
 				&cli.IntFlag{
-					Name:  "instance-count",
-					Usage: "The number of instances to run the gateway server on.",
+					Name:  "gateway-count",
+					Usage: "The number of gateways to run and balance the apps across.",
 				},
 				&cli.IntFlag{
-					Name:  "instance-index",
-					Usage: "The index of the instance to run the gateway server on.",
+					Name:  "gateway-id",
+					Usage: "The ID of the gateway to run (0-based index).",
 				},
 			},
 			Action: func(c *cli.Context) error {
@@ -41,12 +41,12 @@ var CLI = cli.App{
 					return fmt.Errorf("failed to setup environment: %w", err)
 				}
 
-				if c.IsSet("instance-count") {
-					env.cfg.Gateway.InstanceCount = c.Int("instance-count")
+				if c.IsSet("gateway-count") {
+					env.cfg.Gateway.GatewayCount = c.Int("gateway-count")
 				}
 
-				if c.IsSet("instance-index") {
-					env.cfg.Gateway.InstanceIndex = c.Int("instance-index")
+				if c.IsSet("gateway-id") {
+					env.cfg.Gateway.GatewayID = c.Int("gateway-id")
 				}
 
 				err = server.Run(ctx, env.pg, env.cfg)

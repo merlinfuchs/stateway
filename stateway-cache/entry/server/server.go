@@ -17,6 +17,9 @@ import (
 )
 
 func Run(ctx context.Context, pg *postgres.Client, cfg *config.RootCacheConfig) error {
+	// Discord some times sends unquoted snowflake IDs, so we need to allow them
+	snowflake.AllowUnquoted = true
+
 	br, err := broker.NewNATSBroker(cfg.Broker.NATS.URL)
 	if err != nil {
 		return fmt.Errorf("failed to create NATS broker: %w", err)
@@ -47,18 +50,19 @@ func (l *CacheListener) BalanceKey() string {
 	return "cache"
 }
 
-func (l *CacheListener) EventFilters() []string {
-	return []string{
-		"ready",
-		"guild.>",
+func (l *CacheListener) EventFilter() broker.EventFilter {
+	return broker.EventFilter{
+		EventTypes: []string{
+			"ready",
+			"guild.>",
+			"channel.>",
+			"thread.>",
+		},
 	}
 }
 
 func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEvent) error {
 	slog.Info("Received event:", slog.String("type", event.Type))
-
-	// Discord some times sends unquoted snowflake IDs, so we need to allow them
-	snowflake.AllowUnquoted = true
 
 	e, err := gateway.UnmarshalEventData(event.Data, gateway.EventType(event.Type))
 	if err != nil {

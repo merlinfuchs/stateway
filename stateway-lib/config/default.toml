@@ -8,5 +8,5 @@ db_name = "stateway"
 url = "nats://127.0.0.1:4222"
 
 [gateway]
-instance_count = 1
-instance_index = 0
+gateway_count = 1
+gateway_id = 0

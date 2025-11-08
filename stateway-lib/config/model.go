@@ -55,14 +55,27 @@ type NATSConfig struct {
 }
 
 type GatewayConfig struct {
-	InstanceCount int                `toml:"instance_count" validate:"required"`
-	InstanceIndex int                `toml:"instance_index"`
-	Apps          []GatewayAppConfig `toml:"apps"`
+	GatewayCount int                `toml:"gateway_count" validate:"required"`
+	GatewayID    int                `toml:"gateway_id"`
+	Apps         []GatewayAppConfig `toml:"apps"`
 }
 
 type GatewayAppConfig struct {
-	Token      string `toml:"token" validate:"required"`
-	ShardCount int    `toml:"shard_count" validate:"required,min=1"`
-	GroupID    string `toml:"group_id"`
-	Intents    int64  `toml:"intents"`
+	Token      string                    `toml:"token" validate:"required"`
+	ShardCount int                       `toml:"shard_count" validate:"required,min=1"`
+	GroupID    string                    `toml:"group_id"`
+	Intents    int64                     `toml:"intents"`
+	Presence   *GatewayAppPresenceConfig `toml:"presence"`
+}
+
+type GatewayAppPresenceConfig struct {
+	Status   string                            `toml:"status"`
+	Activity *GatewayAppPresenceActivityConfig `toml:"activity"`
+}
+
+type GatewayAppPresenceActivityConfig struct {
+	Name  string `toml:"name"`
+	State string `toml:"state"`
+	Type  string `toml:"type"`
+	URL   string `toml:"url"`
 }

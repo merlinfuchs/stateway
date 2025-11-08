@@ -95,4 +95,4 @@ SELECT * FROM gateway.apps WHERE id = $1 LIMIT 1;
 SELECT * FROM gateway.apps;
 
 -- name: GetEnabledApps :many
-SELECT * FROM gateway.apps WHERE disabled = FALSE AND (shard_count > 1 OR id % @instance_count = @instance_index);
+SELECT * FROM gateway.apps WHERE disabled = FALSE AND (shard_count > 1 OR id % @gateway_count = @gateway_id);

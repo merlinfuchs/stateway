@@ -42,13 +42,13 @@ func (c *Client) GetApps(ctx context.Context) ([]*model.App, error) {
 }
 
 func (c *Client) GetEnabledApps(ctx context.Context, params store.GetEnabledAppsParams) ([]*model.App, error) {
-	if params.InstanceCount == 0 {
-		params.InstanceCount = 1
+	if params.GatewayCount == 0 {
+		params.GatewayCount = 1
 	}
 
 	rows, err := c.Q.GetEnabledApps(ctx, pgmodel.GetEnabledAppsParams{
-		InstanceCount: int64(params.InstanceCount),
-		InstanceIndex: int64(params.InstanceIndex),
+		GatewayCount: int64(params.GatewayCount),
+		GatewayID:    int64(params.GatewayID),
 	})
 	if err != nil {
 		return nil, err

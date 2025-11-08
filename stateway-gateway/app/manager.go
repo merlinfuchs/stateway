@@ -13,8 +13,8 @@ import (
 )
 
 type AppManagerConfig struct {
-	InstanceCount int
-	InstanceIndex int
+	GatewayCount int
+	GatewayID    int
 }
 
 type AppManager struct {
@@ -61,8 +61,8 @@ func (m *AppManager) Run(ctx context.Context) {
 
 func (m *AppManager) populateApps(ctx context.Context, lastUpdate time.Time) {
 	apps, err := m.appStore.GetEnabledApps(ctx, store.GetEnabledAppsParams{
-		InstanceCount: m.cfg.InstanceCount,
-		InstanceIndex: m.cfg.InstanceIndex,
+		GatewayCount: m.cfg.GatewayCount,
+		GatewayID:    m.cfg.GatewayID,
 	})
 	if err != nil {
 		slog.Error("Failed to get enabled apps", slog.Any("error", err))

@@ -48,12 +48,28 @@ func (a AppConstraints) Merge(other AppConstraints) AppConstraints {
 }
 
 type AppConfig struct {
-	Intents null.Int `json:"intents,omitzero"`
+	Intents  null.Int           `json:"intents,omitzero"`
+	Presence *AppPresenceConfig `json:"presence,omitempty"`
 }
 
 func (a AppConfig) Merge(other AppConfig) AppConfig {
 	if other.Intents.Valid {
 		a.Intents = other.Intents
 	}
+	if other.Presence != nil {
+		a.Presence = other.Presence
+	}
 	return a
+}
+
+type AppPresenceConfig struct {
+	Status   null.String                `json:"status,omitzero"`
+	Activity *AppPresenceActivityConfig `json:"activity,omitempty"`
+}
+
+type AppPresenceActivityConfig struct {
+	Name  string `json:"name,omitempty"`
+	State string `json:"state,omitempty"`
+	Type  string `json:"type,omitempty"`
+	URL   string `json:"url,omitempty"`
 }

@@ -51,8 +51,8 @@ type DisableAppParams struct {
 }
 
 type GetEnabledAppsParams struct {
-	InstanceCount int
-	InstanceIndex int
+	GatewayCount int
+	GatewayID    int
 }
 
 type AppStore interface {

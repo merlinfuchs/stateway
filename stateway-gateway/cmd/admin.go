@@ -221,5 +221,30 @@ var adminCMD = cli.Command{
 				},
 			},
 		},
+		{
+			Name:  "nats",
+			Usage: "Manage NATS.",
+			Subcommands: []*cli.Command{
+				{
+					Name:  "delete-stream",
+					Usage: "Delete the NATS stream.",
+					Action: func(c *cli.Context) error {
+						ctx, cancel := signal.NotifyContext(c.Context, syscall.SIGINT, syscall.SIGTERM)
+						defer cancel()
+
+						env, err := setupEnv(ctx)
+						if err != nil {
+							return fmt.Errorf("failed to setup environment: %w", err)
+						}
+
+						err = admin.DeleteGatewayStream(ctx, env.cfg)
+						if err != nil {
+							return fmt.Errorf("failed to delete gateway stream: %w", err)
+						}
+						return nil
+					},
+				},
+			},
+		},
 	},
 }

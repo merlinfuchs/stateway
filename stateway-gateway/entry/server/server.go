@@ -35,8 +35,8 @@ func Run(ctx context.Context, pg *postgres.Client, cfg *config.RootGatewayConfig
 
 	appManager := app.NewAppManager(
 		app.AppManagerConfig{
-			InstanceCount: cfg.Gateway.InstanceCount,
-			InstanceIndex: cfg.Gateway.InstanceIndex,
+			GatewayCount: cfg.Gateway.GatewayCount,
+			GatewayID:    cfg.Gateway.GatewayID,
 		},
 		pg,
 		&eventHandler{broker: broker},
@@ -55,6 +55,23 @@ func createInitialApps(ctx context.Context, pg *postgres.Client, cfg *config.Roo
 			return fmt.Errorf("failed to get current app: %w", err)
 		}
 
+		config := model.AppConfig{
+			Intents: null.NewInt(appCfg.Intents, appCfg.Intents != 0),
+		}
+		if appCfg.Presence != nil {
+			config.Presence = &model.AppPresenceConfig{
+				Status: null.NewString(appCfg.Presence.Status, appCfg.Presence.Status != ""),
+			}
+			if appCfg.Presence.Activity != nil {
+				config.Presence.Activity = &model.AppPresenceActivityConfig{
+					Name:  appCfg.Presence.Activity.Name,
+					State: appCfg.Presence.Activity.State,
+					Type:  appCfg.Presence.Activity.Type,
+					URL:   appCfg.Presence.Activity.URL,
+				}
+			}
+		}
+
 		err = pg.UpsertApp(ctx, store.UpsertAppParams{
 			ID:               discordApp.ID,
 			GroupID:          appCfg.GroupID,
@@ -64,11 +81,9 @@ func createInitialApps(ctx context.Context, pg *postgres.Client, cfg *config.Roo
 			DiscordPublicKey: discordApp.VerifyKey,
 			ShardCount:       appCfg.ShardCount,
 			Constraints:      model.AppConstraints{},
-			Config: model.AppConfig{
-				Intents: null.NewInt(appCfg.Intents, appCfg.Intents != 0),
-			},
-			CreatedAt: time.Now().UTC(),
-			UpdatedAt: time.Now().UTC(),
+			Config:           config,
+			CreatedAt:        time.Now().UTC(),
+			UpdatedAt:        time.Now().UTC(),
 		})
 		if err != nil {
 			return fmt.Errorf("failed to upsert app: %w", err)

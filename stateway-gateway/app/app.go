@@ -19,8 +19,8 @@ import (
 )
 
 type AppConfig struct {
-	InstanceCount int
-	InstanceIndex int
+	GatewayCount int
+	GatewayID    int
 }
 
 type App struct {
@@ -48,27 +48,12 @@ func NewApp(
 }
 
 func (a *App) Run(ctx context.Context) {
-	shardCount := a.model.ShardCount
-	if shardCount == 0 {
-		shardCount = 1
-	}
-
-	shardIDs := make([]int, 0, shardCount)
-	for shardID := 0; shardID < shardCount; shardID++ {
-		// if shardCount == 1, this instance is the only one that should run the app
-		// otherwise, we are splitting the app shards across the instances
-		// shardID % instanceCount gives us the index of the instance that should run the shard
-		if shardCount == 1 || shardID%a.cfg.InstanceCount == a.cfg.InstanceIndex {
-			shardIDs = append(shardIDs, shardID)
-		}
-	}
-
-	intents := gateway.IntentsNonPrivileged
-	if a.model.Config.Intents.Valid {
-		intents = gateway.Intents(a.model.Config.Intents.Int64)
-	}
+	shardCount, shardIDs := shardsFromApp(a.model, a.cfg.GatewayCount, a.cfg.GatewayID)
+	intents := intentsFromApp(a.model)
+	presenceOpts := presenceOptsFromApp(a.model)
 
 	client, err := disgo.New(a.model.DiscordBotToken,
+		bot.WithLogger(slog.Default()),
 		bot.WithShardManagerConfigOpts(
 			sharding.WithAutoScaling(false),
 			sharding.WithShardCount(shardCount),
@@ -77,6 +62,7 @@ func (a *App) Run(ctx context.Context) {
 				gateway.WithIntents(intents),
 				gateway.WithCompression(gateway.CompressionZstdStream),
 				gateway.WithEnableRawEvents(true),
+				gateway.WithPresenceOpts(presenceOpts...),
 			),
 		),
 		bot.WithEventListenerFunc(func(event *events.Ready) {
@@ -105,13 +91,13 @@ func (a *App) Run(ctx context.Context) {
 			}
 
 			a.eventHandler.HandleEvent(&event.GatewayEvent{
-				ID:       snowflake.New(time.Now().UTC()),
-				AppID:    a.model.ID,
-				GroupID:  a.model.GroupID,
-				ClientID: a.model.DiscordClientID,
-				ShardID:  e.ShardID(),
-				Type:     string(e.EventType),
-				Data:     data,
+				ID:        snowflake.New(time.Now().UTC()),
+				GatewayID: a.cfg.GatewayID,
+				AppID:     a.model.ID,
+				GroupID:   a.model.GroupID,
+				ShardID:   e.ShardID(),
+				Type:      string(e.EventType),
+				Data:      data,
 			})
 		}),
 	)

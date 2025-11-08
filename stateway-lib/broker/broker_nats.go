@@ -21,17 +21,23 @@ type NATSBroker struct {
 }
 
 const (
-	gatewayStreamName = "GATEWAY"
-	gatewaySubject    = "gateway.>"
+	GatewayStreamName    = "GATEWAY"
+	GatewayStreamSubject = "gateway.>"
 )
 
 func streamFromService(st service.ServiceType) (string, error) {
 	switch st {
 	case service.ServiceTypeGateway:
-		return gatewayStreamName, nil
+		return GatewayStreamName, nil
 	default:
 		return "", fmt.Errorf("unknown service type: %s", st)
 	}
+}
+
+func gatewayEventSubject(e *event.GatewayEvent) string {
+	eventType := strings.ToLower(strings.ReplaceAll(e.EventType(), "_", "."))
+
+	return fmt.Sprintf("gateway.%d.%s.%d.%s", e.GatewayID, e.GroupID, e.AppID, eventType)
 }
 
 func NewNATSBroker(url string) (*NATSBroker, error) {
@@ -62,11 +68,11 @@ func NewNATSBroker(url string) (*NATSBroker, error) {
 
 func (b *NATSBroker) CreateGatewayStream(ctx context.Context) error {
 	_, err := b.js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{
-		Name:      gatewayStreamName,
-		Subjects:  []string{gatewaySubject},
+		Name:      GatewayStreamName,
+		Subjects:  []string{GatewayStreamSubject},
 		Retention: jetstream.InterestPolicy,
-		MaxAge:    24 * time.Hour,
-		MaxBytes:  4 * 1024 * 1024 * 1024, // 4GB
+		MaxAge:    1 * time.Hour,
+		MaxBytes:  16 * 1024 * 1024 * 1024, // 16GB
 		MaxMsgs:   -1,
 		Discard:   jetstream.DiscardOld,
 		Storage:   jetstream.FileStorage,
@@ -87,14 +93,13 @@ func (b *NATSBroker) Publish(ctx context.Context, evt event.Event) error {
 			return fmt.Errorf("failed to marshal event: %w", err)
 		}
 
-		eventType := strings.ToLower(strings.ReplaceAll(e.EventType(), "_", "."))
-		subject := fmt.Sprintf("gateway.%s", eventType)
+		subject := gatewayEventSubject(e)
 
 		_, err = b.js.Publish(ctx, subject, rawEvent)
 		if err != nil {
 			// Check if error is due to stream not existing
 			if errors.Is(err, nats.ErrNoStreamResponse) {
-				return fmt.Errorf("stream %s does not exist or JetStream is not properly configured: %w", gatewayStreamName, err)
+				return fmt.Errorf("stream %s does not exist or JetStream is not properly configured: %w", GatewayStreamName, err)
 			}
 			return fmt.Errorf("failed to publish event to %s: %w", subject, err)
 		}
@@ -111,15 +116,18 @@ func (b *NATSBroker) Listen(ctx context.Context, listener GenericListener) error
 	}
 
 	var filterSubjects []string
-	for _, filter := range listener.EventFilters() {
+	for _, filter := range listener.EventFilter().Subjects() {
 		filterSubjects = append(filterSubjects, fmt.Sprintf("%s.%s", listener.ServiceType(), filter))
 	}
 
+	fmt.Println("Filter subjects:", filterSubjects)
+
 	consumer, err := b.js.CreateOrUpdateConsumer(ctx, stream, jetstream.ConsumerConfig{
-		Name:           listener.BalanceKey(),
-		Durable:        listener.BalanceKey(),
-		FilterSubjects: filterSubjects,
-		AckPolicy:      jetstream.AckNonePolicy,
+		Name:              listener.BalanceKey(),
+		Durable:           listener.BalanceKey(),
+		FilterSubjects:    filterSubjects,
+		AckPolicy:         jetstream.AckNonePolicy,
+		InactiveThreshold: time.Minute * 15,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create or update consumer: %w", err)

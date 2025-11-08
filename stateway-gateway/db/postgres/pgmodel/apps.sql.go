@@ -220,12 +220,12 @@ SELECT id, group_id, display_name, discord_client_id, discord_bot_token, discord
 `
 
 type GetEnabledAppsParams struct {
-	InstanceCount int64
-	InstanceIndex int64
+	GatewayCount int64
+	GatewayID    int64
 }
 
 func (q *Queries) GetEnabledApps(ctx context.Context, arg GetEnabledAppsParams) ([]GatewayApp, error) {
-	rows, err := q.db.Query(ctx, getEnabledApps, arg.InstanceCount, arg.InstanceIndex)
+	rows, err := q.db.Query(ctx, getEnabledApps, arg.GatewayCount, arg.GatewayID)
 	if err != nil {
 		return nil, err
 	}
