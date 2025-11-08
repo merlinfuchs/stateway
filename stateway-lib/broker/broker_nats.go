@@ -65,8 +65,9 @@ func (b *NATSBroker) CreateGatewayStream(ctx context.Context) error {
 		Name:      gatewayStreamName,
 		Subjects:  []string{gatewaySubject},
 		Retention: jetstream.InterestPolicy,
-		MaxAge:    1 * time.Hour,
+		MaxAge:    24 * time.Hour,
 		MaxBytes:  4 * 1024 * 1024 * 1024, // 4GB
+		MaxMsgs:   -1,
 		Discard:   jetstream.DiscardOld,
 		Storage:   jetstream.FileStorage,
 		Replicas:  1,
@@ -118,6 +119,7 @@ func (b *NATSBroker) Listen(ctx context.Context, listener GenericListener) error
 		Name:           listener.BalanceKey(),
 		Durable:        listener.BalanceKey(),
 		FilterSubjects: filterSubjects,
+		AckPolicy:      jetstream.AckNonePolicy,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create or update consumer: %w", err)
@@ -133,14 +135,14 @@ func (b *NATSBroker) Listen(ctx context.Context, listener GenericListener) error
 				slog.String("subject", msg.Subject()),
 				slog.String("error", err.Error()),
 			)
-			err = msg.NakWithDelay(time.Second)
+			/* err = msg.NakWithDelay(time.Second)
 			if err != nil {
 				slog.Error(
 					"Failed to nak message",
 					slog.String("subject", msg.Subject()),
 					slog.String("error", err.Error()),
 				)
-			}
+			} */
 			return
 		}
 
@@ -151,25 +153,25 @@ func (b *NATSBroker) Listen(ctx context.Context, listener GenericListener) error
 				slog.String("subject", msg.Subject()),
 				slog.String("error", err.Error()),
 			)
-			err = msg.NakWithDelay(time.Second)
+			/* err = msg.NakWithDelay(time.Second)
 			if err != nil {
 				slog.Error(
 					"Failed to nak message",
 					slog.String("subject", msg.Subject()),
 					slog.String("error", err.Error()),
 				)
-			}
+			} */
 			return
 		}
 
-		err = msg.Ack()
+		/* err = msg.Ack()
 		if err != nil {
 			slog.Error(
 				"Failed to ack message",
 				slog.String("subject", msg.Subject()),
 				slog.String("error", err.Error()),
 			)
-		}
+		} */
 	}, jetstream.ConsumeErrHandler(func(consumeCtx jetstream.ConsumeContext, err error) {
 		slog.Error(
 			"Failed to consume message",
