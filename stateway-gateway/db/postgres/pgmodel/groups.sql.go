@@ -12,20 +12,31 @@ import (
 )
 
 const createGroup = `-- name: CreateGroup :one
-INSERT INTO gateway.groups (id, display_name, created_at, updated_at) VALUES ($1, $2, $3, $4) RETURNING id, display_name, created_at, updated_at
+INSERT INTO gateway.groups (
+    id, 
+    display_name, 
+    default_config, 
+    default_constraints, 
+    created_at, 
+    updated_at
+) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, display_name, default_config, default_constraints, created_at, updated_at
 `
 
 type CreateGroupParams struct {
-	ID          string
-	DisplayName string
-	CreatedAt   pgtype.Timestamp
-	UpdatedAt   pgtype.Timestamp
+	ID                 string
+	DisplayName        string
+	DefaultConfig      []byte
+	DefaultConstraints []byte
+	CreatedAt          pgtype.Timestamp
+	UpdatedAt          pgtype.Timestamp
 }
 
 func (q *Queries) CreateGroup(ctx context.Context, arg CreateGroupParams) (GatewayGroup, error) {
 	row := q.db.QueryRow(ctx, createGroup,
 		arg.ID,
 		arg.DisplayName,
+		arg.DefaultConfig,
+		arg.DefaultConstraints,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -33,6 +44,8 @@ func (q *Queries) CreateGroup(ctx context.Context, arg CreateGroupParams) (Gatew
 	err := row.Scan(
 		&i.ID,
 		&i.DisplayName,
+		&i.DefaultConfig,
+		&i.DefaultConstraints,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -49,7 +62,7 @@ func (q *Queries) DeleteGroup(ctx context.Context, id string) error {
 }
 
 const getGroup = `-- name: GetGroup :one
-SELECT id, display_name, created_at, updated_at FROM gateway.groups WHERE id = $1 LIMIT 1
+SELECT id, display_name, default_config, default_constraints, created_at, updated_at FROM gateway.groups WHERE id = $1 LIMIT 1
 `
 
 func (q *Queries) GetGroup(ctx context.Context, id string) (GatewayGroup, error) {
@@ -58,6 +71,8 @@ func (q *Queries) GetGroup(ctx context.Context, id string) (GatewayGroup, error)
 	err := row.Scan(
 		&i.ID,
 		&i.DisplayName,
+		&i.DefaultConfig,
+		&i.DefaultConstraints,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -65,7 +80,7 @@ func (q *Queries) GetGroup(ctx context.Context, id string) (GatewayGroup, error)
 }
 
 const getGroups = `-- name: GetGroups :many
-SELECT id, display_name, created_at, updated_at FROM gateway.groups
+SELECT id, display_name, default_config, default_constraints, created_at, updated_at FROM gateway.groups
 `
 
 func (q *Queries) GetGroups(ctx context.Context) ([]GatewayGroup, error) {
@@ -80,6 +95,8 @@ func (q *Queries) GetGroups(ctx context.Context) ([]GatewayGroup, error) {
 		if err := rows.Scan(
 			&i.ID,
 			&i.DisplayName,
+			&i.DefaultConfig,
+			&i.DefaultConstraints,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -94,21 +111,31 @@ func (q *Queries) GetGroups(ctx context.Context) ([]GatewayGroup, error) {
 }
 
 const updateGroup = `-- name: UpdateGroup :one
-UPDATE gateway.groups SET display_name = $2, updated_at = $3 WHERE id = $1 RETURNING id, display_name, created_at, updated_at
+UPDATE gateway.groups SET display_name = $2, default_config = $3, default_constraints = $4, updated_at = $5 WHERE id = $1 RETURNING id, display_name, default_config, default_constraints, created_at, updated_at
 `
 
 type UpdateGroupParams struct {
-	ID          string
-	DisplayName string
-	UpdatedAt   pgtype.Timestamp
+	ID                 string
+	DisplayName        string
+	DefaultConfig      []byte
+	DefaultConstraints []byte
+	UpdatedAt          pgtype.Timestamp
 }
 
 func (q *Queries) UpdateGroup(ctx context.Context, arg UpdateGroupParams) (GatewayGroup, error) {
-	row := q.db.QueryRow(ctx, updateGroup, arg.ID, arg.DisplayName, arg.UpdatedAt)
+	row := q.db.QueryRow(ctx, updateGroup,
+		arg.ID,
+		arg.DisplayName,
+		arg.DefaultConfig,
+		arg.DefaultConstraints,
+		arg.UpdatedAt,
+	)
 	var i GatewayGroup
 	err := row.Scan(
 		&i.ID,
 		&i.DisplayName,
+		&i.DefaultConfig,
+		&i.DefaultConstraints,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

@@ -28,7 +28,7 @@ func (h *eventHandler) HandleEvent(event event.Event) {
 	}
 }
 
-func Run(ctx context.Context, pg *postgres.Client, cfg *config.GatewayConfig) error {
+func Run(ctx context.Context, pg *postgres.Client, cfg *config.RootGatewayConfig) error {
 	broker, err := broker.NewNATSBroker(cfg.Broker.NATS.URL)
 	if err != nil {
 		return fmt.Errorf("failed to create NATS broker: %w", err)
@@ -39,7 +39,14 @@ func Run(ctx context.Context, pg *postgres.Client, cfg *config.GatewayConfig) er
 		return fmt.Errorf("failed to create gateway stream: %w", err)
 	}
 
-	appManager := app.NewAppManager(pg, &eventHandler{broker: broker})
+	appManager := app.NewAppManager(
+		app.AppManagerConfig{
+			InstanceCount: cfg.Gateway.InstanceCount,
+			InstanceIndex: cfg.Gateway.InstanceIndex,
+		},
+		pg,
+		&eventHandler{broker: broker},
+	)
 
 	appManager.Run(ctx)
 	return nil

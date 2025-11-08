@@ -17,17 +17,24 @@ type CreateAppParams struct {
 	DiscordBotToken     string
 	DiscordPublicKey    string
 	DiscordClientSecret null.String
+	ShardCount          int
+	Constraints         model.AppConstraints
+	Config              model.AppConfig
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
 }
 
 type UpdateAppParams struct {
+	ID                  snowflake.ID
 	GroupID             string
 	DisplayName         string
 	DiscordClientID     snowflake.ID
 	DiscordBotToken     string
 	DiscordPublicKey    string
 	DiscordClientSecret null.String
+	ShardCount          int
+	Constraints         model.AppConstraints
+	Config              model.AppConfig
 	Disabled            bool
 	DisabledCode        null.String
 	DisabledMessage     null.String
@@ -41,10 +48,15 @@ type DisableAppParams struct {
 	UpdatedAt       time.Time
 }
 
+type GetEnabledAppsParams struct {
+	InstanceCount int
+	InstanceIndex int
+}
+
 type AppStore interface {
 	GetApp(ctx context.Context, id snowflake.ID) (*model.App, error)
 	GetApps(ctx context.Context) ([]*model.App, error)
-	GetEnabledApps(ctx context.Context) ([]*model.App, error)
+	GetEnabledApps(ctx context.Context, params GetEnabledAppsParams) ([]*model.App, error)
 	CreateApp(ctx context.Context, params CreateAppParams) (*model.App, error)
 	UpdateApp(ctx context.Context, params UpdateAppParams) (*model.App, error)
 	DisableApp(ctx context.Context, params DisableAppParams) (*model.App, error)

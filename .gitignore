@@ -1,2 +1,5 @@
 .DS_Store
 .env
+stateway.toml
+stateway-gateway/stateway-gateway
+stateway-cache/stateway-cache

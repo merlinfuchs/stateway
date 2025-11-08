@@ -20,7 +20,7 @@ func ListApps(ctx context.Context, appStore store.AppStore, enabledOnly bool) er
 	var err error
 
 	if enabledOnly {
-		apps, err = appStore.GetEnabledApps(ctx)
+		apps, err = appStore.GetEnabledApps(ctx, store.GetEnabledAppsParams{})
 	} else {
 		apps, err = appStore.GetApps(ctx)
 	}
@@ -58,6 +58,11 @@ func CreateApp(ctx context.Context, appStore store.AppStore, groupID string, tok
 		return fmt.Errorf("failed to get current app: %w", err)
 	}
 
+	discordGateway, err := client.GetGatewayBot(rest.WithCtx(ctx))
+	if err != nil {
+		return fmt.Errorf("failed to get gateway bot: %w", err)
+	}
+
 	if groupID == "" {
 		groupID = "default"
 	}
@@ -70,6 +75,7 @@ func CreateApp(ctx context.Context, appStore store.AppStore, groupID string, tok
 		DiscordBotToken:     token,
 		DiscordPublicKey:    discordApp.VerifyKey,
 		DiscordClientSecret: null.NewString(clientSecret, clientSecret != ""),
+		ShardCount:          int(discordGateway.Shards),
 		CreatedAt:           time.Now().UTC(),
 		UpdatedAt:           time.Now().UTC(),
 	})
@@ -111,15 +117,14 @@ func DisableApp(ctx context.Context, appStore store.AppStore, id snowflake.ID, c
 
 func renderAppsTable(apps []*model.App) error {
 	table := tablewriter.NewWriter(os.Stdout)
-	table.Header([]string{"Group", "Name", "Disabled", "Disabled Code", "Disabled Message", "Created At", "Updated At"})
+	table.Header([]string{"ID", "Group", "Name", "Shard Count", "Disabled", "Created At", "Updated At"})
 	for _, app := range apps {
 		err := table.Append([]string{
+			app.ID.String(),
 			app.GroupID,
 			app.DisplayName,
-			app.DiscordClientID.String(),
+			strconv.Itoa(app.ShardCount),
 			strconv.FormatBool(app.Disabled),
-			string(app.DisabledCode),
-			app.DisabledMessage.String,
 			app.CreatedAt.Format(time.RFC3339),
 			app.UpdatedAt.Format(time.RFC3339),
 		})

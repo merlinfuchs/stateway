@@ -18,7 +18,13 @@ import (
 	"gopkg.in/guregu/null.v4"
 )
 
+type AppConfig struct {
+	InstanceCount int
+	InstanceIndex int
+}
+
 type App struct {
+	cfg   AppConfig
 	model *model.App
 
 	appStore     store.AppStore
@@ -27,8 +33,14 @@ type App struct {
 	client *bot.Client
 }
 
-func NewApp(model *model.App, appStore store.AppStore, eventHandler event.EventHandler) *App {
+func NewApp(
+	cfg AppConfig,
+	model *model.App,
+	appStore store.AppStore,
+	eventHandler event.EventHandler,
+) *App {
 	return &App{
+		cfg:          cfg,
 		model:        model,
 		appStore:     appStore,
 		eventHandler: eventHandler,
@@ -36,9 +48,26 @@ func NewApp(model *model.App, appStore store.AppStore, eventHandler event.EventH
 }
 
 func (a *App) Run(ctx context.Context) {
+	shardCount := a.model.ShardCount
+	if shardCount == 0 {
+		shardCount = 1
+	}
+
+	shardIDs := make([]int, 0, shardCount)
+	for shardID := 0; shardID < shardCount; shardID++ {
+		// if shardCount == 1, this instance is the only one that should run the app
+		// otherwise, we are splitting the app shards across the instances
+		// shardID % instanceCount gives us the index of the instance that should run the shard
+		if shardCount == 1 || shardID%a.cfg.InstanceCount == a.cfg.InstanceIndex {
+			shardIDs = append(shardIDs, shardID)
+		}
+	}
+
 	client, err := disgo.New(a.model.DiscordBotToken,
 		bot.WithShardManagerConfigOpts(
-			sharding.WithAutoScaling(true),
+			sharding.WithAutoScaling(false),
+			sharding.WithShardCount(shardCount),
+			sharding.WithShardIDs(shardIDs...),
 			sharding.WithGatewayConfigOpts(
 				gateway.WithIntents(gateway.IntentGuilds, gateway.IntentGuildMessages, gateway.IntentDirectMessages),
 				gateway.WithCompression(gateway.CompressionZstdStream),
@@ -47,10 +76,19 @@ func (a *App) Run(ctx context.Context) {
 		),
 		bot.WithEventListenerFunc(func(event *events.Ready) {
 			slog.Info(
-				"Discord client ready",
-				slog.String("app_id", a.model.ID.String()),
+				"Discord shard READY",
 				slog.String("group_id", a.model.GroupID),
-				slog.String("client_id", a.model.DiscordClientID.String()),
+				slog.String("app_id", a.model.ID.String()),
+				slog.Int("shard_id", event.ShardID()),
+				slog.String("display_name", a.model.DisplayName),
+			)
+		}),
+		bot.WithEventListenerFunc(func(event *events.Resumed) {
+			slog.Info(
+				"Discord shard RESUMED",
+				slog.String("group_id", a.model.GroupID),
+				slog.String("app_id", a.model.ID.String()),
+				slog.Int("shard_id", event.ShardID()),
 				slog.String("display_name", a.model.DisplayName),
 			)
 		}),

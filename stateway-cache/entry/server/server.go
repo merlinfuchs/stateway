@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/disgoorg/disgo/gateway"
+	"github.com/disgoorg/snowflake/v2"
 	"github.com/merlinfuchs/stateway/stateway-cache/db/postgres"
 	"github.com/merlinfuchs/stateway/stateway-cache/store"
 	"github.com/merlinfuchs/stateway/stateway-lib/broker"
@@ -15,7 +16,7 @@ import (
 	"github.com/merlinfuchs/stateway/stateway-lib/event"
 )
 
-func Run(ctx context.Context, pg *postgres.Client, cfg *config.CacheConfig) error {
+func Run(ctx context.Context, pg *postgres.Client, cfg *config.RootCacheConfig) error {
 	br, err := broker.NewNATSBroker(cfg.Broker.NATS.URL)
 	if err != nil {
 		return fmt.Errorf("failed to create NATS broker: %w", err)
@@ -55,6 +56,9 @@ func (l *CacheListener) EventFilters() []string {
 
 func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEvent) error {
 	slog.Info("Received event:", slog.String("type", event.Type))
+
+	// Discord some times sends unquoted snowflake IDs, so we need to allow them
+	snowflake.AllowUnquoted = true
 
 	e, err := gateway.UnmarshalEventData(event.Data, gateway.EventType(event.Type))
 	if err != nil {

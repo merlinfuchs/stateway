@@ -14,7 +14,7 @@ import (
 )
 
 func RunMigrations(ctx context.Context, db string, opts DatabaseMigrationOpts) error {
-	cfg, err := config.LoadConfig[*config.GatewayConfig]()
+	cfg, err := config.LoadConfig[*config.RootGatewayConfig]()
 	if err != nil {
 		return fmt.Errorf("Failed to load server config: %v", err)
 	}

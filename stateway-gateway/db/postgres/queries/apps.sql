@@ -7,6 +7,9 @@ INSERT INTO gateway.apps (
     discord_bot_token, 
     discord_public_key, 
     discord_client_secret,
+    shard_count,
+    constraints,
+    config,
     created_at, 
     updated_at
 )
@@ -19,7 +22,10 @@ VALUES (
     $6, 
     $7,
     $8,
-    $9
+    $9,
+    $10,
+    $11,
+    $12
 )
 RETURNING *;
 
@@ -31,10 +37,13 @@ UPDATE gateway.apps SET
     discord_bot_token = $5, 
     discord_public_key = $6, 
     discord_client_secret = $7,
-    disabled = $8,
-    disabled_code = $9,
-    disabled_message = $10,
-    updated_at = $11
+    shard_count = $8,
+    constraints = $9,
+    config = $10,
+    disabled = $11,  
+    disabled_code = $12,
+    disabled_message = $13,
+    updated_at = $14
 WHERE id = $1
 RETURNING *;
 
@@ -57,4 +66,4 @@ SELECT * FROM gateway.apps WHERE id = $1 LIMIT 1;
 SELECT * FROM gateway.apps;
 
 -- name: GetEnabledApps :many
-SELECT * FROM gateway.apps WHERE disabled = FALSE;
+SELECT * FROM gateway.apps WHERE disabled = FALSE AND (shard_count > 1 OR id % @instance_count = @instance_index);

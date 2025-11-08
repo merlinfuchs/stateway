@@ -20,6 +20,9 @@ INSERT INTO gateway.apps (
     discord_bot_token, 
     discord_public_key, 
     discord_client_secret,
+    shard_count,
+    constraints,
+    config,
     created_at, 
     updated_at
 )
@@ -32,9 +35,12 @@ VALUES (
     $6, 
     $7,
     $8,
-    $9
+    $9,
+    $10,
+    $11,
+    $12
 )
-RETURNING id, group_id, display_name, discord_client_id, discord_bot_token, discord_public_key, discord_client_secret, disabled, disabled_code, disabled_message, created_at, updated_at
+RETURNING id, group_id, display_name, discord_client_id, discord_bot_token, discord_public_key, discord_client_secret, shard_count, constraints, config, disabled, disabled_code, disabled_message, created_at, updated_at
 `
 
 type CreateAppParams struct {
@@ -45,6 +51,9 @@ type CreateAppParams struct {
 	DiscordBotToken     string
 	DiscordPublicKey    string
 	DiscordClientSecret pgtype.Text
+	ShardCount          int32
+	Constraints         []byte
+	Config              []byte
 	CreatedAt           pgtype.Timestamp
 	UpdatedAt           pgtype.Timestamp
 }
@@ -58,6 +67,9 @@ func (q *Queries) CreateApp(ctx context.Context, arg CreateAppParams) (GatewayAp
 		arg.DiscordBotToken,
 		arg.DiscordPublicKey,
 		arg.DiscordClientSecret,
+		arg.ShardCount,
+		arg.Constraints,
+		arg.Config,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -70,6 +82,9 @@ func (q *Queries) CreateApp(ctx context.Context, arg CreateAppParams) (GatewayAp
 		&i.DiscordBotToken,
 		&i.DiscordPublicKey,
 		&i.DiscordClientSecret,
+		&i.ShardCount,
+		&i.Constraints,
+		&i.Config,
 		&i.Disabled,
 		&i.DisabledCode,
 		&i.DisabledMessage,
@@ -95,7 +110,7 @@ UPDATE gateway.apps SET
     disabled_message = $3,
     updated_at = $4
 WHERE id = $1
-RETURNING id, group_id, display_name, discord_client_id, discord_bot_token, discord_public_key, discord_client_secret, disabled, disabled_code, disabled_message, created_at, updated_at
+RETURNING id, group_id, display_name, discord_client_id, discord_bot_token, discord_public_key, discord_client_secret, shard_count, constraints, config, disabled, disabled_code, disabled_message, created_at, updated_at
 `
 
 type DisableAppParams struct {
@@ -121,6 +136,9 @@ func (q *Queries) DisableApp(ctx context.Context, arg DisableAppParams) (Gateway
 		&i.DiscordBotToken,
 		&i.DiscordPublicKey,
 		&i.DiscordClientSecret,
+		&i.ShardCount,
+		&i.Constraints,
+		&i.Config,
 		&i.Disabled,
 		&i.DisabledCode,
 		&i.DisabledMessage,
@@ -131,7 +149,7 @@ func (q *Queries) DisableApp(ctx context.Context, arg DisableAppParams) (Gateway
 }
 
 const getApp = `-- name: GetApp :one
-SELECT id, group_id, display_name, discord_client_id, discord_bot_token, discord_public_key, discord_client_secret, disabled, disabled_code, disabled_message, created_at, updated_at FROM gateway.apps WHERE id = $1 LIMIT 1
+SELECT id, group_id, display_name, discord_client_id, discord_bot_token, discord_public_key, discord_client_secret, shard_count, constraints, config, disabled, disabled_code, disabled_message, created_at, updated_at FROM gateway.apps WHERE id = $1 LIMIT 1
 `
 
 func (q *Queries) GetApp(ctx context.Context, id int64) (GatewayApp, error) {
@@ -145,6 +163,9 @@ func (q *Queries) GetApp(ctx context.Context, id int64) (GatewayApp, error) {
 		&i.DiscordBotToken,
 		&i.DiscordPublicKey,
 		&i.DiscordClientSecret,
+		&i.ShardCount,
+		&i.Constraints,
+		&i.Config,
 		&i.Disabled,
 		&i.DisabledCode,
 		&i.DisabledMessage,
@@ -155,7 +176,7 @@ func (q *Queries) GetApp(ctx context.Context, id int64) (GatewayApp, error) {
 }
 
 const getApps = `-- name: GetApps :many
-SELECT id, group_id, display_name, discord_client_id, discord_bot_token, discord_public_key, discord_client_secret, disabled, disabled_code, disabled_message, created_at, updated_at FROM gateway.apps
+SELECT id, group_id, display_name, discord_client_id, discord_bot_token, discord_public_key, discord_client_secret, shard_count, constraints, config, disabled, disabled_code, disabled_message, created_at, updated_at FROM gateway.apps
 `
 
 func (q *Queries) GetApps(ctx context.Context) ([]GatewayApp, error) {
@@ -175,6 +196,9 @@ func (q *Queries) GetApps(ctx context.Context) ([]GatewayApp, error) {
 			&i.DiscordBotToken,
 			&i.DiscordPublicKey,
 			&i.DiscordClientSecret,
+			&i.ShardCount,
+			&i.Constraints,
+			&i.Config,
 			&i.Disabled,
 			&i.DisabledCode,
 			&i.DisabledMessage,
@@ -192,11 +216,16 @@ func (q *Queries) GetApps(ctx context.Context) ([]GatewayApp, error) {
 }
 
 const getEnabledApps = `-- name: GetEnabledApps :many
-SELECT id, group_id, display_name, discord_client_id, discord_bot_token, discord_public_key, discord_client_secret, disabled, disabled_code, disabled_message, created_at, updated_at FROM gateway.apps WHERE disabled = FALSE
+SELECT id, group_id, display_name, discord_client_id, discord_bot_token, discord_public_key, discord_client_secret, shard_count, constraints, config, disabled, disabled_code, disabled_message, created_at, updated_at FROM gateway.apps WHERE disabled = FALSE AND (shard_count > 1 OR id % $1 = $2)
 `
 
-func (q *Queries) GetEnabledApps(ctx context.Context) ([]GatewayApp, error) {
-	rows, err := q.db.Query(ctx, getEnabledApps)
+type GetEnabledAppsParams struct {
+	InstanceCount int64
+	InstanceIndex int64
+}
+
+func (q *Queries) GetEnabledApps(ctx context.Context, arg GetEnabledAppsParams) ([]GatewayApp, error) {
+	rows, err := q.db.Query(ctx, getEnabledApps, arg.InstanceCount, arg.InstanceIndex)
 	if err != nil {
 		return nil, err
 	}
@@ -212,6 +241,9 @@ func (q *Queries) GetEnabledApps(ctx context.Context) ([]GatewayApp, error) {
 			&i.DiscordBotToken,
 			&i.DiscordPublicKey,
 			&i.DiscordClientSecret,
+			&i.ShardCount,
+			&i.Constraints,
+			&i.Config,
 			&i.Disabled,
 			&i.DisabledCode,
 			&i.DisabledMessage,
@@ -236,12 +268,15 @@ UPDATE gateway.apps SET
     discord_bot_token = $5, 
     discord_public_key = $6, 
     discord_client_secret = $7,
-    disabled = $8,
-    disabled_code = $9,
-    disabled_message = $10,
-    updated_at = $11
+    shard_count = $8,
+    constraints = $9,
+    config = $10,
+    disabled = $11,  
+    disabled_code = $12,
+    disabled_message = $13,
+    updated_at = $14
 WHERE id = $1
-RETURNING id, group_id, display_name, discord_client_id, discord_bot_token, discord_public_key, discord_client_secret, disabled, disabled_code, disabled_message, created_at, updated_at
+RETURNING id, group_id, display_name, discord_client_id, discord_bot_token, discord_public_key, discord_client_secret, shard_count, constraints, config, disabled, disabled_code, disabled_message, created_at, updated_at
 `
 
 type UpdateAppParams struct {
@@ -252,6 +287,9 @@ type UpdateAppParams struct {
 	DiscordBotToken     string
 	DiscordPublicKey    string
 	DiscordClientSecret pgtype.Text
+	ShardCount          int32
+	Constraints         []byte
+	Config              []byte
 	Disabled            bool
 	DisabledCode        pgtype.Text
 	DisabledMessage     pgtype.Text
@@ -267,6 +305,9 @@ func (q *Queries) UpdateApp(ctx context.Context, arg UpdateAppParams) (GatewayAp
 		arg.DiscordBotToken,
 		arg.DiscordPublicKey,
 		arg.DiscordClientSecret,
+		arg.ShardCount,
+		arg.Constraints,
+		arg.Config,
 		arg.Disabled,
 		arg.DisabledCode,
 		arg.DisabledMessage,
@@ -281,6 +322,9 @@ func (q *Queries) UpdateApp(ctx context.Context, arg UpdateAppParams) (GatewayAp
 		&i.DiscordBotToken,
 		&i.DiscordPublicKey,
 		&i.DiscordClientSecret,
+		&i.ShardCount,
+		&i.Constraints,
+		&i.Config,
 		&i.Disabled,
 		&i.DisabledCode,
 		&i.DisabledMessage,

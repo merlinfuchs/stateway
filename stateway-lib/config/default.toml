@@ -6,3 +6,7 @@ db_name = "stateway"
 
 [broker.nats]
 url = "nats://127.0.0.1:4222"
+
+[gateway]
+instance_count = 1
+instance_index = 0

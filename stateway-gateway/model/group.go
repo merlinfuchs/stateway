@@ -3,9 +3,10 @@ package model
 import "time"
 
 type Group struct {
-	ID          string
-	DisplayName string
-	Constraints AppConstraints
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID                 string
+	DisplayName        string
+	DefaultConstraints AppConstraints
+	DefaultConfig      AppConfig
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
 }

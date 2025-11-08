@@ -16,6 +16,9 @@ type GatewayApp struct {
 	DiscordBotToken     string
 	DiscordPublicKey    string
 	DiscordClientSecret pgtype.Text
+	ShardCount          int32
+	Constraints         []byte
+	Config              []byte
 	Disabled            bool
 	DisabledCode        pgtype.Text
 	DisabledMessage     pgtype.Text
@@ -24,8 +27,10 @@ type GatewayApp struct {
 }
 
 type GatewayGroup struct {
-	ID          string
-	DisplayName string
-	CreatedAt   pgtype.Timestamp
-	UpdatedAt   pgtype.Timestamp
+	ID                 string
+	DisplayName        string
+	DefaultConfig      []byte
+	DefaultConstraints []byte
+	CreatedAt          pgtype.Timestamp
+	UpdatedAt          pgtype.Timestamp
 }

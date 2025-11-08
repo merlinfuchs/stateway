@@ -50,11 +50,11 @@ func Execute() {
 
 type env struct {
 	pg  *postgres.Client
-	cfg *config.CacheConfig
+	cfg *config.RootCacheConfig
 }
 
 func setupEnv(ctx context.Context) (*env, error) {
-	cfg, err := config.LoadConfig[*config.CacheConfig]()
+	cfg, err := config.LoadConfig[*config.RootCacheConfig]()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load config: %w", err)
 	}

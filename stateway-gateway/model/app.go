@@ -22,9 +22,12 @@ type App struct {
 	DiscordBotToken     string          `json:"discord_bot_token"`
 	DiscordPublicKey    string          `json:"discord_public_key"`
 	DiscordClientSecret null.String     `json:"discord_client_secret"`
+	ShardCount          int             `json:"shard_count"`
 	Disabled            bool            `json:"disabled"`
 	DisabledCode        AppDisabledCode `json:"disabled_code"`
 	DisabledMessage     null.String     `json:"disabled_message"`
+	Constraints         AppConstraints  `json:"constraints"`
+	Config              AppConfig       `json:"config"`
 	CreatedAt           time.Time       `json:"created_at"`
 	UpdatedAt           time.Time       `json:"updated_at"`
 }
@@ -32,5 +35,25 @@ type App struct {
 type AppConstraints struct {
 	MaxShards null.Int `json:"max_shards,omitzero"`
 	MaxGuilds null.Int `json:"max_guilds,omitzero"`
-	Intents   null.Int `json:"intents,omitzero"`
+}
+
+func (a AppConstraints) Merge(other AppConstraints) AppConstraints {
+	if other.MaxShards.Valid {
+		a.MaxShards = other.MaxShards
+	}
+	if other.MaxGuilds.Valid {
+		a.MaxGuilds = other.MaxGuilds
+	}
+	return a
+}
+
+type AppConfig struct {
+	Intents null.Int `json:"intents,omitzero"`
+}
+
+func (a AppConfig) Merge(other AppConfig) AppConfig {
+	if other.Intents.Valid {
+		a.Intents = other.Intents
+	}
+	return a
 }

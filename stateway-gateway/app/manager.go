@@ -12,17 +12,31 @@ import (
 	"github.com/merlinfuchs/stateway/stateway-lib/event"
 )
 
+type AppManagerConfig struct {
+	InstanceCount int
+	InstanceIndex int
+}
+
 type AppManager struct {
 	sync.Mutex
 
+	cfg          AppManagerConfig
 	appStore     store.AppStore
 	eventHandler event.EventHandler
 
 	apps map[snowflake.ID]*App
 }
 
-func NewAppManager(appStore store.AppStore, eventHandler event.EventHandler) *AppManager {
+func NewAppManager(
+	cfg AppManagerConfig,
+	appStore store.AppStore,
+	eventHandler event.EventHandler,
+) *AppManager {
+	// Discord some times sends unquoted snowflake IDs, so we need to allow them
+	snowflake.AllowUnquoted = true
+
 	return &AppManager{
+		cfg:          cfg,
 		appStore:     appStore,
 		eventHandler: eventHandler,
 
@@ -46,7 +60,10 @@ func (m *AppManager) Run(ctx context.Context) {
 }
 
 func (m *AppManager) populateApps(ctx context.Context, lastUpdate time.Time) {
-	apps, err := m.appStore.GetEnabledApps(ctx)
+	apps, err := m.appStore.GetEnabledApps(ctx, store.GetEnabledAppsParams{
+		InstanceCount: m.cfg.InstanceCount,
+		InstanceIndex: m.cfg.InstanceIndex,
+	})
 	if err != nil {
 		slog.Error("Failed to get enabled apps", slog.Any("error", err))
 		return
@@ -69,7 +86,7 @@ func (m *AppManager) addOrUpdateApp(ctx context.Context, app *model.App) {
 	if _, ok := m.apps[app.ID]; ok {
 		m.apps[app.ID].Update(ctx, app)
 	} else {
-		newApp := NewApp(app, m.appStore, m.eventHandler)
+		newApp := NewApp(AppConfig(m.cfg), app, m.appStore, m.eventHandler)
 		m.apps[app.ID] = newApp
 		go newApp.Run(ctx)
 	}

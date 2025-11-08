@@ -4,24 +4,25 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-type GatewayConfig struct {
+type RootGatewayConfig struct {
 	Logging  LoggingConfig  `toml:"logging"`
 	Database DatabaseConfig `toml:"database"`
 	Broker   BrokerConfig   `toml:"broker"`
+	Gateway  GatewayConfig  `toml:"gateway"`
 }
 
-func (cfg *GatewayConfig) Validate() error {
+func (cfg *RootGatewayConfig) Validate() error {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 	return validate.Struct(cfg)
 }
 
-type CacheConfig struct {
+type RootCacheConfig struct {
 	Logging  LoggingConfig  `toml:"logging"`
 	Database DatabaseConfig `toml:"database"`
 	Broker   BrokerConfig   `toml:"broker"`
 }
 
-func (cfg *CacheConfig) Validate() error {
+func (cfg *RootCacheConfig) Validate() error {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 	return validate.Struct(cfg)
 }
@@ -51,4 +52,9 @@ type BrokerConfig struct {
 
 type NATSConfig struct {
 	URL string `toml:"url" validate:"required"`
+}
+
+type GatewayConfig struct {
+	InstanceCount int `toml:"instance_count" validate:"required"`
+	InstanceIndex int `toml:"instance_index"`
 }

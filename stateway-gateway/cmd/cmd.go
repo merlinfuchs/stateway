@@ -22,6 +22,16 @@ var CLI = cli.App{
 		{
 			Name:  "server",
 			Usage: "Start the Stateway Gateway Server.",
+			Flags: []cli.Flag{
+				&cli.IntFlag{
+					Name:  "instance-count",
+					Usage: "The number of instances to run the gateway server on.",
+				},
+				&cli.IntFlag{
+					Name:  "instance-index",
+					Usage: "The index of the instance to run the gateway server on.",
+				},
+			},
 			Action: func(c *cli.Context) error {
 				ctx, cancel := signal.NotifyContext(c.Context, syscall.SIGINT, syscall.SIGTERM)
 				defer cancel()
@@ -29,6 +39,14 @@ var CLI = cli.App{
 				env, err := setupEnv(ctx)
 				if err != nil {
 					return fmt.Errorf("failed to setup environment: %w", err)
+				}
+
+				if c.IsSet("instance-count") {
+					env.cfg.Gateway.InstanceCount = c.Int("instance-count")
+				}
+
+				if c.IsSet("instance-index") {
+					env.cfg.Gateway.InstanceIndex = c.Int("instance-index")
 				}
 
 				err = server.Run(ctx, env.pg, env.cfg)
@@ -51,11 +69,11 @@ func Execute() {
 
 type env struct {
 	pg  *postgres.Client
-	cfg *config.GatewayConfig
+	cfg *config.RootGatewayConfig
 }
 
 func setupEnv(ctx context.Context) (*env, error) {
-	cfg, err := config.LoadConfig[*config.GatewayConfig]()
+	cfg, err := config.LoadConfig[*config.RootGatewayConfig]()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load config: %w", err)
 	}

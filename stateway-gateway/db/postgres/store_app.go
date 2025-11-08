@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 
 	"github.com/disgoorg/snowflake/v2"
@@ -21,7 +22,7 @@ func (c *Client) GetApp(ctx context.Context, id snowflake.ID) (*model.App, error
 		}
 		return nil, err
 	}
-	return rowToApp(row), nil
+	return rowToApp(row)
 }
 
 func (c *Client) GetApps(ctx context.Context) ([]*model.App, error) {
@@ -31,25 +32,49 @@ func (c *Client) GetApps(ctx context.Context) ([]*model.App, error) {
 	}
 	apps := make([]*model.App, 0, len(rows))
 	for _, row := range rows {
-		apps = append(apps, rowToApp(row))
+		app, err := rowToApp(row)
+		if err != nil {
+			return nil, err
+		}
+		apps = append(apps, app)
 	}
 	return apps, nil
 }
 
-func (c *Client) GetEnabledApps(ctx context.Context) ([]*model.App, error) {
-	rows, err := c.Q.GetEnabledApps(ctx)
+func (c *Client) GetEnabledApps(ctx context.Context, params store.GetEnabledAppsParams) ([]*model.App, error) {
+	if params.InstanceCount == 0 {
+		params.InstanceCount = 1
+	}
+
+	rows, err := c.Q.GetEnabledApps(ctx, pgmodel.GetEnabledAppsParams{
+		InstanceCount: int64(params.InstanceCount),
+		InstanceIndex: int64(params.InstanceIndex),
+	})
 	if err != nil {
 		return nil, err
 	}
 
 	apps := make([]*model.App, 0, len(rows))
 	for _, row := range rows {
-		apps = append(apps, rowToApp(row))
+		app, err := rowToApp(row)
+		if err != nil {
+			return nil, err
+		}
+		apps = append(apps, app)
 	}
 	return apps, nil
 }
 
 func (c *Client) CreateApp(ctx context.Context, params store.CreateAppParams) (*model.App, error) {
+	rawConstraints, err := json.Marshal(params.Constraints)
+	if err != nil {
+		return nil, err
+	}
+	rawConfig, err := json.Marshal(params.Config)
+	if err != nil {
+		return nil, err
+	}
+
 	row, err := c.Q.CreateApp(ctx, pgmodel.CreateAppParams{
 		ID:               int64(params.ID),
 		GroupID:          params.GroupID,
@@ -61,6 +86,9 @@ func (c *Client) CreateApp(ctx context.Context, params store.CreateAppParams) (*
 			String: params.DiscordClientSecret.String,
 			Valid:  params.DiscordClientSecret.Valid,
 		},
+		ShardCount:  int32(params.ShardCount),
+		Constraints: rawConstraints,
+		Config:      rawConfig,
 		CreatedAt: pgtype.Timestamp{
 			Time:  params.CreatedAt,
 			Valid: true,
@@ -73,11 +101,21 @@ func (c *Client) CreateApp(ctx context.Context, params store.CreateAppParams) (*
 	if err != nil {
 		return nil, err
 	}
-	return rowToApp(row), nil
+	return rowToApp(row)
 }
 
 func (c *Client) UpdateApp(ctx context.Context, params store.UpdateAppParams) (*model.App, error) {
+	rawConstraints, err := json.Marshal(params.Constraints)
+	if err != nil {
+		return nil, err
+	}
+	rawConfig, err := json.Marshal(params.Config)
+	if err != nil {
+		return nil, err
+	}
+
 	row, err := c.Q.UpdateApp(ctx, pgmodel.UpdateAppParams{
+		ID:               int64(params.ID),
 		GroupID:          params.GroupID,
 		DisplayName:      params.DisplayName,
 		DiscordClientID:  int64(params.DiscordClientID),
@@ -87,7 +125,10 @@ func (c *Client) UpdateApp(ctx context.Context, params store.UpdateAppParams) (*
 			String: params.DiscordClientSecret.String,
 			Valid:  params.DiscordClientSecret.Valid,
 		},
-		Disabled: params.Disabled,
+		ShardCount:  int32(params.ShardCount),
+		Constraints: rawConstraints,
+		Config:      rawConfig,
+		Disabled:    params.Disabled,
 		DisabledCode: pgtype.Text{
 			String: string(params.DisabledCode.String),
 			Valid:  params.DisabledCode.Valid,
@@ -104,7 +145,7 @@ func (c *Client) UpdateApp(ctx context.Context, params store.UpdateAppParams) (*
 	if err != nil {
 		return nil, err
 	}
-	return rowToApp(row), nil
+	return rowToApp(row)
 }
 
 func (c *Client) DisableApp(ctx context.Context, params store.DisableAppParams) (*model.App, error) {
@@ -126,7 +167,7 @@ func (c *Client) DisableApp(ctx context.Context, params store.DisableAppParams) 
 	if err != nil {
 		return nil, err
 	}
-	return rowToApp(row), nil
+	return rowToApp(row)
 }
 
 func (c *Client) DeleteApp(ctx context.Context, id snowflake.ID) error {
@@ -137,7 +178,22 @@ func (c *Client) DeleteApp(ctx context.Context, id snowflake.ID) error {
 	return nil
 }
 
-func rowToApp(row pgmodel.GatewayApp) *model.App {
+func rowToApp(row pgmodel.GatewayApp) (*model.App, error) {
+	var constraints model.AppConstraints
+	var config model.AppConfig
+	if row.Constraints != nil {
+		err := json.Unmarshal(row.Constraints, &constraints)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if row.Config != nil {
+		err := json.Unmarshal(row.Config, &config)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return &model.App{
 		ID:                  snowflake.ID(row.ID),
 		GroupID:             row.GroupID,
@@ -146,10 +202,13 @@ func rowToApp(row pgmodel.GatewayApp) *model.App {
 		DiscordBotToken:     row.DiscordBotToken,
 		DiscordPublicKey:    row.DiscordPublicKey,
 		DiscordClientSecret: null.NewString(row.DiscordClientSecret.String, row.DiscordClientSecret.Valid),
+		ShardCount:          int(row.ShardCount),
+		Constraints:         constraints,
+		Config:              config,
 		Disabled:            row.Disabled,
 		DisabledCode:        model.AppDisabledCode(row.DisabledCode.String),
 		DisabledMessage:     null.NewString(row.DisabledMessage.String, row.DisabledMessage.Valid),
 		CreatedAt:           row.CreatedAt.Time,
 		UpdatedAt:           row.UpdatedAt.Time,
-	}
+	}, nil
 }
