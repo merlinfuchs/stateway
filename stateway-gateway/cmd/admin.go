@@ -9,6 +9,7 @@ import (
 	"github.com/merlinfuchs/stateway/stateway-gateway/entry/admin"
 	"github.com/merlinfuchs/stateway/stateway-gateway/model"
 	"github.com/urfave/cli/v2"
+	"gopkg.in/guregu/null.v4"
 )
 
 var adminCMD = cli.Command{
@@ -98,6 +99,10 @@ var adminCMD = cli.Command{
 							Name:  "client-secret",
 							Usage: "The client secret of the app to create.",
 						},
+						&cli.Int64Flag{
+							Name:  "intents",
+							Usage: "The intents of the app to create.",
+						},
 					},
 					Action: func(c *cli.Context) error {
 						ctx, cancel := signal.NotifyContext(c.Context, syscall.SIGINT, syscall.SIGTERM)
@@ -108,7 +113,19 @@ var adminCMD = cli.Command{
 							return fmt.Errorf("failed to setup environment: %w", err)
 						}
 
-						err = admin.CreateApp(ctx, env.pg, c.String("group"), c.String("token"), c.String("client-secret"))
+						var config model.AppConfig
+						if c.IsSet("intents") {
+							config.Intents = null.NewInt(c.Int64("intents"), true)
+						}
+
+						err = admin.CreateApp(
+							ctx,
+							env.pg,
+							c.String("group"),
+							c.String("token"),
+							c.String("client-secret"),
+							config,
+						)
 						if err != nil {
 							return fmt.Errorf("failed to create app: %w", err)
 						}

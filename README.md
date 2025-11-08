@@ -1,6 +1,6 @@
-# Stateway
+# Stateway (WIP)
 
-Stateway is a toolkit for building scalable Discord bots.
+Stateway is a toolkit for building scalable Discord bots. This is heavily work in progress and not yet ready to be used outside of [Embed Generator](https://github.com/merlinfuchs/embed-generator).
 
 ## Services
 

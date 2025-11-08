@@ -50,7 +50,14 @@ func GetApp(ctx context.Context, appStore store.AppStore, id snowflake.ID) error
 	return nil
 }
 
-func CreateApp(ctx context.Context, appStore store.AppStore, groupID string, token string, clientSecret string) error {
+func CreateApp(
+	ctx context.Context,
+	appStore store.AppStore,
+	groupID string,
+	token string,
+	clientSecret string,
+	config model.AppConfig,
+) error {
 	client := rest.New(rest.NewClient(token))
 
 	discordApp, err := client.GetCurrentApplication(rest.WithCtx(ctx))
@@ -76,6 +83,7 @@ func CreateApp(ctx context.Context, appStore store.AppStore, groupID string, tok
 		DiscordPublicKey:    discordApp.VerifyKey,
 		DiscordClientSecret: null.NewString(clientSecret, clientSecret != ""),
 		ShardCount:          int(discordGateway.Shards),
+		Config:              config,
 		CreatedAt:           time.Now().UTC(),
 		UpdatedAt:           time.Now().UTC(),
 	})

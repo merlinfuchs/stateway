@@ -63,13 +63,18 @@ func (a *App) Run(ctx context.Context) {
 		}
 	}
 
+	intents := gateway.IntentsNonPrivileged
+	if a.model.Config.Intents.Valid {
+		intents = gateway.Intents(a.model.Config.Intents.Int64)
+	}
+
 	client, err := disgo.New(a.model.DiscordBotToken,
 		bot.WithShardManagerConfigOpts(
 			sharding.WithAutoScaling(false),
 			sharding.WithShardCount(shardCount),
 			sharding.WithShardIDs(shardIDs...),
 			sharding.WithGatewayConfigOpts(
-				gateway.WithIntents(gateway.IntentGuilds, gateway.IntentGuildMessages, gateway.IntentDirectMessages),
+				gateway.WithIntents(intents),
 				gateway.WithCompression(gateway.CompressionZstdStream),
 				gateway.WithEnableRawEvents(true),
 			),
