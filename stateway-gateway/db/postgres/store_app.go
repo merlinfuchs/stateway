@@ -148,6 +148,45 @@ func (c *Client) UpdateApp(ctx context.Context, params store.UpdateAppParams) (*
 	return rowToApp(row)
 }
 
+func (c *Client) UpsertApp(ctx context.Context, params store.UpsertAppParams) error {
+	rawConstraints, err := json.Marshal(params.Constraints)
+	if err != nil {
+		return err
+	}
+	rawConfig, err := json.Marshal(params.Config)
+	if err != nil {
+		return err
+	}
+
+	err = c.Q.UpsertApp(ctx, pgmodel.UpsertAppParams{
+		ID:               int64(params.ID),
+		GroupID:          params.GroupID,
+		DisplayName:      params.DisplayName,
+		DiscordClientID:  int64(params.DiscordClientID),
+		DiscordBotToken:  params.DiscordBotToken,
+		DiscordPublicKey: params.DiscordPublicKey,
+		DiscordClientSecret: pgtype.Text{
+			String: params.DiscordClientSecret.String,
+			Valid:  params.DiscordClientSecret.Valid,
+		},
+		ShardCount:  int32(params.ShardCount),
+		Constraints: rawConstraints,
+		Config:      rawConfig,
+		CreatedAt: pgtype.Timestamp{
+			Time:  params.CreatedAt,
+			Valid: true,
+		},
+		UpdatedAt: pgtype.Timestamp{
+			Time:  params.UpdatedAt,
+			Valid: true,
+		},
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (c *Client) DisableApp(ctx context.Context, params store.DisableAppParams) (*model.App, error) {
 	row, err := c.Q.DisableApp(ctx, pgmodel.DisableAppParams{
 		ID: int64(params.ID),

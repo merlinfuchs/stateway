@@ -47,6 +47,35 @@ UPDATE gateway.apps SET
 WHERE id = $1
 RETURNING *;
 
+-- name: UpsertApp :exec
+INSERT INTO gateway.apps (
+    id,
+    group_id,
+    display_name,
+    discord_client_id,
+    discord_bot_token,
+    discord_public_key,
+    discord_client_secret,
+    shard_count,
+    constraints,
+    config,
+    created_at,
+    updated_at
+)
+VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+ON CONFLICT (id) DO UPDATE SET
+    group_id = EXCLUDED.group_id,
+    display_name = EXCLUDED.display_name,
+    discord_client_id = EXCLUDED.discord_client_id,
+    discord_bot_token = EXCLUDED.discord_bot_token,
+    discord_public_key = EXCLUDED.discord_public_key,
+    discord_client_secret = EXCLUDED.discord_client_secret,
+    shard_count = EXCLUDED.shard_count,
+    constraints = EXCLUDED.constraints,
+    config = EXCLUDED.config,
+    updated_at = EXCLUDED.updated_at;
+
 -- name: DisableApp :one
 UPDATE gateway.apps SET 
     disabled = TRUE,

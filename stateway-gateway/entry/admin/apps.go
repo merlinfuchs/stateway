@@ -75,10 +75,10 @@ func CreateApp(
 	}
 
 	app, err := appStore.CreateApp(ctx, store.CreateAppParams{
-		ID:                  snowflake.New(time.Now().UTC()),
+		ID:                  discordApp.ID,
 		GroupID:             groupID,
 		DisplayName:         discordApp.Name,
-		DiscordClientID:     snowflake.ID(discordApp.ID),
+		DiscordClientID:     discordApp.ID,
 		DiscordBotToken:     token,
 		DiscordPublicKey:    discordApp.VerifyKey,
 		DiscordClientSecret: null.NewString(clientSecret, clientSecret != ""),

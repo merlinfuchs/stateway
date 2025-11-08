@@ -55,6 +55,14 @@ type NATSConfig struct {
 }
 
 type GatewayConfig struct {
-	InstanceCount int `toml:"instance_count" validate:"required"`
-	InstanceIndex int `toml:"instance_index"`
+	InstanceCount int                `toml:"instance_count" validate:"required"`
+	InstanceIndex int                `toml:"instance_index"`
+	Apps          []GatewayAppConfig `toml:"apps"`
+}
+
+type GatewayAppConfig struct {
+	Token      string `toml:"token" validate:"required"`
+	ShardCount int    `toml:"shard_count" validate:"required,min=1"`
+	GroupID    string `toml:"group_id"`
+	Intents    int64  `toml:"intents"`
 }

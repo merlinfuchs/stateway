@@ -41,6 +41,8 @@ type UpdateAppParams struct {
 	UpdatedAt           time.Time
 }
 
+type UpsertAppParams = CreateAppParams
+
 type DisableAppParams struct {
 	ID              snowflake.ID
 	DisabledCode    model.AppDisabledCode
@@ -59,6 +61,7 @@ type AppStore interface {
 	GetEnabledApps(ctx context.Context, params GetEnabledAppsParams) ([]*model.App, error)
 	CreateApp(ctx context.Context, params CreateAppParams) (*model.App, error)
 	UpdateApp(ctx context.Context, params UpdateAppParams) (*model.App, error)
+	UpsertApp(ctx context.Context, params UpsertAppParams) error
 	DisableApp(ctx context.Context, params DisableAppParams) (*model.App, error)
 	DeleteApp(ctx context.Context, id snowflake.ID) error
 }

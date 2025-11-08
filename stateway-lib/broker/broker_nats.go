@@ -109,9 +109,9 @@ func (b *NATSBroker) Listen(ctx context.Context, listener GenericListener) error
 		return fmt.Errorf("failed to get stream from service: %w", err)
 	}
 
-	filterSubjects := make([]string, len(listener.EventFilters()))
-	for i, filter := range listener.EventFilters() {
-		filterSubjects[i] = fmt.Sprintf("%s.%s", listener.ServiceType(), filter)
+	var filterSubjects []string
+	for _, filter := range listener.EventFilters() {
+		filterSubjects = append(filterSubjects, fmt.Sprintf("%s.%s", listener.ServiceType(), filter))
 	}
 
 	consumer, err := b.js.CreateOrUpdateConsumer(ctx, stream, jetstream.ConsumerConfig{
