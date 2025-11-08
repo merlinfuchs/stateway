@@ -34,7 +34,7 @@ The subject is composed of the following parts:
 
 `gateway.<gateway_id>.<group_id>.<app_id>.<...event_type>`
 
-The event type a lower case version of the Discord event type with underscores replaced by dots. This makes it possible to match on event type groups.
+The event type is the lower case version of the Discord event type with underscores replaced by dots. This makes it possible to match on event type groups. (e.g. `GUILD_CREATE` -> `guild.create`)
 
 Example: `gateway.0.default.1234567890.guild.create`
 

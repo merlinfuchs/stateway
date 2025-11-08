@@ -120,8 +120,6 @@ func (b *NATSBroker) Listen(ctx context.Context, listener GenericListener) error
 		filterSubjects = append(filterSubjects, fmt.Sprintf("%s.%s", listener.ServiceType(), filter))
 	}
 
-	fmt.Println("Filter subjects:", filterSubjects)
-
 	consumer, err := b.js.CreateOrUpdateConsumer(ctx, stream, jetstream.ConsumerConfig{
 		Name:              listener.BalanceKey(),
 		Durable:           listener.BalanceKey(),
