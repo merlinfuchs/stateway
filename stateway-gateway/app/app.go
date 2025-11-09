@@ -6,9 +6,6 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/disgoorg/disgo"
-	"github.com/disgoorg/disgo/bot"
-	"github.com/disgoorg/disgo/events"
 	"github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/disgo/sharding"
 	"github.com/disgoorg/snowflake/v2"
@@ -30,7 +27,7 @@ type App struct {
 	appStore     store.AppStore
 	eventHandler event.EventHandler
 
-	client *bot.Client
+	shardManager sharding.ShardManager
 }
 
 func NewApp(
@@ -52,76 +49,72 @@ func (a *App) Run(ctx context.Context) {
 	intents := intentsFromApp(a.model)
 	presenceOpts := presenceOptsFromApp(a.model)
 
-	client, err := disgo.New(a.model.DiscordBotToken,
-		bot.WithLogger(slog.Default()),
-		bot.WithShardManagerConfigOpts(
-			sharding.WithAutoScaling(false),
-			sharding.WithShardCount(shardCount),
-			sharding.WithShardIDs(shardIDs...),
-			sharding.WithGatewayConfigOpts(
-				gateway.WithIntents(intents),
-				gateway.WithCompression(gateway.CompressionZstdStream),
-				gateway.WithEnableRawEvents(true),
-				gateway.WithPresenceOpts(presenceOpts...),
-			),
-		),
-		bot.WithEventListenerFunc(func(event *events.Ready) {
-			slog.Info(
-				"Discord shard READY",
-				slog.String("group_id", a.model.GroupID),
-				slog.String("app_id", a.model.ID.String()),
-				slog.Int("shard_id", event.ShardID()),
-				slog.String("display_name", a.model.DisplayName),
-			)
-		}),
-		bot.WithEventListenerFunc(func(event *events.Resumed) {
-			slog.Info(
-				"Discord shard RESUMED",
-				slog.String("group_id", a.model.GroupID),
-				slog.String("app_id", a.model.ID.String()),
-				slog.Int("shard_id", event.ShardID()),
-				slog.String("display_name", a.model.DisplayName),
-			)
-		}),
-		bot.WithEventListenerFunc(func(e *events.Raw) {
-			data, err := io.ReadAll(e.Payload)
-			if err != nil {
-				slog.Error("Failed to read event payload", slog.Any("error", err))
-				return
+	shardManager := sharding.New(
+		a.model.DiscordBotToken,
+		func(g gateway.Gateway, _ gateway.EventType, _ int, ev gateway.EventData) {
+			switch e := ev.(type) {
+			case gateway.EventRaw:
+				data, err := io.ReadAll(e.Payload)
+				if err != nil {
+					slog.Error("Failed to read event payload", slog.Any("error", err))
+					return
+				}
+
+				a.eventHandler.HandleEvent(&event.GatewayEvent{
+					ID:        snowflake.New(time.Now().UTC()),
+					GatewayID: a.cfg.GatewayID,
+					AppID:     a.model.ID,
+					GroupID:   a.model.GroupID,
+					ShardID:   g.ShardID(),
+					Type:      string(e.EventType),
+					Data:      data,
+				})
+			case gateway.EventReady:
+				slog.Info(
+					"Discord shard READY",
+					slog.String("group_id", a.model.GroupID),
+					slog.String("app_id", a.model.ID.String()),
+					slog.Int("shard_id", g.ShardID()),
+					slog.String("display_name", a.model.DisplayName),
+				)
+			case gateway.EventResumed:
+				slog.Info(
+					"Discord shard RESUMED",
+					slog.String("group_id", a.model.GroupID),
+					slog.String("app_id", a.model.ID.String()),
+					slog.Int("shard_id", g.ShardID()),
+					slog.String("display_name", a.model.DisplayName),
+				)
+			case gateway.EventRateLimited:
+				slog.Info(
+					"Discord shard RATE_LIMITED",
+					slog.String("group_id", a.model.GroupID),
+					slog.String("app_id", a.model.ID.String()),
+					slog.Int("shard_id", g.ShardID()),
+					slog.String("display_name", a.model.DisplayName),
+				)
 			}
-
-			a.eventHandler.HandleEvent(&event.GatewayEvent{
-				ID:        snowflake.New(time.Now().UTC()),
-				GatewayID: a.cfg.GatewayID,
-				AppID:     a.model.ID,
-				GroupID:   a.model.GroupID,
-				ShardID:   e.ShardID(),
-				Type:      string(e.EventType),
-				Data:      data,
-			})
-		}),
+		},
+		sharding.WithAutoScaling(false),
+		sharding.WithShardCount(shardCount),
+		sharding.WithShardIDs(shardIDs...),
+		sharding.WithLogger(slog.Default()),
+		sharding.WithGatewayConfigOpts(
+			gateway.WithIntents(intents),
+			gateway.WithEnableRawEvents(true),
+			gateway.WithPresenceOpts(presenceOpts...),
+			gateway.WithLogger(slog.Default()),
+		),
+		// TODO: Add close handler that disables the app on some errors
 	)
-	if err != nil {
-		// TODO: Detect invalid token
-		a.disable(ctx, model.AppDisabledCodeUnknown, err.Error())
-		slog.Error("Failed to create Discord client", slog.Any("error", err))
-		return
-	}
 
-	a.client = client
-
-	err = client.OpenShardManager(ctx)
-	if err != nil {
-		// TODO: Detect invalid token
-		a.disable(ctx, model.AppDisabledCodeUnknown, err.Error())
-		slog.Error("Failed to open Discord gateway", slog.Any("error", err))
-		return
-	}
+	a.shardManager = shardManager
+	shardManager.Open(ctx)
 }
 
 func (a *App) Close(ctx context.Context) {
-	a.client.Close(ctx)
-	a.client = nil
+	a.shardManager.Close(ctx)
+	a.shardManager = nil
 }
 
 func (a *App) Update(ctx context.Context, model *model.App) {
