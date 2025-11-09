@@ -45,3 +45,49 @@ Example matches:
 - `gateway.*.*.*.guild.>` matches for `guild.create`, `guild.update`, `guild.delete`, etc. events from any gateway, group or app
 - `gateway.0.>` matches for all events from gateway 0
 - `gateway.>` matches for all events from any gateway, group or app
+
+## Configuration
+
+All Stateway services will read their configuration from a `stateway.toml` file in the current working directory.
+
+Some service specific configuration are scoped under a `[<server_type>]` section.
+
+```toml
+[logging]
+filename = "stateway.log" # The filename of the log file to write to. Leave empty to only log to stdout.
+max_size = 100 # The maximum size of the log file in megabytes.
+max_age = 7 # The maximum age of the log file in days.
+max_backups = 10 # The maximum number of backup log files to keep.
+
+[broker.nats]
+url = "nats://127.0.0.1:4222" # The URL of the NATS server to connect to.
+
+[database.postgres]
+host = "127.0.0.1" # The host of the PostgreSQL server to connect to.
+port = 5432 # The port of the PostgreSQL server to connect to.
+user = "postgres" # The user to connect to the PostgreSQL server with.
+db_name = "stateway" # The database to connect to.
+
+# Stateway Gateway configuration.
+[gateway]
+gateway_count = 1 # The number of gateways you are running and balance the apps across.
+gateway_id = 0 # The ID of the gateway you are running (0-based index).
+
+# Any apps you want to always run, apps can also be dynamically added and removed using the admin CLI.
+[[gateway.apps]]
+token = "your-discord-bot-token" # Your Discord bot token.
+shard_count = 2 # The number of shards to run for this app.
+shard_concurrency = 1 # The maximum number of concurrent identify requests to send to the Discord gateway.
+group_id = "default" # The group to run the app in.
+intents = 1023 # The intents to use for this app.
+# Optional presence configuration.
+presence = {
+    status = "online",
+    activity = {
+        name = "Stateway",
+        state = "Running",
+        type = "WATCHING",
+        url = "https://github.com/merlinfuchs/stateway"
+    }
+}
+```
