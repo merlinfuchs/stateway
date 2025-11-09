@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"log/slog"
 	"time"
@@ -13,7 +12,6 @@ import (
 	"github.com/merlinfuchs/stateway/stateway-gateway/model"
 	"github.com/merlinfuchs/stateway/stateway-gateway/store"
 	"github.com/merlinfuchs/stateway/stateway-lib/event"
-	"gopkg.in/guregu/null.v4"
 )
 
 type AppConfig struct {
@@ -122,16 +120,16 @@ func (a *App) handleClose(ctx context.Context, g gateway.Gateway, originalCloseH
 		slog.Int("shard_id", g.ShardID()),
 		slog.String("display_name", a.model.DisplayName),
 		slog.Bool("reconnect", reconnect),
-		slog.String("error_type", fmt.Sprintf("%T", err)),
 		slog.Any("error", err),
 	)
 
-	// TODO: Disable app based on error a.invalidateSession(ctx, g)
+	a.disableIfFatal(ctx, err)
+	a.invalidateSession(ctx, g)
 
 	originalCloseHandlerFunc(g, err, reconnect)
 }
 
-func (a *App) handleEvent(ctx context.Context, g gateway.Gateway, eventType gateway.EventType, sequenceNumber int, ev gateway.EventData) {
+func (a *App) handleEvent(ctx context.Context, g gateway.Gateway, _ gateway.EventType, _ int, ev gateway.EventData) {
 	switch e := ev.(type) {
 	case gateway.EventRaw:
 		data, err := io.ReadAll(e.Payload)
@@ -179,57 +177,5 @@ func (a *App) handleEvent(ctx context.Context, g gateway.Gateway, eventType gate
 		)
 	case gateway.EventHeartbeatAck:
 		go a.storeSession(ctx, g)
-	}
-}
-
-func (a *App) storeSession(ctx context.Context, g gateway.Gateway) {
-	sessionID := g.SessionID()
-	resumeURL := g.ResumeURL()
-	sequenceNumber := g.LastSequenceReceived()
-
-	if sessionID == nil || resumeURL == nil || sequenceNumber == nil {
-		return
-	}
-
-	err := a.shardSessionStore.UpsertShardSession(ctx, store.UpsertShardSessionParams{
-		ID:           *sessionID,
-		AppID:        a.model.ID,
-		ShardID:      g.ShardID(),
-		LastSequence: *sequenceNumber,
-		ResumeURL:    *resumeURL,
-		CreatedAt:    time.Now().UTC(),
-		UpdatedAt:    time.Now().UTC(),
-	})
-	if err != nil {
-		slog.Error(
-			"Failed to upsert shard session",
-			slog.String("app_id", a.model.ID.String()),
-			slog.String("group_id", a.model.GroupID),
-			slog.Int("shard_id", g.ShardID()),
-			slog.String("display_name", a.model.DisplayName),
-			slog.Any("error", err),
-		)
-	}
-}
-
-func (a *App) invalidateSession(ctx context.Context, g gateway.Gateway) {}
-
-func (a *App) disable(ctx context.Context, code model.AppDisabledCode, message string) {
-	_, err := a.appStore.DisableApp(ctx, store.DisableAppParams{
-		ID:              a.model.ID,
-		DisabledCode:    code,
-		DisabledMessage: null.NewString(message, message != ""),
-		UpdatedAt:       time.Now().UTC(),
-	})
-	if err != nil {
-		slog.Error(
-			"Failed to disable app",
-			slog.String("app_id", a.model.ID.String()),
-			slog.String("group_id", a.model.GroupID),
-			slog.String("code", string(code)),
-			slog.String("message", message),
-			slog.Any("error", err),
-		)
-		return
 	}
 }

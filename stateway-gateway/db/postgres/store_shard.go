@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/disgoorg/snowflake/v2"
 	"github.com/jackc/pgx/v5"
@@ -41,8 +42,9 @@ func (c *Client) GetLastShardSession(ctx context.Context, appID snowflake.ID, sh
 
 func (c *Client) InvalidateShardSession(ctx context.Context, appID snowflake.ID, shardID int) error {
 	return c.Q.InvalidateShardSession(ctx, pgmodel.InvalidateShardSessionParams{
-		AppID:   int64(appID),
-		ShardID: int32(shardID),
+		AppID:         int64(appID),
+		ShardID:       int32(shardID),
+		InvalidatedAt: pgtype.Timestamp{Time: time.Now().UTC(), Valid: true},
 	})
 }
 

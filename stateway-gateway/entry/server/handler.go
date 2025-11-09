@@ -42,7 +42,7 @@ func (h *EventHandler) Run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case event := <-h.queue:
-			err := h.broker.Publish(context.Background(), event)
+			err := h.broker.Publish(ctx, event)
 			if err != nil {
 				slog.Error(
 					"Failed to publish event",

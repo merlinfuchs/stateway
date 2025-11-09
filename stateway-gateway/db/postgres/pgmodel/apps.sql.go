@@ -361,7 +361,8 @@ ON CONFLICT (id) DO UPDATE SET
     shard_count = EXCLUDED.shard_count,
     constraints = EXCLUDED.constraints,
     config = EXCLUDED.config,
-    updated_at = EXCLUDED.updated_at
+    updated_at = EXCLUDED.updated_at,
+    disabled = FALSE
 `
 
 type UpsertAppParams struct {

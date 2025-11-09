@@ -10,8 +10,10 @@ import (
 type AppDisabledCode string
 
 const (
-	AppDisabledCodeUnknown      AppDisabledCode = "unknown"
-	AppDisabledCodeInvalidToken AppDisabledCode = "invalid_token"
+	AppDisabledCodeUnknown           AppDisabledCode = "unknown"
+	AppDisabledCodeInvalidToken      AppDisabledCode = "invalid_token"
+	AppDisabledCodeInvalidIntents    AppDisabledCode = "invalid_intents"
+	AppDisabledCodeDisallowedIntents AppDisabledCode = "disallowed_intents"
 )
 
 type App struct {
