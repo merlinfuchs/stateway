@@ -3,14 +3,17 @@ package admin
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"strconv"
 	"time"
 
 	"github.com/disgoorg/disgo/rest"
 	"github.com/disgoorg/snowflake/v2"
+	"github.com/merlinfuchs/stateway/stateway-gateway/db/postgres"
 	"github.com/merlinfuchs/stateway/stateway-gateway/model"
 	"github.com/merlinfuchs/stateway/stateway-gateway/store"
+	"github.com/merlinfuchs/stateway/stateway-lib/config"
 	"github.com/olekukonko/tablewriter"
 	"gopkg.in/guregu/null.v4"
 )
@@ -74,6 +77,10 @@ func CreateApp(
 		groupID = "default"
 	}
 
+	if !config.ShardConcurrency.Valid {
+		config.ShardConcurrency = null.IntFrom(int64(discordGateway.SessionStartLimit.MaxConcurrency))
+	}
+
 	app, err := appStore.CreateApp(ctx, store.CreateAppParams{
 		ID:                  discordApp.ID,
 		GroupID:             groupID,
@@ -119,6 +126,65 @@ func DisableApp(ctx context.Context, appStore store.AppStore, id snowflake.ID, c
 	err = renderAppsTable([]*model.App{app})
 	if err != nil {
 		return fmt.Errorf("failed to render app table: %w", err)
+	}
+	return nil
+}
+
+func InitializeApps(ctx context.Context, pg *postgres.Client, cfg *config.RootGatewayConfig) error {
+	slog.Info("Initializing apps from config", slog.Int("app_count", len(cfg.Gateway.Apps)))
+
+	for _, appCfg := range cfg.Gateway.Apps {
+		client := rest.New(rest.NewClient(appCfg.Token))
+
+		discordApp, err := client.GetCurrentApplication(rest.WithCtx(ctx))
+		if err != nil {
+			return fmt.Errorf("failed to get current app: %w", err)
+		}
+
+		config := model.AppConfig{
+			Intents:          null.NewInt(appCfg.Intents, appCfg.Intents != 0),
+			ShardConcurrency: null.NewInt(int64(appCfg.ShardConcurrency), appCfg.ShardConcurrency != 0),
+		}
+		if appCfg.Presence != nil {
+			config.Presence = &model.AppPresenceConfig{
+				Status: null.NewString(appCfg.Presence.Status, appCfg.Presence.Status != ""),
+			}
+			if appCfg.Presence.Activity != nil {
+				config.Presence.Activity = &model.AppPresenceActivityConfig{
+					Name:  appCfg.Presence.Activity.Name,
+					State: appCfg.Presence.Activity.State,
+					Type:  appCfg.Presence.Activity.Type,
+					URL:   appCfg.Presence.Activity.URL,
+				}
+			}
+		}
+
+		// TODO: Only update when it actually changed?
+		err = pg.UpsertApp(ctx, store.UpsertAppParams{
+			ID:               discordApp.ID,
+			GroupID:          appCfg.GroupID,
+			DisplayName:      discordApp.Name,
+			DiscordClientID:  discordApp.ID,
+			DiscordBotToken:  appCfg.Token,
+			DiscordPublicKey: discordApp.VerifyKey,
+			ShardCount:       appCfg.ShardCount,
+			Constraints:      model.AppConstraints{},
+			Config:           config,
+			CreatedAt:        time.Now().UTC(),
+			UpdatedAt:        time.Now().UTC(),
+		})
+		if err != nil {
+			return fmt.Errorf("failed to upsert app: %w", err)
+		}
+
+		slog.Info(
+			"Initialized app",
+			slog.String("app_id", discordApp.ID.String()),
+			slog.String("group_id", appCfg.GroupID),
+			slog.String("display_name", discordApp.Name),
+			slog.Int("shard_count", appCfg.ShardCount),
+			slog.Int64("intents", appCfg.Intents),
+		)
 	}
 	return nil
 }

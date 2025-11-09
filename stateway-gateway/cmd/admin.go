@@ -21,6 +21,25 @@ var adminCMD = cli.Command{
 			Usage: "Manage apps.",
 			Subcommands: []*cli.Command{
 				{
+					Name:  "init",
+					Usage: "Initialize the apps from the config.",
+					Action: func(c *cli.Context) error {
+						ctx, cancel := signal.NotifyContext(c.Context, syscall.SIGINT, syscall.SIGTERM)
+						defer cancel()
+
+						env, err := setupEnv(ctx)
+						if err != nil {
+							return fmt.Errorf("failed to setup environment: %w", err)
+						}
+
+						err = admin.InitializeApps(ctx, env.pg, env.cfg)
+						if err != nil {
+							return fmt.Errorf("failed to initialize apps: %w", err)
+						}
+						return nil
+					},
+				},
+				{
 					Name:  "list",
 					Usage: "List all apps.",
 					Flags: []cli.Flag{

@@ -50,7 +50,7 @@ func (a *App) Run(ctx context.Context) {
 	intents := intentsFromApp(a.model)
 	presenceOpts := presenceOptsFromApp(a.model)
 
-	shardCount, shards, err := a.shardsFromApp(ctx, a.cfg.GatewayCount, a.cfg.GatewayID)
+	shardCount, shardConcurrency, shards, err := a.shardsFromApp(ctx, a.cfg.GatewayCount, a.cfg.GatewayID)
 	if err != nil {
 		slog.Error("Failed to get shards", slog.Any("error", err))
 		return
@@ -63,6 +63,9 @@ func (a *App) Run(ctx context.Context) {
 		},
 		sharding.WithAutoScaling(false),
 		sharding.WithShardCount(shardCount),
+		sharding.WithIdentifyRateLimiterConfigOpt(
+			gateway.WithIdentifyMaxConcurrency(shardConcurrency),
+		),
 		sharding.WithShardIDsWithStates(shards),
 		sharding.WithLogger(slog.Default()),
 		sharding.WithGatewayConfigOpts(
@@ -152,7 +155,8 @@ func (a *App) handleEvent(ctx context.Context, g gateway.Gateway, _ gateway.Even
 			"Discord shard READY",
 			slog.String("group_id", a.model.GroupID),
 			slog.String("app_id", a.model.ID.String()),
-			slog.Int("shard_id", g.ShardID()),
+			slog.Int("shard_id", e.Shard[0]),
+			slog.Int("shard_count", e.Shard[1]),
 			slog.String("display_name", a.model.DisplayName),
 		)
 

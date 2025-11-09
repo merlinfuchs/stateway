@@ -50,8 +50,9 @@ func (a AppConstraints) Merge(other AppConstraints) AppConstraints {
 }
 
 type AppConfig struct {
-	Intents  null.Int           `json:"intents,omitzero"`
-	Presence *AppPresenceConfig `json:"presence,omitempty"`
+	ShardConcurrency null.Int           `json:"shard_concurrency,omitzero"`
+	Intents          null.Int           `json:"intents,omitzero"`
+	Presence         *AppPresenceConfig `json:"presence,omitempty"`
 }
 
 func (a AppConfig) Merge(other AppConfig) AppConfig {

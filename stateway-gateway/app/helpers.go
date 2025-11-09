@@ -18,10 +18,15 @@ import (
 
 const resumeTimeout = time.Minute
 
-func (a *App) shardsFromApp(ctx context.Context, gatewayCount int, gatewayID int) (int, map[int]sharding.ShardState, error) {
+func (a *App) shardsFromApp(ctx context.Context, gatewayCount int, gatewayID int) (int, int, map[int]sharding.ShardState, error) {
 	shardCount := a.model.ShardCount
 	if shardCount == 0 {
 		shardCount = 1
+	}
+
+	shardConcurrency := 1
+	if a.model.Config.ShardConcurrency.Valid {
+		shardConcurrency = int(a.model.Config.ShardConcurrency.Int64)
 	}
 
 	shards := make(map[int]sharding.ShardState, shardCount)
@@ -32,7 +37,7 @@ func (a *App) shardsFromApp(ctx context.Context, gatewayCount int, gatewayID int
 		if shardCount == 1 || shardID%gatewayCount == gatewayID {
 			shardSession, err := a.shardSessionStore.GetLastShardSession(ctx, a.model.ID, shardID)
 			if err != nil && !errors.Is(err, store.ErrNotFound) {
-				return 0, nil, fmt.Errorf("failed to get last shard session: %w", err)
+				return 0, 0, nil, fmt.Errorf("failed to get last shard session: %w", err)
 			}
 
 			var state sharding.ShardState
@@ -49,7 +54,7 @@ func (a *App) shardsFromApp(ctx context.Context, gatewayCount int, gatewayID int
 		}
 	}
 
-	return shardCount, shards, nil
+	return shardCount, shardConcurrency, shards, nil
 }
 
 func intentsFromApp(app *model.App) gateway.Intents {

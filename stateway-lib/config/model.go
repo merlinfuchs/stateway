@@ -61,11 +61,12 @@ type GatewayConfig struct {
 }
 
 type GatewayAppConfig struct {
-	Token      string                    `toml:"token" validate:"required"`
-	ShardCount int                       `toml:"shard_count" validate:"required,min=1"`
-	GroupID    string                    `toml:"group_id"`
-	Intents    int64                     `toml:"intents"`
-	Presence   *GatewayAppPresenceConfig `toml:"presence"`
+	Token            string                    `toml:"token" validate:"required"`
+	ShardCount       int                       `toml:"shard_count" validate:"required,min=1"`
+	ShardConcurrency int                       `toml:"shard_concurrency"`
+	GroupID          string                    `toml:"group_id"`
+	Intents          int64                     `toml:"intents"`
+	Presence         *GatewayAppPresenceConfig `toml:"presence"`
 }
 
 type GatewayAppPresenceConfig struct {
