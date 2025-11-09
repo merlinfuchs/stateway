@@ -19,6 +19,7 @@ func (c *Client) UpsertShardSession(ctx context.Context, params store.UpsertShar
 		ID:           params.ID,
 		AppID:        int64(params.AppID),
 		ShardID:      int32(params.ShardID),
+		ShardCount:   int32(params.ShardCount),
 		LastSequence: int32(params.LastSequence),
 		ResumeUrl:    params.ResumeURL,
 		CreatedAt:    pgtype.Timestamp{Time: params.CreatedAt, Valid: true},
@@ -26,10 +27,11 @@ func (c *Client) UpsertShardSession(ctx context.Context, params store.UpsertShar
 	})
 }
 
-func (c *Client) GetLastShardSession(ctx context.Context, appID snowflake.ID, shardID int) (*model.ShardSession, error) {
+func (c *Client) GetLastShardSession(ctx context.Context, appID snowflake.ID, shardID int, shardCount int) (*model.ShardSession, error) {
 	row, err := c.Q.GetLastShardSession(ctx, pgmodel.GetLastShardSessionParams{
-		AppID:   int64(appID),
-		ShardID: int32(shardID),
+		AppID:      int64(appID),
+		ShardID:    int32(shardID),
+		ShardCount: int32(shardCount),
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -40,7 +42,7 @@ func (c *Client) GetLastShardSession(ctx context.Context, appID snowflake.ID, sh
 	return rowToShardSession(row), nil
 }
 
-func (c *Client) InvalidateShardSession(ctx context.Context, appID snowflake.ID, shardID int) error {
+func (c *Client) InvalidateShardSession(ctx context.Context, appID snowflake.ID, shardID int, shardCount int) error {
 	return c.Q.InvalidateShardSession(ctx, pgmodel.InvalidateShardSessionParams{
 		AppID:         int64(appID),
 		ShardID:       int32(shardID),
@@ -53,6 +55,7 @@ func rowToShardSession(row pgmodel.GatewayShardSession) *model.ShardSession {
 		ID:            row.ID,
 		AppID:         snowflake.ID(row.AppID),
 		ShardID:       int(row.ShardID),
+		ShardCount:    int(row.ShardCount),
 		LastSequence:  int(row.LastSequence),
 		ResumeURL:     row.ResumeUrl,
 		CreatedAt:     row.CreatedAt.Time,

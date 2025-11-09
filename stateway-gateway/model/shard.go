@@ -11,6 +11,7 @@ type ShardSession struct {
 	ID            string
 	AppID         snowflake.ID
 	ShardID       int
+	ShardCount    int
 	LastSequence  int
 	ResumeURL     string
 	CreatedAt     time.Time

@@ -11,6 +11,8 @@ import (
 	"github.com/merlinfuchs/stateway/stateway-gateway/store"
 )
 
+const identifyRateLimitWaitTime = 5 * time.Second
+
 type IdentifyRateLimiter struct {
 	store          store.IdentifyRateLimitStore
 	appID          snowflake.ID
@@ -73,15 +75,12 @@ func (l *IdentifyRateLimiter) Wait(ctx context.Context, shardID int) error {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-time.After(10 * time.Millisecond):
+		case <-time.After(500 * time.Millisecond):
 		}
 	}
 }
 
 func (l *IdentifyRateLimiter) Unlock(shardID int) {
-	unlockCtx, unlockCtxCancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer unlockCtxCancel()
-
 	bucket := l.shardIdentifyBucket(shardID)
 
 	l.mu.Lock()
@@ -92,15 +91,21 @@ func (l *IdentifyRateLimiter) Unlock(shardID int) {
 	l.mu.Unlock()
 
 	if ok {
-		err := unlockFunc(unlockCtx)
-		if err != nil {
-			slog.Error(
-				"Failed to unlock bucket",
-				slog.String("app_id", l.appID.String()),
-				slog.Any("error", err),
-			)
-		}
-		return
+		go func() {
+			time.Sleep(identifyRateLimitWaitTime)
+
+			unlockCtx, unlockCtxCancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer unlockCtxCancel()
+
+			err := unlockFunc(unlockCtx)
+			if err != nil {
+				slog.Error(
+					"Failed to unlock bucket",
+					slog.String("app_id", l.appID.String()),
+					slog.Any("error", err),
+				)
+			}
+		}()
 	}
 }
 

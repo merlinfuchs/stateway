@@ -39,6 +39,7 @@ type GatewayShardSession struct {
 	ID            string
 	AppID         int64
 	ShardID       int32
+	ShardCount    int32
 	LastSequence  int32
 	ResumeUrl     string
 	CreatedAt     pgtype.Timestamp

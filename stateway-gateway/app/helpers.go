@@ -35,7 +35,7 @@ func (a *App) shardsFromApp(ctx context.Context, gatewayCount int, gatewayID int
 		// otherwise, we are splitting the app shards across the gateways
 		// shardID % gatewayCount gives us the index of the gateway that should run the shard
 		if shardCount == 1 || shardID%gatewayCount == gatewayID {
-			shardSession, err := a.shardSessionStore.GetLastShardSession(ctx, a.model.ID, shardID)
+			shardSession, err := a.shardSessionStore.GetLastShardSession(ctx, a.model.ID, shardID, shardCount)
 			if err != nil && !errors.Is(err, store.ErrNotFound) {
 				return 0, 0, nil, fmt.Errorf("failed to get last shard session: %w", err)
 			}
@@ -161,6 +161,7 @@ func (a *App) storeSession(ctx context.Context, g gateway.Gateway) {
 		ID:           *sessionID,
 		AppID:        a.model.ID,
 		ShardID:      g.ShardID(),
+		ShardCount:   g.ShardCount(),
 		LastSequence: *sequenceNumber,
 		ResumeURL:    *resumeURL,
 		CreatedAt:    time.Now().UTC(),
@@ -179,7 +180,7 @@ func (a *App) storeSession(ctx context.Context, g gateway.Gateway) {
 }
 
 func (a *App) invalidateSession(ctx context.Context, g gateway.Gateway) {
-	err := a.shardSessionStore.InvalidateShardSession(ctx, a.model.ID, g.ShardID())
+	err := a.shardSessionStore.InvalidateShardSession(ctx, a.model.ID, g.ShardID(), g.ShardCount())
 	if err != nil {
 		slog.Error(
 			"Failed to invalidate shard session",

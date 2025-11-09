@@ -12,21 +12,23 @@ import (
 )
 
 const getLastShardSession = `-- name: GetLastShardSession :one
-SELECT id, app_id, shard_id, last_sequence, resume_url, created_at, updated_at, invalidated_at FROM gateway.shard_sessions WHERE app_id = $1 AND shard_id = $2 ORDER BY updated_at DESC LIMIT 1
+SELECT id, app_id, shard_id, shard_count, last_sequence, resume_url, created_at, updated_at, invalidated_at FROM gateway.shard_sessions WHERE app_id = $1 AND shard_id = $2 AND shard_count = $3 ORDER BY updated_at DESC LIMIT 1
 `
 
 type GetLastShardSessionParams struct {
-	AppID   int64
-	ShardID int32
+	AppID      int64
+	ShardID    int32
+	ShardCount int32
 }
 
 func (q *Queries) GetLastShardSession(ctx context.Context, arg GetLastShardSessionParams) (GatewayShardSession, error) {
-	row := q.db.QueryRow(ctx, getLastShardSession, arg.AppID, arg.ShardID)
+	row := q.db.QueryRow(ctx, getLastShardSession, arg.AppID, arg.ShardID, arg.ShardCount)
 	var i GatewayShardSession
 	err := row.Scan(
 		&i.ID,
 		&i.AppID,
 		&i.ShardID,
+		&i.ShardCount,
 		&i.LastSequence,
 		&i.ResumeUrl,
 		&i.CreatedAt,
@@ -37,7 +39,7 @@ func (q *Queries) GetLastShardSession(ctx context.Context, arg GetLastShardSessi
 }
 
 const invalidateShardSession = `-- name: InvalidateShardSession :exec
-UPDATE gateway.shard_sessions SET invalidated_at = $3 WHERE app_id = $1 AND shard_id = $2
+UPDATE gateway.shard_sessions SET invalidated_at = $3 WHERE app_id = $1 AND shard_id = $2 AND shard_count = $3
 `
 
 type InvalidateShardSessionParams struct {
@@ -65,12 +67,13 @@ INSERT INTO gateway.shard_sessions (
     id,
     app_id,
     shard_id,
+    shard_count,
     last_sequence,
     resume_url,
     created_at,
     updated_at
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 ON CONFLICT (id) DO UPDATE SET
     last_sequence = EXCLUDED.last_sequence,
     resume_url = EXCLUDED.resume_url,
@@ -81,6 +84,7 @@ type UpsertShardSessionParams struct {
 	ID           string
 	AppID        int64
 	ShardID      int32
+	ShardCount   int32
 	LastSequence int32
 	ResumeUrl    string
 	CreatedAt    pgtype.Timestamp
@@ -92,6 +96,7 @@ func (q *Queries) UpsertShardSession(ctx context.Context, arg UpsertShardSession
 		arg.ID,
 		arg.AppID,
 		arg.ShardID,
+		arg.ShardCount,
 		arg.LastSequence,
 		arg.ResumeUrl,
 		arg.CreatedAt,
