@@ -246,5 +246,30 @@ var adminCMD = cli.Command{
 				},
 			},
 		},
+		{
+			Name:  "shards",
+			Usage: "Manage shard sessions.",
+			Subcommands: []*cli.Command{
+				{
+					Name:  "purge-sessions",
+					Usage: "Purge all sessions.",
+					Action: func(c *cli.Context) error {
+						ctx, cancel := signal.NotifyContext(c.Context, syscall.SIGINT, syscall.SIGTERM)
+						defer cancel()
+
+						env, err := setupEnv(ctx)
+						if err != nil {
+							return fmt.Errorf("failed to setup environment: %w", err)
+						}
+
+						err = admin.PurgeSessions(ctx, env.pg)
+						if err != nil {
+							return fmt.Errorf("failed to purge sessions: %w", err)
+						}
+						return nil
+					},
+				},
+			},
+		},
 	},
 }

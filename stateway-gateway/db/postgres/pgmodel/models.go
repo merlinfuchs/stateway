@@ -34,3 +34,14 @@ type GatewayGroup struct {
 	CreatedAt          pgtype.Timestamp
 	UpdatedAt          pgtype.Timestamp
 }
+
+type GatewayShardSession struct {
+	ID            string
+	AppID         int64
+	ShardID       int32
+	LastSequence  int32
+	ResumeUrl     string
+	CreatedAt     pgtype.Timestamp
+	UpdatedAt     pgtype.Timestamp
+	InvalidatedAt pgtype.Timestamp
+}

@@ -1,28 +1,51 @@
 package app
 
 import (
+	"context"
+	"errors"
+	"fmt"
+	"time"
+
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/gateway"
+	"github.com/disgoorg/disgo/sharding"
 	"github.com/merlinfuchs/stateway/stateway-gateway/model"
+	"github.com/merlinfuchs/stateway/stateway-gateway/store"
 )
 
-func shardsFromApp(app *model.App, gatewayCount int, gatewayID int) (int, []int) {
-	shardCount := app.ShardCount
+const resumeTimeout = time.Minute
+
+func (a *App) shardsFromApp(ctx context.Context, gatewayCount int, gatewayID int) (int, map[int]sharding.ShardState, error) {
+	shardCount := a.model.ShardCount
 	if shardCount == 0 {
 		shardCount = 1
 	}
 
-	shardIDs := make([]int, 0, shardCount)
+	shards := make(map[int]sharding.ShardState, shardCount)
 	for shardID := 0; shardID < shardCount; shardID++ {
 		// if shardCount == 1, this gateway is the only one that should run the app
 		// otherwise, we are splitting the app shards across the gateways
 		// shardID % gatewayCount gives us the index of the gateway that should run the shard
 		if shardCount == 1 || shardID%gatewayCount == gatewayID {
-			shardIDs = append(shardIDs, shardID)
+			shardSession, err := a.shardSessionStore.GetLastShardSession(ctx, a.model.ID, shardID)
+			if err != nil && !errors.Is(err, store.ErrNotFound) {
+				return 0, nil, fmt.Errorf("failed to get last shard session: %w", err)
+			}
+
+			var state sharding.ShardState
+			if shardSession != nil && !shardSession.InvalidatedAt.Valid && shardSession.UpdatedAt.After(time.Now().UTC().Add(-resumeTimeout)) {
+				state = sharding.ShardState{
+					SessionID: shardSession.ID,
+					ResumeURL: shardSession.ResumeURL,
+					Sequence:  shardSession.LastSequence,
+				}
+			}
+
+			shards[shardID] = state
 		}
 	}
 
-	return shardCount, shardIDs
+	return shardCount, shards, nil
 }
 
 func intentsFromApp(app *model.App) gateway.Intents {

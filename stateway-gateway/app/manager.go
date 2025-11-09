@@ -20,9 +20,10 @@ type AppManagerConfig struct {
 type AppManager struct {
 	sync.Mutex
 
-	cfg          AppManagerConfig
-	appStore     store.AppStore
-	eventHandler event.EventHandler
+	cfg               AppManagerConfig
+	appStore          store.AppStore
+	shardSessionStore store.ShardSessionStore
+	eventHandler      event.EventHandler
 
 	apps map[snowflake.ID]*App
 }
@@ -30,15 +31,17 @@ type AppManager struct {
 func NewAppManager(
 	cfg AppManagerConfig,
 	appStore store.AppStore,
+	shardSessionStore store.ShardSessionStore,
 	eventHandler event.EventHandler,
 ) *AppManager {
 	// Discord some times sends unquoted snowflake IDs, so we need to allow them
 	snowflake.AllowUnquoted = true
 
 	return &AppManager{
-		cfg:          cfg,
-		appStore:     appStore,
-		eventHandler: eventHandler,
+		cfg:               cfg,
+		appStore:          appStore,
+		shardSessionStore: shardSessionStore,
+		eventHandler:      eventHandler,
 
 		apps: make(map[snowflake.ID]*App),
 	}
@@ -86,7 +89,13 @@ func (m *AppManager) addOrUpdateApp(ctx context.Context, app *model.App) {
 	if _, ok := m.apps[app.ID]; ok {
 		m.apps[app.ID].Update(ctx, app)
 	} else {
-		newApp := NewApp(AppConfig(m.cfg), app, m.appStore, m.eventHandler)
+		newApp := NewApp(
+			AppConfig(m.cfg),
+			app,
+			m.appStore,
+			m.shardSessionStore,
+			m.eventHandler,
+		)
 		m.apps[app.ID] = newApp
 		go newApp.Run(ctx)
 	}
