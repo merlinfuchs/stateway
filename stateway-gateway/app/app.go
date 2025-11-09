@@ -23,9 +23,10 @@ type App struct {
 	cfg   AppConfig
 	model *model.App
 
-	appStore          store.AppStore
-	shardSessionStore store.ShardSessionStore
-	eventHandler      event.EventHandler
+	appStore               store.AppStore
+	shardSessionStore      store.ShardSessionStore
+	identifyRateLimitStore store.IdentifyRateLimitStore
+	eventHandler           event.EventHandler
 
 	shardManager sharding.ShardManager
 }
@@ -35,14 +36,16 @@ func NewApp(
 	model *model.App,
 	appStore store.AppStore,
 	shardSessionStore store.ShardSessionStore,
+	identifyRateLimitStore store.IdentifyRateLimitStore,
 	eventHandler event.EventHandler,
 ) *App {
 	return &App{
-		cfg:               cfg,
-		model:             model,
-		appStore:          appStore,
-		shardSessionStore: shardSessionStore,
-		eventHandler:      eventHandler,
+		cfg:                    cfg,
+		model:                  model,
+		appStore:               appStore,
+		shardSessionStore:      shardSessionStore,
+		identifyRateLimitStore: identifyRateLimitStore,
+		eventHandler:           eventHandler,
 	}
 }
 
@@ -63,8 +66,8 @@ func (a *App) Run(ctx context.Context) {
 		},
 		sharding.WithAutoScaling(false),
 		sharding.WithShardCount(shardCount),
-		sharding.WithIdentifyRateLimiterConfigOpt(
-			gateway.WithIdentifyMaxConcurrency(shardConcurrency),
+		sharding.WithIdentifyRateLimiter(
+			NewIdentifyRateLimiter(a.identifyRateLimitStore, a.model.ID, shardConcurrency),
 		),
 		sharding.WithShardIDsWithStates(shards),
 		sharding.WithLogger(slog.Default()),

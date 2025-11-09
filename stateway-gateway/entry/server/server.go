@@ -31,6 +31,7 @@ func Run(ctx context.Context, pg *postgres.Client, cfg *config.RootGatewayConfig
 		},
 		pg,
 		pg,
+		pg,
 		eventHandler,
 	)
 
