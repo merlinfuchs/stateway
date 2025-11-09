@@ -11,6 +11,7 @@ import (
 
 type Broker interface {
 	Publish(ctx context.Context, event event.Event) error
+	PublishComplete(ctx context.Context) error
 	Listen(ctx context.Context, listener GenericListener) error
 	Request(ctx context.Context, service service.ServiceType, method string, request any, opts ...RequestOption) (Response, error)
 	Provide(ctx context.Context, service GenericBrokerService) error

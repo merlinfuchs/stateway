@@ -50,7 +50,7 @@ func NewNATSBroker(url string) (*NATSBroker, error) {
 		return nil, fmt.Errorf("failed to connect to NATS: %w", err)
 	}
 
-	js, err := jetstream.New(nc)
+	js, err := jetstream.New(nc, jetstream.WithPublishAsyncMaxPending(5000))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create JetStream context: %w", err)
 	}
@@ -95,7 +95,7 @@ func (b *NATSBroker) Publish(ctx context.Context, evt event.Event) error {
 
 		subject := gatewayEventSubject(e)
 
-		_, err = b.js.Publish(ctx, subject, rawEvent)
+		_, err = b.js.PublishAsync(subject, rawEvent)
 		if err != nil {
 			// Check if error is due to stream not existing
 			if errors.Is(err, nats.ErrNoStreamResponse) {
@@ -106,6 +106,15 @@ func (b *NATSBroker) Publish(ctx context.Context, evt event.Event) error {
 		return nil
 	default:
 		return fmt.Errorf("unsupported event type: %T", e)
+	}
+}
+
+func (b *NATSBroker) PublishComplete(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-b.js.PublishAsyncComplete():
+		return nil
 	}
 }
 
