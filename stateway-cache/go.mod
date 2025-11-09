@@ -3,7 +3,8 @@ module github.com/merlinfuchs/stateway/stateway-cache
 go 1.25.0
 
 require (
-	github.com/disgoorg/disgo v0.19.0-rc.10
+	github.com/disgoorg/disgo v0.19.0-rc.11
+	github.com/disgoorg/snowflake/v2 v2.0.3
 	github.com/golang-migrate/migrate/v4 v4.19.0
 	github.com/jackc/pgx/v5 v5.7.6
 	github.com/merlinfuchs/stateway/stateway-lib v0.0.0-00010101000000-000000000000
@@ -16,7 +17,6 @@ require (
 	github.com/cyrusaf/ctxlog v1.3.3 // indirect
 	github.com/disgoorg/json/v2 v2.0.0 // indirect
 	github.com/disgoorg/omit v1.0.0 // indirect
-	github.com/disgoorg/snowflake/v2 v2.0.3 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.10 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
