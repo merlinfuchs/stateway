@@ -47,6 +47,44 @@ func (q *Queries) GetGuild(ctx context.Context, arg GetGuildParams) (CacheGuild,
 	return i, err
 }
 
+const getGuilds = `-- name: GetGuilds :many
+SELECT app_id, guild_id, data, unavailable, tainted, created_at, updated_at FROM cache.guilds WHERE app_id = $1 ORDER BY guild_id LIMIT $2 OFFSET $3
+`
+
+type GetGuildsParams struct {
+	AppID  int64
+	Limit  int32
+	Offset int32
+}
+
+func (q *Queries) GetGuilds(ctx context.Context, arg GetGuildsParams) ([]CacheGuild, error) {
+	rows, err := q.db.Query(ctx, getGuilds, arg.AppID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CacheGuild
+	for rows.Next() {
+		var i CacheGuild
+		if err := rows.Scan(
+			&i.AppID,
+			&i.GuildID,
+			&i.Data,
+			&i.Unavailable,
+			&i.Tainted,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const markGuildUnavailable = `-- name: MarkGuildUnavailable :exec
 UPDATE cache.guilds SET unavailable = TRUE WHERE app_id = $1 AND guild_id = $2
 `
@@ -74,4 +112,48 @@ type MarkShardGuildsTaintedParams struct {
 func (q *Queries) MarkShardGuildsTainted(ctx context.Context, arg MarkShardGuildsTaintedParams) error {
 	_, err := q.db.Exec(ctx, markShardGuildsTainted, arg.AppID, arg.ShardCount, arg.ShardID)
 	return err
+}
+
+const searchGuilds = `-- name: SearchGuilds :many
+SELECT app_id, guild_id, data, unavailable, tainted, created_at, updated_at FROM cache.guilds WHERE app_id = $1 AND data @> $2 ORDER BY guild_id LIMIT $3 OFFSET $4
+`
+
+type SearchGuildsParams struct {
+	AppID  int64
+	Data   []byte
+	Limit  int32
+	Offset int32
+}
+
+func (q *Queries) SearchGuilds(ctx context.Context, arg SearchGuildsParams) ([]CacheGuild, error) {
+	rows, err := q.db.Query(ctx, searchGuilds,
+		arg.AppID,
+		arg.Data,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CacheGuild
+	for rows.Next() {
+		var i CacheGuild
+		if err := rows.Scan(
+			&i.AppID,
+			&i.GuildID,
+			&i.Data,
+			&i.Unavailable,
+			&i.Tainted,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

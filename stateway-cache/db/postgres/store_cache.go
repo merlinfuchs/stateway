@@ -43,6 +43,24 @@ func (c *Client) MarkShardEntitiesTainted(ctx context.Context, params store.Mark
 		return fmt.Errorf("failed to mark shard channels tainted: %w", err)
 	}
 
+	err = q.MarkShardEmojisTainted(ctx, pgmodel.MarkShardEmojisTaintedParams{
+		AppID:      int64(params.AppID),
+		ShardCount: int64(params.ShardCount),
+		ShardID:    int64(params.ShardID),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to mark shard emojis tainted: %w", err)
+	}
+
+	err = q.MarkShardStickersTainted(ctx, pgmodel.MarkShardStickersTaintedParams{
+		AppID:      int64(params.AppID),
+		ShardCount: int64(params.ShardCount),
+		ShardID:    int64(params.ShardID),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to mark shard stickers tainted: %w", err)
+	}
+
 	err = tx.Commit(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to commit transaction: %w", err)

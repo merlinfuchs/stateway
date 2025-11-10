@@ -17,14 +17,18 @@ type UpsertGuildParams struct {
 	UpdatedAt time.Time
 }
 
-type GuildIdentifier struct {
-	AppID   snowflake.ID
-	GuildID snowflake.ID
+type SearchGuildsParams struct {
+	AppID  snowflake.ID
+	Limit  int
+	Offset int
+	Data   json.RawMessage
 }
 
 type CacheGuildStore interface {
-	GetGuild(ctx context.Context, guild GuildIdentifier) (*model.Guild, error)
+	GetGuild(ctx context.Context, appID snowflake.ID, guildID snowflake.ID) (*model.Guild, error)
+	GetGuilds(ctx context.Context, appID snowflake.ID, limit int, offset int) ([]*model.Guild, error)
 	UpsertGuilds(ctx context.Context, guilds ...UpsertGuildParams) error
-	MarkGuildUnavailable(ctx context.Context, params GuildIdentifier) error
-	DeleteGuild(ctx context.Context, params GuildIdentifier) error
+	MarkGuildUnavailable(ctx context.Context, appID snowflake.ID, guildID snowflake.ID) error
+	DeleteGuild(ctx context.Context, appID snowflake.ID, guildID snowflake.ID) error
+	SearchGuilds(ctx context.Context, params SearchGuildsParams) ([]*model.Guild, error)
 }

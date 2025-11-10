@@ -24,6 +24,121 @@ func (q *Queries) DeleteChannel(ctx context.Context, arg DeleteChannelParams) er
 	return err
 }
 
+const getChannel = `-- name: GetChannel :one
+SELECT app_id, guild_id, channel_id, data, tainted, created_at, updated_at FROM cache.channels WHERE app_id = $1 AND guild_id = $2 AND channel_id = $3 LIMIT 1
+`
+
+type GetChannelParams struct {
+	AppID     int64
+	GuildID   int64
+	ChannelID int64
+}
+
+func (q *Queries) GetChannel(ctx context.Context, arg GetChannelParams) (CacheChannel, error) {
+	row := q.db.QueryRow(ctx, getChannel, arg.AppID, arg.GuildID, arg.ChannelID)
+	var i CacheChannel
+	err := row.Scan(
+		&i.AppID,
+		&i.GuildID,
+		&i.ChannelID,
+		&i.Data,
+		&i.Tainted,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getChannels = `-- name: GetChannels :many
+SELECT app_id, guild_id, channel_id, data, tainted, created_at, updated_at FROM cache.channels WHERE app_id = $1 AND guild_id = $2 ORDER BY channel_id LIMIT $3 OFFSET $4
+`
+
+type GetChannelsParams struct {
+	AppID   int64
+	GuildID int64
+	Limit   int32
+	Offset  int32
+}
+
+func (q *Queries) GetChannels(ctx context.Context, arg GetChannelsParams) ([]CacheChannel, error) {
+	rows, err := q.db.Query(ctx, getChannels,
+		arg.AppID,
+		arg.GuildID,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CacheChannel
+	for rows.Next() {
+		var i CacheChannel
+		if err := rows.Scan(
+			&i.AppID,
+			&i.GuildID,
+			&i.ChannelID,
+			&i.Data,
+			&i.Tainted,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getChannelsByType = `-- name: GetChannelsByType :many
+SELECT app_id, guild_id, channel_id, data, tainted, created_at, updated_at FROM cache.channels WHERE app_id = $1 AND guild_id = $2 AND (data->>'type')::INT = ANY($5::INT[]) ORDER BY channel_id LIMIT $3 OFFSET $4
+`
+
+type GetChannelsByTypeParams struct {
+	AppID   int64
+	GuildID int64
+	Limit   int32
+	Offset  int32
+	Types   []int32
+}
+
+func (q *Queries) GetChannelsByType(ctx context.Context, arg GetChannelsByTypeParams) ([]CacheChannel, error) {
+	rows, err := q.db.Query(ctx, getChannelsByType,
+		arg.AppID,
+		arg.GuildID,
+		arg.Limit,
+		arg.Offset,
+		arg.Types,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CacheChannel
+	for rows.Next() {
+		var i CacheChannel
+		if err := rows.Scan(
+			&i.AppID,
+			&i.GuildID,
+			&i.ChannelID,
+			&i.Data,
+			&i.Tainted,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const markShardChannelsTainted = `-- name: MarkShardChannelsTainted :exec
 UPDATE cache.channels SET tainted = TRUE WHERE app_id = $1 AND guild_id % $2 = $3
 `
@@ -37,4 +152,50 @@ type MarkShardChannelsTaintedParams struct {
 func (q *Queries) MarkShardChannelsTainted(ctx context.Context, arg MarkShardChannelsTaintedParams) error {
 	_, err := q.db.Exec(ctx, markShardChannelsTainted, arg.AppID, arg.ShardCount, arg.ShardID)
 	return err
+}
+
+const searchChannels = `-- name: SearchChannels :many
+SELECT app_id, guild_id, channel_id, data, tainted, created_at, updated_at FROM cache.channels WHERE app_id = $1 AND guild_id = $2 AND data @> $3 ORDER BY channel_id LIMIT $4 OFFSET $5
+`
+
+type SearchChannelsParams struct {
+	AppID   int64
+	GuildID int64
+	Data    []byte
+	Limit   int32
+	Offset  int32
+}
+
+func (q *Queries) SearchChannels(ctx context.Context, arg SearchChannelsParams) ([]CacheChannel, error) {
+	rows, err := q.db.Query(ctx, searchChannels,
+		arg.AppID,
+		arg.GuildID,
+		arg.Data,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CacheChannel
+	for rows.Next() {
+		var i CacheChannel
+		if err := rows.Scan(
+			&i.AppID,
+			&i.GuildID,
+			&i.ChannelID,
+			&i.Data,
+			&i.Tainted,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

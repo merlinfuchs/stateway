@@ -85,6 +85,74 @@ func (b *UpsertChannelsBatchResults) Close() error {
 	return b.br.Close()
 }
 
+const upsertEmojis = `-- name: UpsertEmojis :batchexec
+INSERT INTO cache.emojis (
+    app_id, 
+    guild_id, 
+    emoji_id, 
+    data, 
+    created_at, 
+    updated_at
+) VALUES ($1, $2, $3, $4, $5, $6) 
+ON CONFLICT (app_id, guild_id, emoji_id) DO UPDATE SET 
+    data = EXCLUDED.data, 
+    tainted = FALSE,
+    updated_at = EXCLUDED.updated_at
+`
+
+type UpsertEmojisBatchResults struct {
+	br     pgx.BatchResults
+	tot    int
+	closed bool
+}
+
+type UpsertEmojisParams struct {
+	AppID     int64
+	GuildID   int64
+	EmojiID   int64
+	Data      []byte
+	CreatedAt pgtype.Timestamp
+	UpdatedAt pgtype.Timestamp
+}
+
+func (q *Queries) UpsertEmojis(ctx context.Context, arg []UpsertEmojisParams) *UpsertEmojisBatchResults {
+	batch := &pgx.Batch{}
+	for _, a := range arg {
+		vals := []interface{}{
+			a.AppID,
+			a.GuildID,
+			a.EmojiID,
+			a.Data,
+			a.CreatedAt,
+			a.UpdatedAt,
+		}
+		batch.Queue(upsertEmojis, vals...)
+	}
+	br := q.db.SendBatch(ctx, batch)
+	return &UpsertEmojisBatchResults{br, len(arg), false}
+}
+
+func (b *UpsertEmojisBatchResults) Exec(f func(int, error)) {
+	defer b.br.Close()
+	for t := 0; t < b.tot; t++ {
+		if b.closed {
+			if f != nil {
+				f(t, ErrBatchAlreadyClosed)
+			}
+			continue
+		}
+		_, err := b.br.Exec()
+		if f != nil {
+			f(t, err)
+		}
+	}
+}
+
+func (b *UpsertEmojisBatchResults) Close() error {
+	b.closed = true
+	return b.br.Close()
+}
+
 const upsertGuilds = `-- name: UpsertGuilds :batchexec
 INSERT INTO cache.guilds (
     app_id, 
@@ -214,6 +282,74 @@ func (b *UpsertRolesBatchResults) Exec(f func(int, error)) {
 }
 
 func (b *UpsertRolesBatchResults) Close() error {
+	b.closed = true
+	return b.br.Close()
+}
+
+const upsertStickers = `-- name: UpsertStickers :batchexec
+INSERT INTO cache.stickers (
+    app_id, 
+    guild_id, 
+    sticker_id, 
+    data, 
+    created_at, 
+    updated_at
+) VALUES ($1, $2, $3, $4, $5, $6) 
+ON CONFLICT (app_id, guild_id, sticker_id) DO UPDATE SET 
+    data = EXCLUDED.data, 
+    tainted = FALSE,
+    updated_at = EXCLUDED.updated_at
+`
+
+type UpsertStickersBatchResults struct {
+	br     pgx.BatchResults
+	tot    int
+	closed bool
+}
+
+type UpsertStickersParams struct {
+	AppID     int64
+	GuildID   int64
+	StickerID int64
+	Data      []byte
+	CreatedAt pgtype.Timestamp
+	UpdatedAt pgtype.Timestamp
+}
+
+func (q *Queries) UpsertStickers(ctx context.Context, arg []UpsertStickersParams) *UpsertStickersBatchResults {
+	batch := &pgx.Batch{}
+	for _, a := range arg {
+		vals := []interface{}{
+			a.AppID,
+			a.GuildID,
+			a.StickerID,
+			a.Data,
+			a.CreatedAt,
+			a.UpdatedAt,
+		}
+		batch.Queue(upsertStickers, vals...)
+	}
+	br := q.db.SendBatch(ctx, batch)
+	return &UpsertStickersBatchResults{br, len(arg), false}
+}
+
+func (b *UpsertStickersBatchResults) Exec(f func(int, error)) {
+	defer b.br.Close()
+	for t := 0; t < b.tot; t++ {
+		if b.closed {
+			if f != nil {
+				f(t, ErrBatchAlreadyClosed)
+			}
+			continue
+		}
+		_, err := b.br.Exec()
+		if f != nil {
+			f(t, err)
+		}
+	}
+}
+
+func (b *UpsertStickersBatchResults) Close() error {
 	b.closed = true
 	return b.br.Close()
 }

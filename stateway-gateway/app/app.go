@@ -78,13 +78,8 @@ func (a *App) Run(ctx context.Context) {
 			gateway.WithLogger(slog.Default()),
 			gateway.WithAutoReconnect(true),
 		),
-		sharding.WithGatewayCreateFunc(func(
-			token string,
-			eventHandlerFunc gateway.EventHandlerFunc,
-			closeHandlerFunc gateway.CloseHandlerFunc,
-			opts ...gateway.ConfigOpt,
-		) gateway.Gateway {
-			return a.createGateway(ctx, token, eventHandlerFunc, closeHandlerFunc, opts...)
+		sharding.WithCloseHandler(func(gateway gateway.Gateway, err error, reconnect bool) {
+			a.handleClose(ctx, gateway, err, reconnect)
 		}),
 	)
 
@@ -104,21 +99,7 @@ func (a *App) Update(ctx context.Context, model *model.App) {
 	go a.Run(ctx)
 }
 
-func (a *App) createGateway(
-	ctx context.Context,
-	token string,
-	eventHandlerFunc gateway.EventHandlerFunc,
-	originalCloseHandlerFunc gateway.CloseHandlerFunc,
-	opts ...gateway.ConfigOpt,
-) gateway.Gateway {
-	closeHandlerFunc := func(g gateway.Gateway, err error, reconnect bool) {
-		a.handleClose(ctx, g, originalCloseHandlerFunc, err, reconnect)
-	}
-
-	return gateway.New(token, eventHandlerFunc, closeHandlerFunc, opts...)
-}
-
-func (a *App) handleClose(ctx context.Context, g gateway.Gateway, originalCloseHandlerFunc gateway.CloseHandlerFunc, err error, reconnect bool) {
+func (a *App) handleClose(ctx context.Context, g gateway.Gateway, err error, reconnect bool) {
 	slog.Info(
 		"Discord shard CLOSED",
 		slog.String("group_id", a.model.GroupID),
@@ -131,8 +112,6 @@ func (a *App) handleClose(ctx context.Context, g gateway.Gateway, originalCloseH
 
 	a.disableIfFatal(ctx, err)
 	a.invalidateSession(ctx, g)
-
-	originalCloseHandlerFunc(g, err, reconnect)
 }
 
 func (a *App) handleEvent(ctx context.Context, g gateway.Gateway, _ gateway.EventType, _ int, ev gateway.EventData) {

@@ -1,3 +1,15 @@
+-- name: GetChannel :one
+SELECT * FROM cache.channels WHERE app_id = $1 AND guild_id = $2 AND channel_id = $3 LIMIT 1;
+
+-- name: GetChannels :many
+SELECT * FROM cache.channels WHERE app_id = $1 AND guild_id = $2 ORDER BY channel_id LIMIT $3 OFFSET $4;
+
+-- name: GetChannelsByType :many
+SELECT * FROM cache.channels WHERE app_id = $1 AND guild_id = $2 AND (data->>'type')::INT = ANY(@types::INT[]) ORDER BY channel_id LIMIT $3 OFFSET $4;
+
+-- name: SearchChannels :many
+SELECT * FROM cache.channels WHERE app_id = $1 AND guild_id = $2 AND data @> $3 ORDER BY channel_id LIMIT $4 OFFSET $5;
+
 -- name: UpsertChannels :batchexec
 INSERT INTO cache.channels (
     app_id, 

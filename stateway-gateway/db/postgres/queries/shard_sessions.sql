@@ -19,7 +19,7 @@ ON CONFLICT (id) DO UPDATE SET
 SELECT * FROM gateway.shard_sessions WHERE app_id = $1 AND shard_id = $2 AND shard_count = $3 ORDER BY updated_at DESC LIMIT 1;
 
 -- name: InvalidateShardSession :exec
-UPDATE gateway.shard_sessions SET invalidated_at = $3 WHERE app_id = $1 AND shard_id = $2 AND shard_count = $3;
+UPDATE gateway.shard_sessions SET invalidated_at = $4 WHERE app_id = $1 AND shard_id = $2 AND shard_count = $3;
 
 -- name: PurgeSessions :exec
 DELETE FROM gateway.shard_sessions;

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/disgoorg/snowflake/v2"
+	"github.com/merlinfuchs/stateway/stateway-cache/model"
 )
 
 type UpsertRoleParams struct {
@@ -17,13 +18,18 @@ type UpsertRoleParams struct {
 	UpdatedAt time.Time
 }
 
-type RoleIdentifier struct {
+type SearchRolesParams struct {
 	AppID   snowflake.ID
 	GuildID snowflake.ID
-	RoleID  snowflake.ID
+	Limit   int
+	Offset  int
+	Data    json.RawMessage
 }
 
 type CacheRoleStore interface {
+	GetRole(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, roleID snowflake.ID) (*model.Role, error)
+	GetRoles(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, limit int, offset int) ([]*model.Role, error)
+	SearchRoles(ctx context.Context, params SearchRolesParams) ([]*model.Role, error)
 	UpsertRoles(ctx context.Context, roles ...UpsertRoleParams) error
-	DeleteRole(ctx context.Context, params RoleIdentifier) error
+	DeleteRole(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, roleID snowflake.ID) error
 }

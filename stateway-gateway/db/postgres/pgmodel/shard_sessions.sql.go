@@ -39,17 +39,23 @@ func (q *Queries) GetLastShardSession(ctx context.Context, arg GetLastShardSessi
 }
 
 const invalidateShardSession = `-- name: InvalidateShardSession :exec
-UPDATE gateway.shard_sessions SET invalidated_at = $3 WHERE app_id = $1 AND shard_id = $2 AND shard_count = $3
+UPDATE gateway.shard_sessions SET invalidated_at = $4 WHERE app_id = $1 AND shard_id = $2 AND shard_count = $3
 `
 
 type InvalidateShardSessionParams struct {
 	AppID         int64
 	ShardID       int32
+	ShardCount    int32
 	InvalidatedAt pgtype.Timestamp
 }
 
 func (q *Queries) InvalidateShardSession(ctx context.Context, arg InvalidateShardSessionParams) error {
-	_, err := q.db.Exec(ctx, invalidateShardSession, arg.AppID, arg.ShardID, arg.InvalidatedAt)
+	_, err := q.db.Exec(ctx, invalidateShardSession,
+		arg.AppID,
+		arg.ShardID,
+		arg.ShardCount,
+		arg.InvalidatedAt,
+	)
 	return err
 }
 

@@ -9,3 +9,5 @@ CREATE TABLE IF NOT EXISTS cache.channels (
 
     PRIMARY KEY (app_id, guild_id, channel_id)
 );
+
+CREATE INDEX IF NOT EXISTS idx_cache_channels_data_type ON cache.channels ((data->>'type'));

@@ -16,6 +16,8 @@ type CacheStore interface {
 	CacheGuildStore
 	CacheRoleStore
 	CacheChannelStore
+	CacheEmojiStore
+	CacheStickerStore
 
 	MarkShardEntitiesTainted(ctx context.Context, params MarkShardEntitiesTaintedParams) error
 }

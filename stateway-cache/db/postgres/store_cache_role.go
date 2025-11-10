@@ -3,10 +3,61 @@ package postgres
 import (
 	"context"
 
+	"github.com/disgoorg/snowflake/v2"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/merlinfuchs/stateway/stateway-cache/db/postgres/pgmodel"
+	"github.com/merlinfuchs/stateway/stateway-cache/model"
 	"github.com/merlinfuchs/stateway/stateway-cache/store"
 )
+
+func (c *Client) GetRole(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, roleID snowflake.ID) (*model.Role, error) {
+	row, err := c.Q.GetRole(ctx, pgmodel.GetRoleParams{
+		AppID:   int64(appID),
+		GuildID: int64(guildID),
+		RoleID:  int64(roleID),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return rowToRole(row), nil
+}
+
+func (c *Client) GetRoles(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, limit int, offset int) ([]*model.Role, error) {
+	rows, err := c.Q.GetRoles(ctx, pgmodel.GetRolesParams{
+		AppID:   int64(appID),
+		GuildID: int64(guildID),
+		Limit:   int32(limit),
+		Offset:  int32(offset),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	roles := make([]*model.Role, len(rows))
+	for i, row := range rows {
+		roles[i] = rowToRole(row)
+	}
+	return roles, nil
+}
+
+func (c *Client) SearchRoles(ctx context.Context, params store.SearchRolesParams) ([]*model.Role, error) {
+	rows, err := c.Q.SearchRoles(ctx, pgmodel.SearchRolesParams{
+		AppID:   int64(params.AppID),
+		GuildID: int64(params.GuildID),
+		Data:    params.Data,
+		Limit:   int32(params.Limit),
+		Offset:  int32(params.Offset),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	roles := make([]*model.Role, len(rows))
+	for i, row := range rows {
+		roles[i] = rowToRole(row)
+	}
+	return roles, nil
+}
 
 func (c *Client) UpsertRoles(ctx context.Context, roles ...store.UpsertRoleParams) error {
 	if len(roles) == 0 {
@@ -34,10 +85,21 @@ func (c *Client) UpsertRoles(ctx context.Context, roles ...store.UpsertRoleParam
 	return res.Close()
 }
 
-func (c *Client) DeleteRole(ctx context.Context, params store.RoleIdentifier) error {
+func (c *Client) DeleteRole(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, roleID snowflake.ID) error {
 	return c.Q.DeleteRole(ctx, pgmodel.DeleteRoleParams{
-		AppID:   int64(params.AppID),
-		GuildID: int64(params.GuildID),
-		RoleID:  int64(params.RoleID),
+		AppID:   int64(appID),
+		GuildID: int64(guildID),
+		RoleID:  int64(roleID),
 	})
+}
+
+func rowToRole(row pgmodel.CacheRole) *model.Role {
+	return &model.Role{
+		AppID:     snowflake.ID(row.AppID),
+		GuildID:   snowflake.ID(row.GuildID),
+		RoleID:    snowflake.ID(row.RoleID),
+		Data:      row.Data,
+		CreatedAt: row.CreatedAt.Time,
+		UpdatedAt: row.UpdatedAt.Time,
+	}
 }

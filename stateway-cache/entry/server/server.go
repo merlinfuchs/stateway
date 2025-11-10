@@ -138,6 +138,48 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 		if err != nil {
 			return fmt.Errorf("failed to upsert channels: %w", err)
 		}
+
+		emojis := make([]store.UpsertEmojiParams, len(e.Emojis))
+		for i, emoji := range e.Emojis {
+			data, err := json.Marshal(emoji)
+			if err != nil {
+				return fmt.Errorf("failed to marshal emoji data: %w", err)
+			}
+			emojis[i] = store.UpsertEmojiParams{
+				AppID:     event.AppID,
+				GuildID:   e.ID,
+				EmojiID:   emoji.ID,
+				Data:      data,
+				CreatedAt: time.Now().UTC(),
+				UpdatedAt: time.Now().UTC(),
+			}
+		}
+
+		err = l.cacheStore.UpsertEmojis(ctx, emojis...)
+		if err != nil {
+			return fmt.Errorf("failed to upsert emojis: %w", err)
+		}
+
+		stickers := make([]store.UpsertStickerParams, len(e.Stickers))
+		for i, sticker := range e.Stickers {
+			data, err := json.Marshal(sticker)
+			if err != nil {
+				return fmt.Errorf("failed to marshal sticker data: %w", err)
+			}
+			stickers[i] = store.UpsertStickerParams{
+				AppID:     event.AppID,
+				GuildID:   e.ID,
+				StickerID: sticker.ID,
+				Data:      data,
+				CreatedAt: time.Now().UTC(),
+				UpdatedAt: time.Now().UTC(),
+			}
+		}
+
+		err = l.cacheStore.UpsertStickers(ctx, stickers...)
+		if err != nil {
+			return fmt.Errorf("failed to upsert stickers: %w", err)
+		}
 	case gateway.EventGuildUpdate:
 		data, err := json.Marshal(e.Guild)
 		if err != nil {
@@ -156,18 +198,12 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 		}
 	case gateway.EventGuildDelete:
 		if !e.Unavailable {
-			err = l.cacheStore.MarkGuildUnavailable(ctx, store.GuildIdentifier{
-				AppID:   event.AppID,
-				GuildID: e.ID,
-			})
+			err = l.cacheStore.MarkGuildUnavailable(ctx, event.AppID, e.ID)
 			if err != nil {
 				return fmt.Errorf("failed to mark guild as unavailable: %w", err)
 			}
 		} else {
-			err = l.cacheStore.DeleteGuild(ctx, store.GuildIdentifier{
-				AppID:   event.AppID,
-				GuildID: e.ID,
-			})
+			err = l.cacheStore.DeleteGuild(ctx, event.AppID, e.ID)
 			if err != nil {
 				return fmt.Errorf("failed to delete guild: %w", err)
 			}
@@ -207,11 +243,10 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 			return fmt.Errorf("failed to upsert role: %w", err)
 		}
 	case gateway.EventGuildRoleDelete:
-		err = l.cacheStore.DeleteRole(ctx, store.RoleIdentifier{
-			AppID:   event.AppID,
-			GuildID: e.GuildID,
-			RoleID:  e.RoleID,
-		})
+		err = l.cacheStore.DeleteRole(ctx, event.AppID, e.GuildID, e.RoleID)
+		if err != nil {
+			return fmt.Errorf("failed to delete role: %w", err)
+		}
 		if err != nil {
 			return fmt.Errorf("failed to delete role: %w", err)
 		}
@@ -250,11 +285,7 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 			return fmt.Errorf("failed to upsert channel: %w", err)
 		}
 	case gateway.EventChannelDelete:
-		err = l.cacheStore.DeleteChannel(ctx, store.ChannelIdentifier{
-			AppID:     event.AppID,
-			GuildID:   e.GuildID(),
-			ChannelID: e.ID(),
-		})
+		err = l.cacheStore.DeleteChannel(ctx, event.AppID, e.GuildID(), e.ID())
 		if err != nil {
 			return fmt.Errorf("failed to delete channel: %w", err)
 		}

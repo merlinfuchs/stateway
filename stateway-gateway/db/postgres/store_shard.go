@@ -46,6 +46,7 @@ func (c *Client) InvalidateShardSession(ctx context.Context, appID snowflake.ID,
 	return c.Q.InvalidateShardSession(ctx, pgmodel.InvalidateShardSessionParams{
 		AppID:         int64(appID),
 		ShardID:       int32(shardID),
+		ShardCount:    int32(shardCount),
 		InvalidatedAt: pgtype.Timestamp{Time: time.Now().UTC(), Valid: true},
 	})
 }

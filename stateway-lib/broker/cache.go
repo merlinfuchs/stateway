@@ -14,12 +14,24 @@ import (
 type CacheMethod string
 
 const (
-	CacheMethodGetGuild CacheMethod = "guild.get"
+	CacheMethodGetGuild       CacheMethod = "guild.get"
+	CacheMethodListGuilds     CacheMethod = "guild.list"
+	CacheMethodSearchGuilds   CacheMethod = "guild.search"
+	CacheMethodGetChannel     CacheMethod = "channel.get"
+	CacheMethodListChannels   CacheMethod = "channel.list"
+	CacheMethodSearchChannels CacheMethod = "channel.search"
+	CacheMethodGetRole        CacheMethod = "role.get"
+	CacheMethodListRoles      CacheMethod = "role.list"
+	CacheMethodSearchRoles    CacheMethod = "role.search"
 )
 
 type CacheRequest struct {
-	EntityID *snowflake.ID      `json:"entity_id"`
-	Options  cache.CacheOptions `json:"options"`
+	GuildID   snowflake.ID       `json:"guild_id,omitempty"`
+	ChannelID snowflake.ID       `json:"channel_id,omitempty"`
+	RoleID    snowflake.ID       `json:"role_id,omitempty"`
+	Types     []int              `json:"types,omitempty"`
+	Data      json.RawMessage    `json:"data,omitempty"`
+	Options   cache.CacheOptions `json:"options,omitempty"`
 }
 
 type CacheClient struct {
@@ -41,8 +53,8 @@ func (c *CacheClient) GetGuild(ctx context.Context, id snowflake.ID, opts ...cac
 	}
 
 	return cacheRequest[discord.Guild](ctx, c.b, CacheMethodGetGuild, CacheRequest{
-		EntityID: &id,
-		Options:  options,
+		GuildID: id,
+		Options: options,
 	})
 }
 
@@ -74,7 +86,23 @@ func (s *CacheService) ServiceType() service.ServiceType {
 func (s *CacheService) HandleRequest(ctx context.Context, method string, request CacheRequest) (any, error) {
 	switch CacheMethod(method) {
 	case CacheMethodGetGuild:
-		return s.caches.GetGuild(ctx, *request.EntityID, request.Options.Destructure()...)
+		return s.caches.GetGuild(ctx, request.GuildID, request.Options.Destructure()...)
+	case CacheMethodListGuilds:
+		return s.caches.GetGuilds(ctx, request.Options.Destructure()...)
+	case CacheMethodSearchGuilds:
+		return s.caches.SearchGuilds(ctx, request.Data, request.Options.Destructure()...)
+	case CacheMethodGetChannel:
+		return s.caches.GetChannel(ctx, request.GuildID, request.ChannelID, request.Options.Destructure()...)
+	case CacheMethodListChannels:
+		return s.caches.GetChannels(ctx, request.GuildID, request.Options.Destructure()...)
+	case CacheMethodSearchChannels:
+		return s.caches.SearchChannels(ctx, request.Data, request.Options.Destructure()...)
+	case CacheMethodGetRole:
+		return s.caches.GetRole(ctx, request.GuildID, request.RoleID, request.Options.Destructure()...)
+	case CacheMethodListRoles:
+		return s.caches.GetRoles(ctx, request.GuildID, request.Options.Destructure()...)
+	case CacheMethodSearchRoles:
+		return s.caches.SearchRoles(ctx, request.Data, request.Options.Destructure()...)
 	}
 	return nil, fmt.Errorf("unknown method: %s", method)
 }

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/disgoorg/snowflake/v2"
+	"github.com/merlinfuchs/stateway/stateway-cache/model"
 )
 
 type UpsertChannelParams struct {
@@ -17,13 +18,19 @@ type UpsertChannelParams struct {
 	UpdatedAt time.Time
 }
 
-type ChannelIdentifier struct {
-	AppID     snowflake.ID
-	GuildID   snowflake.ID
-	ChannelID snowflake.ID
+type SearchChannelsParams struct {
+	AppID   snowflake.ID
+	GuildID snowflake.ID
+	Limit   int
+	Offset  int
+	Data    json.RawMessage
 }
 
 type CacheChannelStore interface {
+	GetChannel(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, channelID snowflake.ID) (*model.Channel, error)
+	GetChannels(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, limit int, offset int) ([]*model.Channel, error)
+	GetChannelsByType(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, types []int, limit int, offset int) ([]*model.Channel, error)
+	SearchChannels(ctx context.Context, params SearchChannelsParams) ([]*model.Channel, error)
 	UpsertChannels(ctx context.Context, channels ...UpsertChannelParams) error
-	DeleteChannel(ctx context.Context, params ChannelIdentifier) error
+	DeleteChannel(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, channelID snowflake.ID) error
 }

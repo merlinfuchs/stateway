@@ -4,10 +4,14 @@ import "github.com/disgoorg/snowflake/v2"
 
 type Caches interface {
 	GuildCache
+	ChannelCache
+	RoleCache
 }
 
 type CacheOptions struct {
-	AppID snowflake.ID `json:"app_id"`
+	AppID  snowflake.ID `json:"app_id"`
+	Limit  int          `json:"limit"`
+	Offset int          `json:"offset"`
 }
 
 func ResolveOptions(opts ...CacheOption) CacheOptions {
@@ -31,5 +35,17 @@ type CacheOption func(*CacheOptions)
 func WithAppID(appID snowflake.ID) CacheOption {
 	return func(o *CacheOptions) {
 		o.AppID = appID
+	}
+}
+
+func WithLimit(limit int) CacheOption {
+	return func(o *CacheOptions) {
+		o.Limit = limit
+	}
+}
+
+func WithOffset(offset int) CacheOption {
+	return func(o *CacheOptions) {
+		o.Offset = offset
 	}
 }

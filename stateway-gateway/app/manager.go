@@ -116,6 +116,7 @@ func (m *AppManager) removeDanglingApps(ctx context.Context, apps []*model.App) 
 
 	for id, app := range m.apps {
 		if !appIDs[id] {
+			slog.Info("Removing dangling app", slog.String("app_id", id.String()))
 			app.Close(ctx)
 			delete(m.apps, id)
 		}

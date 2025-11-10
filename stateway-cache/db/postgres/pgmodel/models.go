@@ -18,6 +18,16 @@ type CacheChannel struct {
 	UpdatedAt pgtype.Timestamp
 }
 
+type CacheEmoji struct {
+	AppID     int64
+	GuildID   int64
+	EmojiID   int64
+	Data      []byte
+	Tainted   bool
+	CreatedAt pgtype.Timestamp
+	UpdatedAt pgtype.Timestamp
+}
+
 type CacheGuild struct {
 	AppID       int64
 	GuildID     int64
@@ -32,6 +42,16 @@ type CacheRole struct {
 	AppID     int64
 	GuildID   int64
 	RoleID    int64
+	Data      []byte
+	Tainted   bool
+	CreatedAt pgtype.Timestamp
+	UpdatedAt pgtype.Timestamp
+}
+
+type CacheSticker struct {
+	AppID     int64
+	GuildID   int64
+	StickerID int64
 	Data      []byte
 	Tainted   bool
 	CreatedAt pgtype.Timestamp
