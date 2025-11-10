@@ -12,6 +12,14 @@ type MarkShardEntitiesTaintedParams struct {
 	ShardID    int
 }
 
+type MassUpsertEntitiesParams struct {
+	Guilds   []UpsertGuildParams
+	Roles    []UpsertRoleParams
+	Channels []UpsertChannelParams
+	Emojis   []UpsertEmojiParams
+	Stickers []UpsertStickerParams
+}
+
 type CacheStore interface {
 	CacheGuildStore
 	CacheRoleStore
@@ -20,4 +28,5 @@ type CacheStore interface {
 	CacheStickerStore
 
 	MarkShardEntitiesTainted(ctx context.Context, params MarkShardEntitiesTaintedParams) error
+	MassUpsertEntities(ctx context.Context, params MassUpsertEntitiesParams) error
 }

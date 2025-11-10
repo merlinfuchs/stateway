@@ -80,22 +80,6 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 			return fmt.Errorf("failed to mark shard guilds as tainted: %w", err)
 		}
 	case gateway.EventGuildCreate:
-		data, err := json.Marshal(e.Guild)
-		if err != nil {
-			return fmt.Errorf("failed to marshal guild data: %w", err)
-		}
-
-		err = l.cacheStore.UpsertGuilds(ctx, store.UpsertGuildParams{
-			AppID:     event.AppID,
-			GuildID:   e.Guild.ID,
-			Data:      data,
-			CreatedAt: time.Now().UTC(),
-			UpdatedAt: time.Now().UTC(),
-		})
-		if err != nil {
-			return fmt.Errorf("failed to upsert guild: %w", err)
-		}
-
 		roles := make([]store.UpsertRoleParams, len(e.Roles))
 		for i, role := range e.Roles {
 			data, err := json.Marshal(role)
@@ -113,12 +97,7 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 			}
 		}
 
-		err = l.cacheStore.UpsertRoles(ctx, roles...)
-		if err != nil {
-			return fmt.Errorf("failed to upsert roles: %w", err)
-		}
-
-		channels := make([]store.UpsertChannelParams, len(e.Channels))
+		channels := make([]store.UpsertChannelParams, len(e.Channels)+len(e.Threads))
 		for i, channel := range e.Channels {
 			data, err := json.Marshal(channel)
 			if err != nil {
@@ -133,10 +112,19 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 				UpdatedAt: time.Now().UTC(),
 			}
 		}
-
-		err = l.cacheStore.UpsertChannels(ctx, channels...)
-		if err != nil {
-			return fmt.Errorf("failed to upsert channels: %w", err)
+		for i, thread := range e.Threads {
+			data, err := json.Marshal(thread)
+			if err != nil {
+				return fmt.Errorf("failed to marshal thread data: %w", err)
+			}
+			channels[i+len(e.Channels)] = store.UpsertChannelParams{
+				AppID:     event.AppID,
+				GuildID:   e.ID,
+				ChannelID: thread.ID(),
+				Data:      data,
+				CreatedAt: time.Now().UTC(),
+				UpdatedAt: time.Now().UTC(),
+			}
 		}
 
 		emojis := make([]store.UpsertEmojiParams, len(e.Emojis))
@@ -155,11 +143,6 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 			}
 		}
 
-		err = l.cacheStore.UpsertEmojis(ctx, emojis...)
-		if err != nil {
-			return fmt.Errorf("failed to upsert emojis: %w", err)
-		}
-
 		stickers := make([]store.UpsertStickerParams, len(e.Stickers))
 		for i, sticker := range e.Stickers {
 			data, err := json.Marshal(sticker)
@@ -176,10 +159,31 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 			}
 		}
 
-		err = l.cacheStore.UpsertStickers(ctx, stickers...)
+		guildData, err := json.Marshal(e.Guild)
 		if err != nil {
-			return fmt.Errorf("failed to upsert stickers: %w", err)
+			return fmt.Errorf("failed to marshal guild data: %w", err)
 		}
+
+		err = l.cacheStore.MassUpsertEntities(ctx, store.MassUpsertEntitiesParams{
+			Guilds: []store.UpsertGuildParams{
+				{
+					AppID:     event.AppID,
+					GuildID:   e.Guild.ID,
+					Data:      guildData,
+					CreatedAt: time.Now().UTC(),
+					UpdatedAt: time.Now().UTC(),
+				},
+			},
+			Roles:    roles,
+			Channels: channels,
+			Emojis:   emojis,
+			Stickers: stickers,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to mass upsert entities: %w", err)
+		}
+
+		return nil
 	case gateway.EventGuildUpdate:
 		data, err := json.Marshal(e.Guild)
 		if err != nil {
