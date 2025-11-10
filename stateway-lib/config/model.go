@@ -20,6 +20,7 @@ type RootCacheConfig struct {
 	Logging  LoggingConfig  `toml:"logging"`
 	Database DatabaseConfig `toml:"database"`
 	Broker   BrokerConfig   `toml:"broker"`
+	Cache    CacheConfig    `toml:"cache"`
 }
 
 func (cfg *RootCacheConfig) Validate() error {
@@ -79,4 +80,8 @@ type GatewayAppPresenceActivityConfig struct {
 	State string `toml:"state"`
 	Type  string `toml:"type"`
 	URL   string `toml:"url"`
+}
+
+type CacheConfig struct {
+	GatewayIDs []int `toml:"gateway_ids"`
 }

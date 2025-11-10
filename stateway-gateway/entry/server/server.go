@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/merlinfuchs/stateway/stateway-gateway/app"
 	"github.com/merlinfuchs/stateway/stateway-gateway/db/postgres"
@@ -11,6 +12,12 @@ import (
 )
 
 func Run(ctx context.Context, pg *postgres.Client, cfg *config.RootGatewayConfig) error {
+	slog.Info(
+		"Starting gateway server and publishing events to NATS broker",
+		slog.Int("gateway_count", cfg.Gateway.GatewayCount),
+		slog.Int("gateway_id", cfg.Gateway.GatewayID),
+	)
+
 	broker, err := broker.NewNATSBroker(cfg.Broker.NATS.URL)
 	if err != nil {
 		return fmt.Errorf("failed to create NATS broker: %w", err)

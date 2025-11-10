@@ -22,6 +22,12 @@ var CLI = cli.App{
 		{
 			Name:  "server",
 			Usage: "Start the Stateway Cache Server.",
+			Flags: []cli.Flag{
+				&cli.IntSliceFlag{
+					Name:  "gateway-ids",
+					Usage: "The gateway IDs to process events from. Leave empty to process events from all gateways.",
+				},
+			},
 			Action: func(c *cli.Context) error {
 				ctx, cancel := signal.NotifyContext(c.Context, syscall.SIGINT, syscall.SIGTERM)
 				defer cancel()
@@ -29,6 +35,10 @@ var CLI = cli.App{
 				env, err := setupEnv(ctx)
 				if err != nil {
 					return fmt.Errorf("failed to setup environment: %w", err)
+				}
+
+				if c.IsSet("gateway-ids") {
+					env.cfg.Cache.GatewayIDs = c.IntSlice("gateway-ids")
 				}
 
 				err = server.Run(ctx, env.pg, env.cfg)

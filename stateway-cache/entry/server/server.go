@@ -17,6 +17,11 @@ import (
 )
 
 func Run(ctx context.Context, pg *postgres.Client, cfg *config.RootCacheConfig) error {
+	slog.Info(
+		"Starting cache server and listening to gateway events",
+		slog.Any("gateway_ids", cfg.Cache.GatewayIDs),
+	)
+
 	// Discord some times sends unquoted snowflake IDs, so we need to allow them
 	snowflake.AllowUnquoted = true
 
@@ -25,11 +30,25 @@ func Run(ctx context.Context, pg *postgres.Client, cfg *config.RootCacheConfig) 
 		return fmt.Errorf("failed to create NATS broker: %w", err)
 	}
 
-	err = broker.Listen(ctx, br, &CacheListener{
-		cacheStore: pg,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to listen to gateway events: %w", err)
+	if len(cfg.Cache.GatewayIDs) == 0 {
+		slog.Info("Listening to events from all gateways")
+		err = broker.Listen(ctx, br, &CacheListener{
+			cacheStore: pg,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to listen to gateway events: %w", err)
+		}
+	} else {
+		for _, gatewayID := range cfg.Cache.GatewayIDs {
+			slog.Info("Listening to events from gateway", slog.Int("gateway_id", gatewayID))
+			err = broker.Listen(ctx, br, &CacheListener{
+				cacheStore: pg,
+				gatewayIDs: []int{gatewayID},
+			})
+			if err != nil {
+				return fmt.Errorf("failed to listen to gateway events: %w", err)
+			}
+		}
 	}
 
 	cacheService := broker.NewCacheService(NewCaches(pg))
@@ -44,6 +63,7 @@ func Run(ctx context.Context, pg *postgres.Client, cfg *config.RootCacheConfig) 
 
 type CacheListener struct {
 	cacheStore store.CacheStore
+	gatewayIDs []int
 }
 
 func (l *CacheListener) BalanceKey() string {
@@ -52,6 +72,7 @@ func (l *CacheListener) BalanceKey() string {
 
 func (l *CacheListener) EventFilter() broker.EventFilter {
 	return broker.EventFilter{
+		GatewayIDs: l.gatewayIDs,
 		EventTypes: []string{
 			"ready",
 			"guild.>",
@@ -292,6 +313,87 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 		err = l.cacheStore.DeleteChannel(ctx, event.AppID, e.GuildID(), e.ID())
 		if err != nil {
 			return fmt.Errorf("failed to delete channel: %w", err)
+		}
+	case gateway.EventThreadCreate:
+		data, err := json.Marshal(e.GuildThread)
+		if err != nil {
+			return fmt.Errorf("failed to marshal thread data: %w", err)
+		}
+
+		err = l.cacheStore.UpsertChannels(ctx, store.UpsertChannelParams{
+			AppID:     event.AppID,
+			GuildID:   e.GuildID(),
+			ChannelID: e.ID(),
+			Data:      data,
+			CreatedAt: time.Now().UTC(),
+			UpdatedAt: time.Now().UTC(),
+		})
+		if err != nil {
+			return fmt.Errorf("failed to upsert thread: %w", err)
+		}
+	case gateway.EventThreadUpdate:
+		data, err := json.Marshal(e.GuildThread)
+		if err != nil {
+			return fmt.Errorf("failed to marshal thread data: %w", err)
+		}
+
+		err = l.cacheStore.UpsertChannels(ctx, store.UpsertChannelParams{
+			AppID:     event.AppID,
+			GuildID:   e.GuildID(),
+			ChannelID: e.ID(),
+			Data:      data,
+			CreatedAt: time.Now().UTC(),
+			UpdatedAt: time.Now().UTC(),
+		})
+		if err != nil {
+			return fmt.Errorf("failed to upsert thread: %w", err)
+		}
+	case gateway.EventThreadDelete:
+		err = l.cacheStore.DeleteChannel(ctx, event.AppID, e.GuildID, e.ID)
+		if err != nil {
+			return fmt.Errorf("failed to delete thread: %w", err)
+		}
+	case gateway.EventGuildEmojisUpdate:
+		emojis := make([]store.UpsertEmojiParams, len(e.Emojis))
+		for i, emoji := range e.Emojis {
+			data, err := json.Marshal(emoji)
+			if err != nil {
+				return fmt.Errorf("failed to marshal emoji data: %w", err)
+			}
+			emojis[i] = store.UpsertEmojiParams{
+				AppID:     event.AppID,
+				GuildID:   e.GuildID,
+				EmojiID:   emoji.ID,
+				Data:      data,
+				CreatedAt: time.Now().UTC(),
+				UpdatedAt: time.Now().UTC(),
+			}
+		}
+
+		err = l.cacheStore.UpsertEmojis(ctx, emojis...)
+		if err != nil {
+			return fmt.Errorf("failed to upsert emojis: %w", err)
+		}
+	case gateway.EventGuildStickersUpdate:
+		stickers := make([]store.UpsertStickerParams, len(e.Stickers))
+		for i, sticker := range e.Stickers {
+			data, err := json.Marshal(sticker)
+			if err != nil {
+				return fmt.Errorf("failed to marshal sticker data: %w", err)
+			}
+			stickers[i] = store.UpsertStickerParams{
+				AppID:     event.AppID,
+				GuildID:   e.GuildID,
+				StickerID: sticker.ID,
+				Data:      data,
+				CreatedAt: time.Now().UTC(),
+				UpdatedAt: time.Now().UTC(),
+			}
+		}
+
+		err = l.cacheStore.UpsertStickers(ctx, stickers...)
+		if err != nil {
+			return fmt.Errorf("failed to upsert stickers: %w", err)
 		}
 	}
 

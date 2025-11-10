@@ -90,4 +90,7 @@ presence = {
         url = "https://github.com/merlinfuchs/stateway"
     }
 }
+
+[cache]
+gateway_ids = [0, 1, 2] # The gateway IDs to process events from. Leave empty to process events from all gateways.
 ```
