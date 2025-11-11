@@ -3,10 +3,12 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 
 	"github.com/disgoorg/snowflake/v2"
 	"github.com/merlinfuchs/stateway/stateway-cache/store"
 	"github.com/merlinfuchs/stateway/stateway-lib/cache"
+	"github.com/merlinfuchs/stateway/stateway-lib/service"
 )
 
 type Cache struct {
@@ -24,6 +26,9 @@ func (c *Cache) GetGuild(ctx context.Context, id snowflake.ID, opts ...cache.Cac
 
 	guild, err := c.cacheStore.GetGuild(ctx, options.AppID, id)
 	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, service.ErrNotFound("guild not found")
+		}
 		return nil, err
 	}
 
@@ -35,6 +40,9 @@ func (c *Cache) GetGuilds(ctx context.Context, opts ...cache.CacheOption) ([]*ca
 
 	guilds, err := c.cacheStore.GetGuilds(ctx, options.AppID, options.Limit, options.Offset)
 	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, service.ErrNotFound("guilds not found")
+		}
 		return nil, err
 	}
 
@@ -51,6 +59,9 @@ func (c *Cache) SearchGuilds(ctx context.Context, data json.RawMessage, opts ...
 		Data:   data,
 	})
 	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, service.ErrNotFound("guilds not found")
+		}
 		return nil, err
 	}
 
@@ -62,6 +73,9 @@ func (c *Cache) GetChannel(ctx context.Context, guildID snowflake.ID, channelID 
 
 	channel, err := c.cacheStore.GetChannel(ctx, options.AppID, guildID, channelID)
 	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, service.ErrNotFound("channel not found")
+		}
 		return nil, err
 	}
 
@@ -73,6 +87,9 @@ func (c *Cache) GetChannels(ctx context.Context, guildID snowflake.ID, opts ...c
 
 	channels, err := c.cacheStore.GetChannels(ctx, options.AppID, guildID, options.Limit, options.Offset)
 	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, service.ErrNotFound("channels not found")
+		}
 		return nil, err
 	}
 
@@ -84,6 +101,9 @@ func (c *Cache) GetChannelsByType(ctx context.Context, guildID snowflake.ID, typ
 
 	channels, err := c.cacheStore.GetChannelsByType(ctx, options.AppID, guildID, types, options.Limit, options.Offset)
 	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, service.ErrNotFound("channels not found")
+		}
 		return nil, err
 	}
 
@@ -100,6 +120,9 @@ func (c *Cache) SearchChannels(ctx context.Context, data json.RawMessage, opts .
 		Data:   data,
 	})
 	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, service.ErrNotFound("role not found")
+		}
 		return nil, err
 	}
 
@@ -111,6 +134,9 @@ func (c *Cache) GetRole(ctx context.Context, guildID snowflake.ID, roleID snowfl
 
 	role, err := c.cacheStore.GetRole(ctx, options.AppID, guildID, roleID)
 	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, service.ErrNotFound("role not found")
+		}
 		return nil, err
 	}
 
@@ -122,6 +148,9 @@ func (c *Cache) GetRoles(ctx context.Context, guildID snowflake.ID, opts ...cach
 
 	roles, err := c.cacheStore.GetRoles(ctx, options.AppID, guildID, options.Limit, options.Offset)
 	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, service.ErrNotFound("roles not found")
+		}
 		return nil, err
 	}
 
@@ -138,6 +167,9 @@ func (c *Cache) SearchRoles(ctx context.Context, data json.RawMessage, opts ...c
 		Data:   data,
 	})
 	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, service.ErrNotFound("roles not found")
+		}
 		return nil, err
 	}
 

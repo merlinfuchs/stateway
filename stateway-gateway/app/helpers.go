@@ -130,7 +130,7 @@ func (a *App) disableIfFatal(ctx context.Context, err error) {
 }
 
 func (a *App) disable(ctx context.Context, code gateway.AppDisabledCode, message string) {
-	_, err := a.appStore.DisableApp(ctx, store.DisableAppParams{
+	err := a.appStore.DisableApp(ctx, store.DisableAppParams{
 		ID:              a.model.ID,
 		DisabledCode:    code,
 		DisabledMessage: null.NewString(message, message != ""),

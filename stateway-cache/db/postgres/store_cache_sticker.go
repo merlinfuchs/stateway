@@ -3,10 +3,12 @@ package postgres
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/snowflake/v2"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/merlinfuchs/stateway/stateway-cache/db/postgres/pgmodel"
 	"github.com/merlinfuchs/stateway/stateway-cache/model"
@@ -20,6 +22,9 @@ func (c *Client) GetSticker(ctx context.Context, appID snowflake.ID, guildID sno
 		StickerID: int64(stickerID),
 	})
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, store.ErrNotFound
+		}
 		return nil, err
 	}
 	return rowToSticker(row)
@@ -33,6 +38,9 @@ func (c *Client) GetStickers(ctx context.Context, appID snowflake.ID, guildID sn
 		Offset:  int32(offset),
 	})
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, store.ErrNotFound
+		}
 		return nil, err
 	}
 
@@ -56,6 +64,9 @@ func (c *Client) SearchStickers(ctx context.Context, params store.SearchStickers
 		Offset:  int32(params.Offset),
 	})
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, store.ErrNotFound
+		}
 		return nil, err
 	}
 

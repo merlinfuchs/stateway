@@ -26,8 +26,21 @@ func (c *Client) GetApp(ctx context.Context, id snowflake.ID) (*model.App, error
 	return rowToApp(row)
 }
 
-func (c *Client) GetApps(ctx context.Context) ([]*model.App, error) {
-	rows, err := c.Q.GetApps(ctx)
+func (c *Client) GetApps(ctx context.Context, params store.GetAppsParams) ([]*model.App, error) {
+	rows, err := c.Q.GetApps(ctx, pgmodel.GetAppsParams{
+		GroupID: pgtype.Text{
+			String: params.GroupID.String,
+			Valid:  params.GroupID.Valid,
+		},
+		Limit: pgtype.Int4{
+			Int32: int32(params.Limit.Int64),
+			Valid: params.Limit.Valid,
+		},
+		Offset: pgtype.Int4{
+			Int32: int32(params.Offset.Int64),
+			Valid: params.Offset.Valid,
+		},
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -149,17 +162,17 @@ func (c *Client) UpdateApp(ctx context.Context, params store.UpdateAppParams) (*
 	return rowToApp(row)
 }
 
-func (c *Client) UpsertApp(ctx context.Context, params store.UpsertAppParams) error {
+func (c *Client) UpsertApp(ctx context.Context, params store.UpsertAppParams) (*model.App, error) {
 	rawConstraints, err := json.Marshal(params.Constraints)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	rawConfig, err := json.Marshal(params.Config)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	err = c.Q.UpsertApp(ctx, pgmodel.UpsertAppParams{
+	row, err := c.Q.UpsertApp(ctx, pgmodel.UpsertAppParams{
 		ID:               int64(params.ID),
 		GroupID:          params.GroupID,
 		DisplayName:      params.DisplayName,
@@ -183,13 +196,13 @@ func (c *Client) UpsertApp(ctx context.Context, params store.UpsertAppParams) er
 		},
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	return rowToApp(row)
 }
 
-func (c *Client) DisableApp(ctx context.Context, params store.DisableAppParams) (*model.App, error) {
-	row, err := c.Q.DisableApp(ctx, pgmodel.DisableAppParams{
+func (c *Client) DisableApp(ctx context.Context, params store.DisableAppParams) error {
+	err := c.Q.DisableApp(ctx, pgmodel.DisableAppParams{
 		ID: int64(params.ID),
 		DisabledCode: pgtype.Text{
 			String: string(params.DisabledCode),
@@ -205,9 +218,9 @@ func (c *Client) DisableApp(ctx context.Context, params store.DisableAppParams) 
 		},
 	})
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return rowToApp(row)
+	return nil
 }
 
 func (c *Client) DeleteApp(ctx context.Context, id snowflake.ID) error {

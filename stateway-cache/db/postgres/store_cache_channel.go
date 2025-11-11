@@ -3,10 +3,12 @@ package postgres
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/snowflake/v2"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/merlinfuchs/stateway/stateway-cache/db/postgres/pgmodel"
 	"github.com/merlinfuchs/stateway/stateway-cache/model"
@@ -20,6 +22,9 @@ func (c *Client) GetChannel(ctx context.Context, appID snowflake.ID, guildID sno
 		ChannelID: int64(channelID),
 	})
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, store.ErrNotFound
+		}
 		return nil, err
 	}
 	return rowToChannel(row)
@@ -33,6 +38,9 @@ func (c *Client) GetChannels(ctx context.Context, appID snowflake.ID, guildID sn
 		Offset:  int32(offset),
 	})
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, store.ErrNotFound
+		}
 		return nil, err
 	}
 
@@ -61,6 +69,9 @@ func (c *Client) GetChannelsByType(ctx context.Context, appID snowflake.ID, guil
 		Offset:  int32(offset),
 	})
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, store.ErrNotFound
+		}
 		return nil, err
 	}
 
@@ -84,6 +95,9 @@ func (c *Client) SearchChannels(ctx context.Context, params store.SearchChannels
 		Offset:  int32(params.Offset),
 	})
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, store.ErrNotFound
+		}
 		return nil, err
 	}
 

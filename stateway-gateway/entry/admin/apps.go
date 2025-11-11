@@ -26,7 +26,7 @@ func ListApps(ctx context.Context, appStore store.AppStore, enabledOnly bool) er
 	if enabledOnly {
 		apps, err = appStore.GetEnabledApps(ctx, store.GetEnabledAppsParams{})
 	} else {
-		apps, err = appStore.GetApps(ctx)
+		apps, err = appStore.GetApps(ctx, store.GetAppsParams{})
 	}
 	if err != nil {
 		return fmt.Errorf("failed to get apps: %w", err)
@@ -116,17 +116,13 @@ func DeleteApp(ctx context.Context, appStore store.AppStore, id snowflake.ID) er
 }
 
 func DisableApp(ctx context.Context, appStore store.AppStore, id snowflake.ID, code gateway.AppDisabledCode, message string) error {
-	app, err := appStore.DisableApp(ctx, store.DisableAppParams{
+	err := appStore.DisableApp(ctx, store.DisableAppParams{
 		ID:              id,
 		DisabledCode:    code,
 		DisabledMessage: null.NewString(message, message != ""),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to disable app: %w", err)
-	}
-	err = renderAppsTable([]*model.App{app})
-	if err != nil {
-		return fmt.Errorf("failed to render app table: %w", err)
 	}
 	return nil
 }
@@ -161,7 +157,7 @@ func InitializeApps(ctx context.Context, pg *postgres.Client, cfg *config.RootGa
 		}
 
 		// TODO: Only update when it actually changed?
-		err = pg.UpsertApp(ctx, store.UpsertAppParams{
+		_, err = pg.UpsertApp(ctx, store.UpsertAppParams{
 			ID:               discordApp.ID,
 			GroupID:          appCfg.GroupID,
 			DisplayName:      discordApp.Name,

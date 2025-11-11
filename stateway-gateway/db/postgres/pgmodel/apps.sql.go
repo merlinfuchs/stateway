@@ -103,14 +103,13 @@ func (q *Queries) DeleteApp(ctx context.Context, id int64) error {
 	return err
 }
 
-const disableApp = `-- name: DisableApp :one
+const disableApp = `-- name: DisableApp :exec
 UPDATE gateway.apps SET 
     disabled = TRUE,
     disabled_code = $2,
     disabled_message = $3,
     updated_at = $4
 WHERE id = $1
-RETURNING id, group_id, display_name, discord_client_id, discord_bot_token, discord_public_key, discord_client_secret, shard_count, constraints, config, disabled, disabled_code, disabled_message, created_at, updated_at
 `
 
 type DisableAppParams struct {
@@ -120,32 +119,14 @@ type DisableAppParams struct {
 	UpdatedAt       pgtype.Timestamp
 }
 
-func (q *Queries) DisableApp(ctx context.Context, arg DisableAppParams) (GatewayApp, error) {
-	row := q.db.QueryRow(ctx, disableApp,
+func (q *Queries) DisableApp(ctx context.Context, arg DisableAppParams) error {
+	_, err := q.db.Exec(ctx, disableApp,
 		arg.ID,
 		arg.DisabledCode,
 		arg.DisabledMessage,
 		arg.UpdatedAt,
 	)
-	var i GatewayApp
-	err := row.Scan(
-		&i.ID,
-		&i.GroupID,
-		&i.DisplayName,
-		&i.DiscordClientID,
-		&i.DiscordBotToken,
-		&i.DiscordPublicKey,
-		&i.DiscordClientSecret,
-		&i.ShardCount,
-		&i.Constraints,
-		&i.Config,
-		&i.Disabled,
-		&i.DisabledCode,
-		&i.DisabledMessage,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
+	return err
 }
 
 const getApp = `-- name: GetApp :one
@@ -176,11 +157,17 @@ func (q *Queries) GetApp(ctx context.Context, id int64) (GatewayApp, error) {
 }
 
 const getApps = `-- name: GetApps :many
-SELECT id, group_id, display_name, discord_client_id, discord_bot_token, discord_public_key, discord_client_secret, shard_count, constraints, config, disabled, disabled_code, disabled_message, created_at, updated_at FROM gateway.apps
+SELECT id, group_id, display_name, discord_client_id, discord_bot_token, discord_public_key, discord_client_secret, shard_count, constraints, config, disabled, disabled_code, disabled_message, created_at, updated_at FROM gateway.apps WHERE (group_id = $1 OR $1 IS NULL) LIMIT $3 OFFSET $2
 `
 
-func (q *Queries) GetApps(ctx context.Context) ([]GatewayApp, error) {
-	rows, err := q.db.Query(ctx, getApps)
+type GetAppsParams struct {
+	GroupID pgtype.Text
+	Offset  pgtype.Int4
+	Limit   pgtype.Int4
+}
+
+func (q *Queries) GetApps(ctx context.Context, arg GetAppsParams) ([]GatewayApp, error) {
+	rows, err := q.db.Query(ctx, getApps, arg.GroupID, arg.Offset, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
@@ -334,7 +321,7 @@ func (q *Queries) UpdateApp(ctx context.Context, arg UpdateAppParams) (GatewayAp
 	return i, err
 }
 
-const upsertApp = `-- name: UpsertApp :exec
+const upsertApp = `-- name: UpsertApp :one
 INSERT INTO gateway.apps (
     id,
     group_id,
@@ -363,6 +350,7 @@ ON CONFLICT (id) DO UPDATE SET
     config = EXCLUDED.config,
     updated_at = EXCLUDED.updated_at,
     disabled = FALSE
+RETURNING id, group_id, display_name, discord_client_id, discord_bot_token, discord_public_key, discord_client_secret, shard_count, constraints, config, disabled, disabled_code, disabled_message, created_at, updated_at
 `
 
 type UpsertAppParams struct {
@@ -380,8 +368,8 @@ type UpsertAppParams struct {
 	UpdatedAt           pgtype.Timestamp
 }
 
-func (q *Queries) UpsertApp(ctx context.Context, arg UpsertAppParams) error {
-	_, err := q.db.Exec(ctx, upsertApp,
+func (q *Queries) UpsertApp(ctx context.Context, arg UpsertAppParams) (GatewayApp, error) {
+	row := q.db.QueryRow(ctx, upsertApp,
 		arg.ID,
 		arg.GroupID,
 		arg.DisplayName,
@@ -395,5 +383,23 @@ func (q *Queries) UpsertApp(ctx context.Context, arg UpsertAppParams) error {
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
-	return err
+	var i GatewayApp
+	err := row.Scan(
+		&i.ID,
+		&i.GroupID,
+		&i.DisplayName,
+		&i.DiscordClientID,
+		&i.DiscordBotToken,
+		&i.DiscordPublicKey,
+		&i.DiscordClientSecret,
+		&i.ShardCount,
+		&i.Constraints,
+		&i.Config,
+		&i.Disabled,
+		&i.DisabledCode,
+		&i.DisabledMessage,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }

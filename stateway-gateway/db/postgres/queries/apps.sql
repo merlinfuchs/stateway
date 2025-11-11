@@ -47,7 +47,7 @@ UPDATE gateway.apps SET
 WHERE id = $1
 RETURNING *;
 
--- name: UpsertApp :exec
+-- name: UpsertApp :one
 INSERT INTO gateway.apps (
     id,
     group_id,
@@ -75,16 +75,16 @@ ON CONFLICT (id) DO UPDATE SET
     constraints = EXCLUDED.constraints,
     config = EXCLUDED.config,
     updated_at = EXCLUDED.updated_at,
-    disabled = FALSE;
+    disabled = FALSE
+RETURNING *;
 
--- name: DisableApp :one
+-- name: DisableApp :exec
 UPDATE gateway.apps SET 
     disabled = TRUE,
     disabled_code = $2,
     disabled_message = $3,
     updated_at = $4
-WHERE id = $1
-RETURNING *;
+WHERE id = $1;
 
 -- name: DeleteApp :exec
 DELETE FROM gateway.apps WHERE id = $1;
@@ -93,7 +93,7 @@ DELETE FROM gateway.apps WHERE id = $1;
 SELECT * FROM gateway.apps WHERE id = $1 LIMIT 1;
 
 -- name: GetApps :many
-SELECT * FROM gateway.apps;
+SELECT * FROM gateway.apps WHERE (group_id = sqlc.narg('group_id') OR sqlc.narg('group_id') IS NULL) LIMIT sqlc.narg('limit') OFFSET sqlc.narg('offset');
 
 -- name: GetEnabledApps :many
 SELECT * FROM gateway.apps WHERE disabled = FALSE AND (shard_count > 1 OR id % @gateway_count = @gateway_id);

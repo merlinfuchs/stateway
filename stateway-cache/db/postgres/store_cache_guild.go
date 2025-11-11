@@ -36,6 +36,9 @@ func (c *Client) GetGuilds(ctx context.Context, appID snowflake.ID, limit int, o
 		Offset: int32(offset),
 	})
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, store.ErrNotFound
+		}
 		return nil, err
 	}
 
@@ -58,6 +61,9 @@ func (c *Client) SearchGuilds(ctx context.Context, params store.SearchGuildsPara
 		Offset: int32(params.Offset),
 	})
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, store.ErrNotFound
+		}
 		return nil, err
 	}
 

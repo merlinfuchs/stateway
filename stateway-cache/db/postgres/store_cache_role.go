@@ -3,10 +3,12 @@ package postgres
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/snowflake/v2"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/merlinfuchs/stateway/stateway-cache/db/postgres/pgmodel"
 	"github.com/merlinfuchs/stateway/stateway-cache/model"
@@ -20,6 +22,9 @@ func (c *Client) GetRole(ctx context.Context, appID snowflake.ID, guildID snowfl
 		RoleID:  int64(roleID),
 	})
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, store.ErrNotFound
+		}
 		return nil, err
 	}
 	return rowToRole(row)
@@ -33,6 +38,9 @@ func (c *Client) GetRoles(ctx context.Context, appID snowflake.ID, guildID snowf
 		Offset:  int32(offset),
 	})
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, store.ErrNotFound
+		}
 		return nil, err
 	}
 
@@ -56,6 +64,9 @@ func (c *Client) SearchRoles(ctx context.Context, params store.SearchRolesParams
 		Offset:  int32(params.Offset),
 	})
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, store.ErrNotFound
+		}
 		return nil, err
 	}
 

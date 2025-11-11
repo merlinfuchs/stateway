@@ -7,7 +7,6 @@ import (
 	"github.com/disgoorg/snowflake/v2"
 	"github.com/merlinfuchs/stateway/stateway-lib/broker"
 	"github.com/merlinfuchs/stateway/stateway-lib/service"
-	"gopkg.in/guregu/null.v4"
 )
 
 type GatewayClient struct {
@@ -19,11 +18,11 @@ func NewGatewayClient(b broker.Broker) *GatewayClient {
 }
 
 func (c *GatewayClient) GetApp(ctx context.Context, appID snowflake.ID) (*App, error) {
-	return gatewayRequest[*App](ctx, c.b, GatewayMethodAppGet, GetAppRequest{AppID: appID})
+	return gatewayRequest[*App](ctx, c.b, GatewayMethodAppGet, GetAppRequest{ID: appID})
 }
 
-func (c *GatewayClient) ListApps(ctx context.Context, groupID null.String, limit int, offset int) ([]*App, error) {
-	return gatewayRequest[[]*App](ctx, c.b, GatewayMethodAppList, ListAppsRequest{GroupID: groupID, Limit: limit, Offset: offset})
+func (c *GatewayClient) ListApps(ctx context.Context, params ListAppsRequest) ([]*App, error) {
+	return gatewayRequest[[]*App](ctx, c.b, GatewayMethodAppList, params)
 }
 
 func (c *GatewayClient) UpsertApp(ctx context.Context, app UpsertAppRequest) error {

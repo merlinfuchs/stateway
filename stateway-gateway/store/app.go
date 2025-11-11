@@ -56,13 +56,19 @@ type GetEnabledAppsParams struct {
 	GatewayID    int
 }
 
+type GetAppsParams struct {
+	GroupID null.String
+	Limit   null.Int
+	Offset  null.Int
+}
+
 type AppStore interface {
 	GetApp(ctx context.Context, id snowflake.ID) (*model.App, error)
-	GetApps(ctx context.Context) ([]*model.App, error)
+	GetApps(ctx context.Context, params GetAppsParams) ([]*model.App, error)
 	GetEnabledApps(ctx context.Context, params GetEnabledAppsParams) ([]*model.App, error)
 	CreateApp(ctx context.Context, params CreateAppParams) (*model.App, error)
 	UpdateApp(ctx context.Context, params UpdateAppParams) (*model.App, error)
-	UpsertApp(ctx context.Context, params UpsertAppParams) error
-	DisableApp(ctx context.Context, params DisableAppParams) (*model.App, error)
+	UpsertApp(ctx context.Context, params UpsertAppParams) (*model.App, error)
+	DisableApp(ctx context.Context, params DisableAppParams) error
 	DeleteApp(ctx context.Context, id snowflake.ID) error
 }

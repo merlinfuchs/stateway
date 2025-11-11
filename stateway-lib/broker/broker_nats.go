@@ -205,8 +205,14 @@ func (b *NATSBroker) Listen(ctx context.Context, listener GenericListener) error
 	return nil
 }
 
-func (b *NATSBroker) Request(ctx context.Context, service service.ServiceType, method string, request any, opts ...RequestOption) (Response, error) {
-	subject := fmt.Sprintf("service.%s.%s", service, method)
+func (b *NATSBroker) Request(
+	ctx context.Context,
+	serviceType service.ServiceType,
+	method string,
+	request any,
+	opts ...RequestOption,
+) (service.Response, error) {
+	subject := fmt.Sprintf("service.%s.%s", serviceType, method)
 
 	options := &RequestOptions{
 		Timeout: 5 * time.Second,
@@ -217,28 +223,28 @@ func (b *NATSBroker) Request(ctx context.Context, service service.ServiceType, m
 
 	rawRequest, err := json.Marshal(request)
 	if err != nil {
-		return Response{
+		return service.Response{
 			Success: false,
-			Error:   &Error{Message: err.Error(), Code: "request_failed"},
+			Error:   &service.Error{Message: err.Error(), Code: "request_failed"},
 			Data:    nil,
 		}, err
 	}
 
 	response, err := b.nc.Request(subject, rawRequest, options.Timeout)
 	if err != nil {
-		return Response{
+		return service.Response{
 			Success: false,
-			Error:   &Error{Message: err.Error(), Code: "request_failed"},
+			Error:   &service.Error{Message: err.Error(), Code: "request_failed"},
 			Data:    nil,
 		}, err
 	}
 
-	var resp Response
+	var resp service.Response
 	err = json.Unmarshal(response.Data, &resp)
 	if err != nil {
-		return Response{
+		return service.Response{
 			Success: false,
-			Error:   &Error{Message: err.Error(), Code: "response_failed"},
+			Error:   &service.Error{Message: err.Error(), Code: "response_failed"},
 			Data:    nil,
 		}, err
 	}
@@ -246,14 +252,14 @@ func (b *NATSBroker) Request(ctx context.Context, service service.ServiceType, m
 	return resp, nil
 }
 
-func (b *NATSBroker) Provide(ctx context.Context, service GenericBrokerService) error {
-	subject := fmt.Sprintf("service.%s.>", service.ServiceType())
+func (b *NATSBroker) Provide(ctx context.Context, svc GenericBrokerService) error {
+	subject := fmt.Sprintf("service.%s.>", svc.ServiceType())
 
 	sub, err := b.nc.Subscribe(subject, func(msg *nats.Msg) {
 		method := strings.SplitN(msg.Subject, ".", 3)[2]
-		data, err := service.HandleRequest(ctx, method, msg.Data)
+		data, err := svc.HandleRequest(ctx, method, msg.Data)
 
-		var resp Response
+		var resp service.Response
 		if err == nil {
 			rawData, err := json.Marshal(data)
 			if err != nil {
@@ -264,16 +270,36 @@ func (b *NATSBroker) Provide(ctx context.Context, service GenericBrokerService) 
 				)
 				return
 			}
-			resp = Response{
+			resp = service.Response{
 				Success: true,
 				Error:   nil,
 				Data:    rawData,
 			}
 		} else {
-			resp = Response{
-				Success: false,
-				Error:   &Error{Message: err.Error(), Code: "request_failed"},
-				Data:    nil,
+			var sErr *service.Error
+			if errors.As(err, &sErr) {
+				resp = service.Response{
+					Success: false,
+					Error:   sErr,
+					Data:    nil,
+				}
+			} else {
+				slog.Error(
+					"Internal error in service",
+					slog.String("service_type", string(svc.ServiceType())),
+					slog.String("subject", msg.Subject),
+					slog.String("method", method),
+					slog.String("data", string(msg.Data)),
+					slog.String("error", err.Error()),
+				)
+				resp = service.Response{
+					Success: false,
+					Error: &service.Error{
+						Code:    service.GetErrorCode(err),
+						Message: err.Error(),
+					},
+					Data: nil,
+				}
 			}
 		}
 

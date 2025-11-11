@@ -19,7 +19,8 @@ INSERT INTO gateway.groups (
     default_constraints, 
     created_at, 
     updated_at
-) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, display_name, default_config, default_constraints, created_at, updated_at
+) VALUES ($1, $2, $3, $4, $5, $6) 
+RETURNING id, display_name, default_config, default_constraints, created_at, updated_at
 `
 
 type CreateGroupParams struct {
@@ -111,7 +112,13 @@ func (q *Queries) GetGroups(ctx context.Context) ([]GatewayGroup, error) {
 }
 
 const updateGroup = `-- name: UpdateGroup :one
-UPDATE gateway.groups SET display_name = $2, default_config = $3, default_constraints = $4, updated_at = $5 WHERE id = $1 RETURNING id, display_name, default_config, default_constraints, created_at, updated_at
+UPDATE gateway.groups SET 
+    display_name = $2, 
+    default_config = $3, 
+    default_constraints = $4, 
+    updated_at = $5 
+WHERE id = $1
+RETURNING id, display_name, default_config, default_constraints, created_at, updated_at
 `
 
 type UpdateGroupParams struct {
@@ -128,6 +135,52 @@ func (q *Queries) UpdateGroup(ctx context.Context, arg UpdateGroupParams) (Gatew
 		arg.DisplayName,
 		arg.DefaultConfig,
 		arg.DefaultConstraints,
+		arg.UpdatedAt,
+	)
+	var i GatewayGroup
+	err := row.Scan(
+		&i.ID,
+		&i.DisplayName,
+		&i.DefaultConfig,
+		&i.DefaultConstraints,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const upsertGroup = `-- name: UpsertGroup :one
+INSERT INTO gateway.groups (
+    id, 
+    display_name, 
+    default_config, 
+    default_constraints, 
+    created_at, 
+    updated_at
+) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (id) DO UPDATE SET 
+    display_name = EXCLUDED.display_name, 
+    default_config = EXCLUDED.default_config, 
+    default_constraints = EXCLUDED.default_constraints, 
+    updated_at = EXCLUDED.updated_at
+RETURNING id, display_name, default_config, default_constraints, created_at, updated_at
+`
+
+type UpsertGroupParams struct {
+	ID                 string
+	DisplayName        string
+	DefaultConfig      []byte
+	DefaultConstraints []byte
+	CreatedAt          pgtype.Timestamp
+	UpdatedAt          pgtype.Timestamp
+}
+
+func (q *Queries) UpsertGroup(ctx context.Context, arg UpsertGroupParams) (GatewayGroup, error) {
+	row := q.db.QueryRow(ctx, upsertGroup,
+		arg.ID,
+		arg.DisplayName,
+		arg.DefaultConfig,
+		arg.DefaultConstraints,
+		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
 	var i GatewayGroup

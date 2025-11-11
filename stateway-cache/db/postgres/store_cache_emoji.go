@@ -3,10 +3,12 @@ package postgres
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/snowflake/v2"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/merlinfuchs/stateway/stateway-cache/db/postgres/pgmodel"
 	"github.com/merlinfuchs/stateway/stateway-cache/model"
@@ -20,6 +22,9 @@ func (c *Client) GetEmoji(ctx context.Context, appID snowflake.ID, guildID snowf
 		EmojiID: int64(emojiID),
 	})
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, store.ErrNotFound
+		}
 		return nil, err
 	}
 	return rowToEmoji(row)
@@ -33,6 +38,9 @@ func (c *Client) GetEmojis(ctx context.Context, appID snowflake.ID, guildID snow
 		Offset:  int32(offset),
 	})
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, store.ErrNotFound
+		}
 		return nil, err
 	}
 
@@ -56,6 +64,9 @@ func (c *Client) SearchEmojis(ctx context.Context, params store.SearchEmojisPara
 		Offset:  int32(params.Offset),
 	})
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, store.ErrNotFound
+		}
 		return nil, err
 	}
 

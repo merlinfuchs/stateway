@@ -9,6 +9,7 @@ import (
 	"github.com/merlinfuchs/stateway/stateway-gateway/db/postgres"
 	"github.com/merlinfuchs/stateway/stateway-lib/broker"
 	"github.com/merlinfuchs/stateway/stateway-lib/config"
+	"github.com/merlinfuchs/stateway/stateway-lib/gateway"
 )
 
 func Run(ctx context.Context, pg *postgres.Client, cfg *config.RootGatewayConfig) error {
@@ -18,17 +19,23 @@ func Run(ctx context.Context, pg *postgres.Client, cfg *config.RootGatewayConfig
 		slog.Int("gateway_id", cfg.Gateway.GatewayID),
 	)
 
-	broker, err := broker.NewNATSBroker(cfg.Broker.NATS.URL)
+	br, err := broker.NewNATSBroker(cfg.Broker.NATS.URL)
 	if err != nil {
 		return fmt.Errorf("failed to create NATS broker: %w", err)
 	}
 
-	err = broker.CreateGatewayStream(ctx)
+	gatewayService := gateway.NewGatewayService(NewGateway(pg, pg))
+	err = broker.Provide(ctx, br, gatewayService)
+	if err != nil {
+		return fmt.Errorf("failed to provide gateway service: %w", err)
+	}
+
+	err = br.CreateGatewayStream(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to create gateway stream: %w", err)
 	}
 
-	eventHandler := NewEventHandler(broker)
+	eventHandler := NewEventHandler(br)
 	go eventHandler.Run(ctx)
 
 	appManager := app.NewAppManager(

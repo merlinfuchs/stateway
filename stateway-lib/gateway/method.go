@@ -77,8 +77,8 @@ func (r GetAppRequest) gatewayRequest() {}
 
 type ListAppsRequest struct {
 	GroupID null.String `json:"group_id,omitempty"`
-	Limit   int         `json:"limit"`
-	Offset  int         `json:"offset"`
+	Limit   null.Int    `json:"limit,omitempty"`
+	Offset  null.Int    `json:"offset,omitempty"`
 }
 
 func (r ListAppsRequest) gatewayRequest() {}
@@ -122,7 +122,7 @@ type ListGroupsRequest struct {
 func (r ListGroupsRequest) gatewayRequest() {}
 
 type UpsertGroupRequest struct {
-	GroupID            string         `json:"group_id"`
+	ID                 string         `json:"id"`
 	DisplayName        string         `json:"display_name"`
 	DefaultConstraints AppConstraints `json:"default_constraints"`
 	DefaultConfig      AppConfig      `json:"default_config"`

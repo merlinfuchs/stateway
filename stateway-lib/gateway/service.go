@@ -22,15 +22,11 @@ func (s *GatewayService) ServiceType() service.ServiceType {
 func (s *GatewayService) HandleRequest(ctx context.Context, method GatewayMethod, request GatewayRequest) (any, error) {
 	switch req := request.(type) {
 	case GetAppRequest:
-		return s.gateway.GetApp(ctx, req.AppID)
+		return s.gateway.GetApp(ctx, req.ID)
 	case ListAppsRequest:
-		return s.gateway.GetApps(ctx, req.GroupID, req.Limit, req.Offset)
+		return s.gateway.GetApps(ctx, req)
 	case UpsertAppRequest:
-		err := s.gateway.UpsertApp(ctx, req)
-		if err != nil {
-			return nil, err
-		}
-		return struct{}{}, nil
+		return s.gateway.UpsertApp(ctx, req)
 	case DisableAppRequest:
 		err := s.gateway.DisableApp(ctx, req.AppID)
 		if err != nil {
@@ -48,11 +44,7 @@ func (s *GatewayService) HandleRequest(ctx context.Context, method GatewayMethod
 	case ListGroupsRequest:
 		return s.gateway.GetGroups(ctx)
 	case UpsertGroupRequest:
-		err := s.gateway.UpsertGroup(ctx, req)
-		if err != nil {
-			return nil, err
-		}
-		return struct{}{}, nil
+		return s.gateway.UpsertGroup(ctx, req)
 	case DeleteGroupRequest:
 		err := s.gateway.DeleteGroup(ctx, req.GroupID)
 		if err != nil {
