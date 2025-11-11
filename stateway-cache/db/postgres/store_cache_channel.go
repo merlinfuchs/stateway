@@ -2,7 +2,10 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
+	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/snowflake/v2"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/merlinfuchs/stateway/stateway-cache/db/postgres/pgmodel"
@@ -19,7 +22,7 @@ func (c *Client) GetChannel(ctx context.Context, appID snowflake.ID, guildID sno
 	if err != nil {
 		return nil, err
 	}
-	return rowToChannel(row), nil
+	return rowToChannel(row)
 }
 
 func (c *Client) GetChannels(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, limit int, offset int) ([]*model.Channel, error) {
@@ -35,7 +38,11 @@ func (c *Client) GetChannels(ctx context.Context, appID snowflake.ID, guildID sn
 
 	channels := make([]*model.Channel, len(rows))
 	for i, row := range rows {
-		channels[i] = rowToChannel(row)
+		channel, err := rowToChannel(row)
+		if err != nil {
+			return nil, err
+		}
+		channels[i] = channel
 	}
 	return channels, nil
 }
@@ -59,7 +66,11 @@ func (c *Client) GetChannelsByType(ctx context.Context, appID snowflake.ID, guil
 
 	channels := make([]*model.Channel, len(rows))
 	for i, row := range rows {
-		channels[i] = rowToChannel(row)
+		channel, err := rowToChannel(row)
+		if err != nil {
+			return nil, err
+		}
+		channels[i] = channel
 	}
 	return channels, nil
 }
@@ -78,7 +89,11 @@ func (c *Client) SearchChannels(ctx context.Context, params store.SearchChannels
 
 	channels := make([]*model.Channel, len(rows))
 	for i, row := range rows {
-		channels[i] = rowToChannel(row)
+		channel, err := rowToChannel(row)
+		if err != nil {
+			return nil, err
+		}
+		channels[i] = channel
 	}
 	return channels, nil
 }
@@ -90,11 +105,16 @@ func (c *Client) UpsertChannels(ctx context.Context, channels ...store.UpsertCha
 
 	params := make([]pgmodel.UpsertChannelsParams, len(channels))
 	for i, channel := range channels {
+		data, err := json.Marshal(channel.Data)
+		if err != nil {
+			return fmt.Errorf("failed to marshal channel data: %w", err)
+		}
+
 		params[i] = pgmodel.UpsertChannelsParams{
 			AppID:     int64(channel.AppID),
 			GuildID:   int64(channel.GuildID),
 			ChannelID: int64(channel.ChannelID),
-			Data:      channel.Data,
+			Data:      data,
 			CreatedAt: pgtype.Timestamp{
 				Time:  channel.CreatedAt,
 				Valid: true,
@@ -117,13 +137,20 @@ func (c *Client) DeleteChannel(ctx context.Context, appID snowflake.ID, guildID 
 	})
 }
 
-func rowToChannel(row pgmodel.CacheChannel) *model.Channel {
+func rowToChannel(row pgmodel.CacheChannel) (*model.Channel, error) {
+	var data discord.UnmarshalChannel
+	err := json.Unmarshal(row.Data, &data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal channel data: %w", err)
+	}
+
 	return &model.Channel{
 		AppID:     snowflake.ID(row.AppID),
 		GuildID:   snowflake.ID(row.GuildID),
 		ChannelID: snowflake.ID(row.ChannelID),
-		Data:      row.Data,
+		Data:      data.Channel,
+		Tainted:   row.Tainted,
 		CreatedAt: row.CreatedAt.Time,
 		UpdatedAt: row.UpdatedAt.Time,
-	}
+	}, nil
 }

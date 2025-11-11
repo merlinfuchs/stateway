@@ -7,7 +7,7 @@ import (
 
 	"github.com/disgoorg/snowflake/v2"
 	"github.com/merlinfuchs/stateway/stateway-gateway/entry/admin"
-	"github.com/merlinfuchs/stateway/stateway-gateway/model"
+	"github.com/merlinfuchs/stateway/stateway-lib/gateway"
 	"github.com/urfave/cli/v2"
 	"gopkg.in/guregu/null.v4"
 )
@@ -132,7 +132,7 @@ var adminCMD = cli.Command{
 							return fmt.Errorf("failed to setup environment: %w", err)
 						}
 
-						var config model.AppConfig
+						var config gateway.AppConfig
 						if c.IsSet("intents") {
 							config.Intents = null.NewInt(c.Int64("intents"), true)
 						}
@@ -231,7 +231,7 @@ var adminCMD = cli.Command{
 							return fmt.Errorf("failed to parse app ID: %w", err)
 						}
 
-						err = admin.DisableApp(ctx, env.pg, appID, model.AppDisabledCode(c.String("code")), c.String("message"))
+						err = admin.DisableApp(ctx, env.pg, appID, gateway.AppDisabledCode(c.String("code")), c.String("message"))
 						if err != nil {
 							return fmt.Errorf("failed to disable app: %w", err)
 						}

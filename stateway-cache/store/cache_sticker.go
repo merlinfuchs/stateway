@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/snowflake/v2"
 	"github.com/merlinfuchs/stateway/stateway-cache/model"
 )
@@ -13,7 +14,7 @@ type UpsertStickerParams struct {
 	AppID     snowflake.ID
 	GuildID   snowflake.ID
 	StickerID snowflake.ID
-	Data      json.RawMessage
+	Data      discord.Sticker
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }

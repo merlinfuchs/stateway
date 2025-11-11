@@ -2,8 +2,11 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 
+	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/snowflake/v2"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -23,7 +26,7 @@ func (c *Client) GetGuild(ctx context.Context, appID snowflake.ID, guildID snowf
 		}
 		return nil, err
 	}
-	return rowToGuild(row), nil
+	return rowToGuild(row)
 }
 
 func (c *Client) GetGuilds(ctx context.Context, appID snowflake.ID, limit int, offset int) ([]*model.Guild, error) {
@@ -38,7 +41,11 @@ func (c *Client) GetGuilds(ctx context.Context, appID snowflake.ID, limit int, o
 
 	guilds := make([]*model.Guild, len(rows))
 	for i, row := range rows {
-		guilds[i] = rowToGuild(row)
+		guild, err := rowToGuild(row)
+		if err != nil {
+			return nil, err
+		}
+		guilds[i] = guild
 	}
 	return guilds, nil
 }
@@ -56,7 +63,11 @@ func (c *Client) SearchGuilds(ctx context.Context, params store.SearchGuildsPara
 
 	guilds := make([]*model.Guild, len(rows))
 	for i, row := range rows {
-		guilds[i] = rowToGuild(row)
+		guild, err := rowToGuild(row)
+		if err != nil {
+			return nil, err
+		}
+		guilds[i] = guild
 	}
 	return guilds, nil
 }
@@ -68,10 +79,15 @@ func (c *Client) UpsertGuilds(ctx context.Context, guilds ...store.UpsertGuildPa
 
 	params := make([]pgmodel.UpsertGuildsParams, len(guilds))
 	for i, guild := range guilds {
+		data, err := json.Marshal(guild.Data)
+		if err != nil {
+			return fmt.Errorf("failed to marshal guild data: %w", err)
+		}
+
 		params[i] = pgmodel.UpsertGuildsParams{
 			AppID:   int64(guild.AppID),
 			GuildID: int64(guild.GuildID),
-			Data:    guild.Data,
+			Data:    data,
 			CreatedAt: pgtype.Timestamp{
 				Time:  guild.CreatedAt,
 				Valid: true,
@@ -100,14 +116,20 @@ func (c *Client) DeleteGuild(ctx context.Context, appID snowflake.ID, guildID sn
 	})
 }
 
-func rowToGuild(row pgmodel.CacheGuild) *model.Guild {
+func rowToGuild(row pgmodel.CacheGuild) (*model.Guild, error) {
+	var data discord.Guild
+	err := json.Unmarshal(row.Data, &data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal guild data: %w", err)
+	}
+
 	return &model.Guild{
 		AppID:       snowflake.ID(row.AppID),
 		GuildID:     snowflake.ID(row.GuildID),
-		Data:        row.Data,
+		Data:        data,
 		Unavailable: row.Unavailable,
 		Tainted:     row.Tainted,
 		CreatedAt:   row.CreatedAt.Time,
 		UpdatedAt:   row.UpdatedAt.Time,
-	}
+	}, nil
 }

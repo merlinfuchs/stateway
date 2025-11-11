@@ -1,12 +1,7 @@
 package model
 
-import "time"
+import (
+	"github.com/merlinfuchs/stateway/stateway-lib/gateway"
+)
 
-type Group struct {
-	ID                 string
-	DisplayName        string
-	DefaultConstraints AppConstraints
-	DefaultConfig      AppConfig
-	CreatedAt          time.Time
-	UpdatedAt          time.Time
-}
+type Group = gateway.Group

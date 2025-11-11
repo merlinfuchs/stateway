@@ -2,7 +2,10 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
+	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/snowflake/v2"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/merlinfuchs/stateway/stateway-cache/db/postgres/pgmodel"
@@ -19,7 +22,7 @@ func (c *Client) GetRole(ctx context.Context, appID snowflake.ID, guildID snowfl
 	if err != nil {
 		return nil, err
 	}
-	return rowToRole(row), nil
+	return rowToRole(row)
 }
 
 func (c *Client) GetRoles(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, limit int, offset int) ([]*model.Role, error) {
@@ -35,7 +38,11 @@ func (c *Client) GetRoles(ctx context.Context, appID snowflake.ID, guildID snowf
 
 	roles := make([]*model.Role, len(rows))
 	for i, row := range rows {
-		roles[i] = rowToRole(row)
+		role, err := rowToRole(row)
+		if err != nil {
+			return nil, err
+		}
+		roles[i] = role
 	}
 	return roles, nil
 }
@@ -54,7 +61,11 @@ func (c *Client) SearchRoles(ctx context.Context, params store.SearchRolesParams
 
 	roles := make([]*model.Role, len(rows))
 	for i, row := range rows {
-		roles[i] = rowToRole(row)
+		role, err := rowToRole(row)
+		if err != nil {
+			return nil, err
+		}
+		roles[i] = role
 	}
 	return roles, nil
 }
@@ -66,11 +77,16 @@ func (c *Client) UpsertRoles(ctx context.Context, roles ...store.UpsertRoleParam
 
 	params := make([]pgmodel.UpsertRolesParams, len(roles))
 	for i, role := range roles {
+		data, err := json.Marshal(role.Data)
+		if err != nil {
+			return fmt.Errorf("failed to marshal role data: %w", err)
+		}
+
 		params[i] = pgmodel.UpsertRolesParams{
 			AppID:   int64(role.AppID),
 			GuildID: int64(role.GuildID),
 			RoleID:  int64(role.RoleID),
-			Data:    role.Data,
+			Data:    data,
 			CreatedAt: pgtype.Timestamp{
 				Time:  role.CreatedAt,
 				Valid: true,
@@ -93,13 +109,20 @@ func (c *Client) DeleteRole(ctx context.Context, appID snowflake.ID, guildID sno
 	})
 }
 
-func rowToRole(row pgmodel.CacheRole) *model.Role {
+func rowToRole(row pgmodel.CacheRole) (*model.Role, error) {
+	var data discord.Role
+	err := json.Unmarshal(row.Data, &data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal role data: %w", err)
+	}
+
 	return &model.Role{
 		AppID:     snowflake.ID(row.AppID),
 		GuildID:   snowflake.ID(row.GuildID),
 		RoleID:    snowflake.ID(row.RoleID),
-		Data:      row.Data,
+		Data:      data,
+		Tainted:   row.Tainted,
 		CreatedAt: row.CreatedAt.Time,
 		UpdatedAt: row.UpdatedAt.Time,
-	}
+	}, nil
 }

@@ -8,13 +8,13 @@ Stateway is a toolkit for building scalable Discord bots. This is heavily work i
 
 Connects all (or a subset of) the configured applications to the Discord gateway and dispatches events over NATS.
 
-It primarily uses the `GATEWAY` stream and `gateway.>` subjects.
+It primarily uses the `GATEWAY` stream and `gateway.>` subjects for publishing. It responds to requests on the `service.gateway.>` subjects.
 
 ### Cache
 
 Receives events from the Gateway over NATS and stores entities like guilds, roles, channels, etc. in a PostgreSQL database.
 
-It responds to requests on the `cache.>` subjects.
+It responds to requests on the `service.cache.>` subjects.
 
 ## Library
 

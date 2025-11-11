@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/snowflake/v2"
 	"github.com/merlinfuchs/stateway/stateway-cache/model"
 )
@@ -12,7 +13,7 @@ import (
 type UpsertGuildParams struct {
 	AppID     snowflake.ID
 	GuildID   snowflake.ID
-	Data      json.RawMessage
+	Data      discord.Guild
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }

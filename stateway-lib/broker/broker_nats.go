@@ -72,7 +72,7 @@ func (b *NATSBroker) CreateGatewayStream(ctx context.Context) error {
 		Subjects:  []string{GatewayStreamSubject},
 		Retention: jetstream.InterestPolicy,
 		MaxAge:    1 * time.Hour,
-		MaxBytes:  16 * 1024 * 1024 * 1024, // 16GB
+		MaxBytes:  32 * 1024 * 1024 * 1024, // 32GB
 		MaxMsgs:   -1,
 		Discard:   jetstream.DiscardOld,
 		Storage:   jetstream.FileStorage,
@@ -206,7 +206,7 @@ func (b *NATSBroker) Listen(ctx context.Context, listener GenericListener) error
 }
 
 func (b *NATSBroker) Request(ctx context.Context, service service.ServiceType, method string, request any, opts ...RequestOption) (Response, error) {
-	subject := fmt.Sprintf("%s.%s", service, method)
+	subject := fmt.Sprintf("service.%s.%s", service, method)
 
 	options := &RequestOptions{
 		Timeout: 5 * time.Second,
@@ -247,7 +247,7 @@ func (b *NATSBroker) Request(ctx context.Context, service service.ServiceType, m
 }
 
 func (b *NATSBroker) Provide(ctx context.Context, service GenericBrokerService) error {
-	subject := fmt.Sprintf("%s.>", service.ServiceType())
+	subject := fmt.Sprintf("service.%s.>", service.ServiceType())
 
 	sub, err := b.nc.Subscribe(subject, func(msg *nats.Msg) {
 		method := strings.SplitN(msg.Subject, ".", 2)[1]

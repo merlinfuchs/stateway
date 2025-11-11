@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -82,10 +83,14 @@ func (c *Client) MassUpsertEntities(ctx context.Context, params store.MassUpsert
 	if len(params.Guilds) != 0 {
 		guilds := make([]pgmodel.UpsertGuildsParams, len(params.Guilds))
 		for i, guild := range params.Guilds {
+			data, err := json.Marshal(guild.Data)
+			if err != nil {
+				return fmt.Errorf("failed to marshal guild data: %w", err)
+			}
 			guilds[i] = pgmodel.UpsertGuildsParams{
 				AppID:   int64(guild.AppID),
 				GuildID: int64(guild.GuildID),
-				Data:    guild.Data,
+				Data:    data,
 				CreatedAt: pgtype.Timestamp{
 					Time:  guild.CreatedAt,
 					Valid: true,
@@ -105,11 +110,15 @@ func (c *Client) MassUpsertEntities(ctx context.Context, params store.MassUpsert
 	if len(params.Roles) != 0 {
 		roles := make([]pgmodel.UpsertRolesParams, len(params.Roles))
 		for i, role := range params.Roles {
+			data, err := json.Marshal(role.Data)
+			if err != nil {
+				return fmt.Errorf("failed to marshal role data: %w", err)
+			}
 			roles[i] = pgmodel.UpsertRolesParams{
 				AppID:   int64(role.AppID),
 				GuildID: int64(role.GuildID),
 				RoleID:  int64(role.RoleID),
-				Data:    role.Data,
+				Data:    data,
 				CreatedAt: pgtype.Timestamp{
 					Time:  role.CreatedAt,
 					Valid: true,
@@ -129,11 +138,15 @@ func (c *Client) MassUpsertEntities(ctx context.Context, params store.MassUpsert
 	if len(params.Channels) != 0 {
 		channels := make([]pgmodel.UpsertChannelsParams, len(params.Channels))
 		for i, channel := range params.Channels {
+			data, err := json.Marshal(channel.Data)
+			if err != nil {
+				return fmt.Errorf("failed to marshal channel data: %w", err)
+			}
 			channels[i] = pgmodel.UpsertChannelsParams{
 				AppID:     int64(channel.AppID),
 				GuildID:   int64(channel.GuildID),
 				ChannelID: int64(channel.ChannelID),
-				Data:      channel.Data,
+				Data:      data,
 				CreatedAt: pgtype.Timestamp{
 					Time:  channel.CreatedAt,
 					Valid: true,
@@ -153,11 +166,15 @@ func (c *Client) MassUpsertEntities(ctx context.Context, params store.MassUpsert
 	if len(params.Emojis) != 0 {
 		emojis := make([]pgmodel.UpsertEmojisParams, len(params.Emojis))
 		for i, emoji := range params.Emojis {
+			data, err := json.Marshal(emoji.Data)
+			if err != nil {
+				return fmt.Errorf("failed to marshal emoji data: %w", err)
+			}
 			emojis[i] = pgmodel.UpsertEmojisParams{
 				AppID:   int64(emoji.AppID),
 				GuildID: int64(emoji.GuildID),
 				EmojiID: int64(emoji.EmojiID),
-				Data:    emoji.Data,
+				Data:    data,
 				CreatedAt: pgtype.Timestamp{
 					Time:  emoji.CreatedAt,
 					Valid: true,
@@ -177,11 +194,15 @@ func (c *Client) MassUpsertEntities(ctx context.Context, params store.MassUpsert
 	if len(params.Stickers) != 0 {
 		stickers := make([]pgmodel.UpsertStickersParams, len(params.Stickers))
 		for i, sticker := range params.Stickers {
+			data, err := json.Marshal(sticker.Data)
+			if err != nil {
+				return fmt.Errorf("failed to marshal sticker data: %w", err)
+			}
 			stickers[i] = pgmodel.UpsertStickersParams{
 				AppID:     int64(sticker.AppID),
 				GuildID:   int64(sticker.GuildID),
 				StickerID: int64(sticker.StickerID),
-				Data:      sticker.Data,
+				Data:      data,
 				CreatedAt: pgtype.Timestamp{
 					Time:  sticker.CreatedAt,
 					Valid: true,

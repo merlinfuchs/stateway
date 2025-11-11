@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"time"
@@ -12,6 +11,7 @@ import (
 	"github.com/merlinfuchs/stateway/stateway-cache/db/postgres"
 	"github.com/merlinfuchs/stateway/stateway-cache/store"
 	"github.com/merlinfuchs/stateway/stateway-lib/broker"
+	"github.com/merlinfuchs/stateway/stateway-lib/cache"
 	"github.com/merlinfuchs/stateway/stateway-lib/config"
 	"github.com/merlinfuchs/stateway/stateway-lib/event"
 )
@@ -51,7 +51,7 @@ func Run(ctx context.Context, pg *postgres.Client, cfg *config.RootCacheConfig) 
 		}
 	}
 
-	cacheService := broker.NewCacheService(NewCaches(pg))
+	cacheService := cache.NewCacheService(NewCaches(pg))
 	err = broker.Provide(ctx, br, cacheService)
 	if err != nil {
 		return fmt.Errorf("failed to provide cache service: %w", err)
@@ -67,7 +67,14 @@ type CacheListener struct {
 }
 
 func (l *CacheListener) BalanceKey() string {
-	return "cache"
+	key := "cache"
+	for _, gatewayID := range l.gatewayIDs {
+		key += fmt.Sprintf("_%d", gatewayID)
+	}
+	if len(l.gatewayIDs) == 0 {
+		key += "_*"
+	}
+	return key
 }
 
 func (l *CacheListener) EventFilter() broker.EventFilter {
@@ -83,7 +90,7 @@ func (l *CacheListener) EventFilter() broker.EventFilter {
 }
 
 func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEvent) error {
-	slog.Info("Received event:", slog.String("type", event.Type))
+	slog.Debug("Received event:", slog.String("type", event.Type))
 
 	e, err := gateway.UnmarshalEventData(event.Data, gateway.EventType(event.Type))
 	if err != nil {
@@ -103,16 +110,11 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 	case gateway.EventGuildCreate:
 		roles := make([]store.UpsertRoleParams, len(e.Roles))
 		for i, role := range e.Roles {
-			data, err := json.Marshal(role)
-			if err != nil {
-				return fmt.Errorf("failed to marshal role data: %w", err)
-			}
-
 			roles[i] = store.UpsertRoleParams{
 				AppID:     event.AppID,
 				GuildID:   e.ID,
 				RoleID:    role.ID,
-				Data:      data,
+				Data:      role,
 				CreatedAt: time.Now().UTC(),
 				UpdatedAt: time.Now().UTC(),
 			}
@@ -120,29 +122,21 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 
 		channels := make([]store.UpsertChannelParams, len(e.Channels)+len(e.Threads))
 		for i, channel := range e.Channels {
-			data, err := json.Marshal(channel)
-			if err != nil {
-				return fmt.Errorf("failed to marshal channel data: %w", err)
-			}
 			channels[i] = store.UpsertChannelParams{
 				AppID:     event.AppID,
 				GuildID:   e.ID,
 				ChannelID: channel.ID(),
-				Data:      data,
+				Data:      channel,
 				CreatedAt: time.Now().UTC(),
 				UpdatedAt: time.Now().UTC(),
 			}
 		}
 		for i, thread := range e.Threads {
-			data, err := json.Marshal(thread)
-			if err != nil {
-				return fmt.Errorf("failed to marshal thread data: %w", err)
-			}
 			channels[i+len(e.Channels)] = store.UpsertChannelParams{
 				AppID:     event.AppID,
 				GuildID:   e.ID,
 				ChannelID: thread.ID(),
-				Data:      data,
+				Data:      thread,
 				CreatedAt: time.Now().UTC(),
 				UpdatedAt: time.Now().UTC(),
 			}
@@ -150,15 +144,11 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 
 		emojis := make([]store.UpsertEmojiParams, len(e.Emojis))
 		for i, emoji := range e.Emojis {
-			data, err := json.Marshal(emoji)
-			if err != nil {
-				return fmt.Errorf("failed to marshal emoji data: %w", err)
-			}
 			emojis[i] = store.UpsertEmojiParams{
 				AppID:     event.AppID,
 				GuildID:   e.ID,
 				EmojiID:   emoji.ID,
-				Data:      data,
+				Data:      emoji,
 				CreatedAt: time.Now().UTC(),
 				UpdatedAt: time.Now().UTC(),
 			}
@@ -166,23 +156,14 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 
 		stickers := make([]store.UpsertStickerParams, len(e.Stickers))
 		for i, sticker := range e.Stickers {
-			data, err := json.Marshal(sticker)
-			if err != nil {
-				return fmt.Errorf("failed to marshal sticker data: %w", err)
-			}
 			stickers[i] = store.UpsertStickerParams{
 				AppID:     event.AppID,
 				GuildID:   e.ID,
 				StickerID: sticker.ID,
-				Data:      data,
+				Data:      sticker,
 				CreatedAt: time.Now().UTC(),
 				UpdatedAt: time.Now().UTC(),
 			}
-		}
-
-		guildData, err := json.Marshal(e.Guild)
-		if err != nil {
-			return fmt.Errorf("failed to marshal guild data: %w", err)
 		}
 
 		err = l.cacheStore.MassUpsertEntities(ctx, store.MassUpsertEntitiesParams{
@@ -190,7 +171,7 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 				{
 					AppID:     event.AppID,
 					GuildID:   e.Guild.ID,
-					Data:      guildData,
+					Data:      e.Guild,
 					CreatedAt: time.Now().UTC(),
 					UpdatedAt: time.Now().UTC(),
 				},
@@ -206,15 +187,10 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 
 		return nil
 	case gateway.EventGuildUpdate:
-		data, err := json.Marshal(e.Guild)
-		if err != nil {
-			return fmt.Errorf("failed to marshal guild data: %w", err)
-		}
-
 		err = l.cacheStore.UpsertGuilds(ctx, store.UpsertGuildParams{
 			AppID:     event.AppID,
 			GuildID:   e.Guild.ID,
-			Data:      data,
+			Data:      e.Guild,
 			CreatedAt: time.Now().UTC(),
 			UpdatedAt: time.Now().UTC(),
 		})
@@ -234,16 +210,11 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 			}
 		}
 	case gateway.EventGuildRoleCreate:
-		data, err := json.Marshal(e.Role)
-		if err != nil {
-			return fmt.Errorf("failed to marshal role data: %w", err)
-		}
-
 		err = l.cacheStore.UpsertRoles(ctx, store.UpsertRoleParams{
 			AppID:     event.AppID,
 			GuildID:   e.GuildID,
 			RoleID:    e.Role.ID,
-			Data:      data,
+			Data:      e.Role,
 			CreatedAt: time.Now().UTC(),
 			UpdatedAt: time.Now().UTC(),
 		})
@@ -251,16 +222,11 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 			return fmt.Errorf("failed to upsert role: %w", err)
 		}
 	case gateway.EventGuildRoleUpdate:
-		data, err := json.Marshal(e.Role)
-		if err != nil {
-			return fmt.Errorf("failed to marshal role data: %w", err)
-		}
-
 		err = l.cacheStore.UpsertRoles(ctx, store.UpsertRoleParams{
 			AppID:     event.AppID,
 			GuildID:   e.GuildID,
 			RoleID:    e.Role.ID,
-			Data:      data,
+			Data:      e.Role,
 			CreatedAt: time.Now().UTC(),
 			UpdatedAt: time.Now().UTC(),
 		})
@@ -272,20 +238,12 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 		if err != nil {
 			return fmt.Errorf("failed to delete role: %w", err)
 		}
-		if err != nil {
-			return fmt.Errorf("failed to delete role: %w", err)
-		}
 	case gateway.EventChannelCreate:
-		data, err := json.Marshal(e.GuildChannel)
-		if err != nil {
-			return fmt.Errorf("failed to marshal channel data: %w", err)
-		}
-
 		err = l.cacheStore.UpsertChannels(ctx, store.UpsertChannelParams{
 			AppID:     event.AppID,
 			GuildID:   e.GuildID(),
 			ChannelID: e.ID(),
-			Data:      data,
+			Data:      e.GuildChannel,
 			CreatedAt: time.Now().UTC(),
 			UpdatedAt: time.Now().UTC(),
 		})
@@ -293,16 +251,12 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 			return fmt.Errorf("failed to upsert channel: %w", err)
 		}
 	case gateway.EventChannelUpdate:
-		data, err := json.Marshal(e.GuildChannel)
-		if err != nil {
-			return fmt.Errorf("failed to marshal channel data: %w", err)
-		}
 
 		err = l.cacheStore.UpsertChannels(ctx, store.UpsertChannelParams{
 			AppID:     event.AppID,
 			GuildID:   e.GuildID(),
 			ChannelID: e.ID(),
-			Data:      data,
+			Data:      e.GuildChannel,
 			CreatedAt: time.Now().UTC(),
 			UpdatedAt: time.Now().UTC(),
 		})
@@ -315,16 +269,11 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 			return fmt.Errorf("failed to delete channel: %w", err)
 		}
 	case gateway.EventThreadCreate:
-		data, err := json.Marshal(e.GuildThread)
-		if err != nil {
-			return fmt.Errorf("failed to marshal thread data: %w", err)
-		}
-
 		err = l.cacheStore.UpsertChannels(ctx, store.UpsertChannelParams{
 			AppID:     event.AppID,
 			GuildID:   e.GuildID(),
 			ChannelID: e.ID(),
-			Data:      data,
+			Data:      e.GuildThread,
 			CreatedAt: time.Now().UTC(),
 			UpdatedAt: time.Now().UTC(),
 		})
@@ -332,16 +281,11 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 			return fmt.Errorf("failed to upsert thread: %w", err)
 		}
 	case gateway.EventThreadUpdate:
-		data, err := json.Marshal(e.GuildThread)
-		if err != nil {
-			return fmt.Errorf("failed to marshal thread data: %w", err)
-		}
-
 		err = l.cacheStore.UpsertChannels(ctx, store.UpsertChannelParams{
 			AppID:     event.AppID,
 			GuildID:   e.GuildID(),
 			ChannelID: e.ID(),
-			Data:      data,
+			Data:      e.GuildThread,
 			CreatedAt: time.Now().UTC(),
 			UpdatedAt: time.Now().UTC(),
 		})
@@ -356,15 +300,11 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 	case gateway.EventGuildEmojisUpdate:
 		emojis := make([]store.UpsertEmojiParams, len(e.Emojis))
 		for i, emoji := range e.Emojis {
-			data, err := json.Marshal(emoji)
-			if err != nil {
-				return fmt.Errorf("failed to marshal emoji data: %w", err)
-			}
 			emojis[i] = store.UpsertEmojiParams{
 				AppID:     event.AppID,
 				GuildID:   e.GuildID,
 				EmojiID:   emoji.ID,
-				Data:      data,
+				Data:      emoji,
 				CreatedAt: time.Now().UTC(),
 				UpdatedAt: time.Now().UTC(),
 			}
@@ -377,15 +317,11 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 	case gateway.EventGuildStickersUpdate:
 		stickers := make([]store.UpsertStickerParams, len(e.Stickers))
 		for i, sticker := range e.Stickers {
-			data, err := json.Marshal(sticker)
-			if err != nil {
-				return fmt.Errorf("failed to marshal sticker data: %w", err)
-			}
 			stickers[i] = store.UpsertStickerParams{
 				AppID:     event.AppID,
 				GuildID:   e.GuildID,
 				StickerID: sticker.ID,
-				Data:      data,
+				Data:      sticker,
 				CreatedAt: time.Now().UTC(),
 				UpdatedAt: time.Now().UTC(),
 			}

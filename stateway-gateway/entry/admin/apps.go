@@ -14,6 +14,7 @@ import (
 	"github.com/merlinfuchs/stateway/stateway-gateway/model"
 	"github.com/merlinfuchs/stateway/stateway-gateway/store"
 	"github.com/merlinfuchs/stateway/stateway-lib/config"
+	"github.com/merlinfuchs/stateway/stateway-lib/gateway"
 	"github.com/olekukonko/tablewriter"
 	"gopkg.in/guregu/null.v4"
 )
@@ -59,7 +60,7 @@ func CreateApp(
 	groupID string,
 	token string,
 	clientSecret string,
-	config model.AppConfig,
+	config gateway.AppConfig,
 ) error {
 	client := rest.New(rest.NewClient(token))
 
@@ -114,7 +115,7 @@ func DeleteApp(ctx context.Context, appStore store.AppStore, id snowflake.ID) er
 	return nil
 }
 
-func DisableApp(ctx context.Context, appStore store.AppStore, id snowflake.ID, code model.AppDisabledCode, message string) error {
+func DisableApp(ctx context.Context, appStore store.AppStore, id snowflake.ID, code gateway.AppDisabledCode, message string) error {
 	app, err := appStore.DisableApp(ctx, store.DisableAppParams{
 		ID:              id,
 		DisabledCode:    code,
@@ -141,16 +142,16 @@ func InitializeApps(ctx context.Context, pg *postgres.Client, cfg *config.RootGa
 			return fmt.Errorf("failed to get current app: %w", err)
 		}
 
-		config := model.AppConfig{
+		config := gateway.AppConfig{
 			Intents:          null.NewInt(appCfg.Intents, appCfg.Intents != 0),
 			ShardConcurrency: null.NewInt(int64(appCfg.ShardConcurrency), appCfg.ShardConcurrency != 0),
 		}
 		if appCfg.Presence != nil {
-			config.Presence = &model.AppPresenceConfig{
+			config.Presence = &gateway.AppPresenceConfig{
 				Status: null.NewString(appCfg.Presence.Status, appCfg.Presence.Status != ""),
 			}
 			if appCfg.Presence.Activity != nil {
-				config.Presence.Activity = &model.AppPresenceActivityConfig{
+				config.Presence.Activity = &gateway.AppPresenceActivityConfig{
 					Name:  appCfg.Presence.Activity.Name,
 					State: appCfg.Presence.Activity.State,
 					Type:  appCfg.Presence.Activity.Type,
@@ -168,7 +169,7 @@ func InitializeApps(ctx context.Context, pg *postgres.Client, cfg *config.RootGa
 			DiscordBotToken:  appCfg.Token,
 			DiscordPublicKey: discordApp.VerifyKey,
 			ShardCount:       appCfg.ShardCount,
-			Constraints:      model.AppConstraints{},
+			Constraints:      gateway.AppConstraints{},
 			Config:           config,
 			CreatedAt:        time.Now().UTC(),
 			UpdatedAt:        time.Now().UTC(),

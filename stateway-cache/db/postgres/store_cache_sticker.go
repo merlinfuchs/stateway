@@ -2,7 +2,10 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
+	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/snowflake/v2"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/merlinfuchs/stateway/stateway-cache/db/postgres/pgmodel"
@@ -19,7 +22,7 @@ func (c *Client) GetSticker(ctx context.Context, appID snowflake.ID, guildID sno
 	if err != nil {
 		return nil, err
 	}
-	return rowToSticker(row), nil
+	return rowToSticker(row)
 }
 
 func (c *Client) GetStickers(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, limit int, offset int) ([]*model.Sticker, error) {
@@ -35,7 +38,11 @@ func (c *Client) GetStickers(ctx context.Context, appID snowflake.ID, guildID sn
 
 	stickers := make([]*model.Sticker, len(rows))
 	for i, row := range rows {
-		stickers[i] = rowToSticker(row)
+		sticker, err := rowToSticker(row)
+		if err != nil {
+			return nil, err
+		}
+		stickers[i] = sticker
 	}
 	return stickers, nil
 }
@@ -54,7 +61,11 @@ func (c *Client) SearchStickers(ctx context.Context, params store.SearchStickers
 
 	stickers := make([]*model.Sticker, len(rows))
 	for i, row := range rows {
-		stickers[i] = rowToSticker(row)
+		sticker, err := rowToSticker(row)
+		if err != nil {
+			return nil, err
+		}
+		stickers[i] = sticker
 	}
 	return stickers, nil
 }
@@ -66,11 +77,16 @@ func (c *Client) UpsertStickers(ctx context.Context, stickers ...store.UpsertSti
 
 	params := make([]pgmodel.UpsertStickersParams, len(stickers))
 	for i, sticker := range stickers {
+		data, err := json.Marshal(sticker.Data)
+		if err != nil {
+			return fmt.Errorf("failed to marshal sticker data: %w", err)
+		}
+
 		params[i] = pgmodel.UpsertStickersParams{
 			AppID:     int64(sticker.AppID),
 			GuildID:   int64(sticker.GuildID),
 			StickerID: int64(sticker.StickerID),
-			Data:      sticker.Data,
+			Data:      data,
 			CreatedAt: pgtype.Timestamp{
 				Time:  sticker.CreatedAt,
 				Valid: true,
@@ -93,13 +109,20 @@ func (c *Client) DeleteSticker(ctx context.Context, appID snowflake.ID, guildID 
 	})
 }
 
-func rowToSticker(row pgmodel.CacheSticker) *model.Sticker {
+func rowToSticker(row pgmodel.CacheSticker) (*model.Sticker, error) {
+	var data discord.Sticker
+	err := json.Unmarshal(row.Data, &data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal sticker data: %w", err)
+	}
+
 	return &model.Sticker{
 		AppID:     snowflake.ID(row.AppID),
 		GuildID:   snowflake.ID(row.GuildID),
 		StickerID: snowflake.ID(row.StickerID),
-		Data:      row.Data,
+		Data:      data,
+		Tainted:   row.Tainted,
 		CreatedAt: row.CreatedAt.Time,
 		UpdatedAt: row.UpdatedAt.Time,
-	}
+	}, nil
 }

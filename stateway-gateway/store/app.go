@@ -6,6 +6,7 @@ import (
 
 	"github.com/disgoorg/snowflake/v2"
 	"github.com/merlinfuchs/stateway/stateway-gateway/model"
+	"github.com/merlinfuchs/stateway/stateway-lib/gateway"
 	"gopkg.in/guregu/null.v4"
 )
 
@@ -18,8 +19,8 @@ type CreateAppParams struct {
 	DiscordPublicKey    string
 	DiscordClientSecret null.String
 	ShardCount          int
-	Constraints         model.AppConstraints
-	Config              model.AppConfig
+	Constraints         gateway.AppConstraints
+	Config              gateway.AppConfig
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
 }
@@ -33,8 +34,8 @@ type UpdateAppParams struct {
 	DiscordPublicKey    string
 	DiscordClientSecret null.String
 	ShardCount          int
-	Constraints         model.AppConstraints
-	Config              model.AppConfig
+	Constraints         gateway.AppConstraints
+	Config              gateway.AppConfig
 	Disabled            bool
 	DisabledCode        null.String
 	DisabledMessage     null.String
@@ -45,7 +46,7 @@ type UpsertAppParams = CreateAppParams
 
 type DisableAppParams struct {
 	ID              snowflake.ID
-	DisabledCode    model.AppDisabledCode
+	DisabledCode    gateway.AppDisabledCode
 	DisabledMessage null.String
 	UpdatedAt       time.Time
 }

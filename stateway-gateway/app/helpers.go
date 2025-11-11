@@ -8,11 +8,12 @@ import (
 	"time"
 
 	"github.com/disgoorg/disgo/discord"
-	"github.com/disgoorg/disgo/gateway"
+	disgateway "github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/disgo/sharding"
 	"github.com/gorilla/websocket"
 	"github.com/merlinfuchs/stateway/stateway-gateway/model"
 	"github.com/merlinfuchs/stateway/stateway-gateway/store"
+	"github.com/merlinfuchs/stateway/stateway-lib/gateway"
 	"gopkg.in/guregu/null.v4"
 )
 
@@ -57,55 +58,55 @@ func (a *App) shardsFromApp(ctx context.Context, gatewayCount int, gatewayID int
 	return shardCount, shardConcurrency, shards, nil
 }
 
-func intentsFromApp(app *model.App) gateway.Intents {
-	intents := gateway.IntentsNonPrivileged
+func intentsFromApp(app *model.App) disgateway.Intents {
+	intents := disgateway.IntentsNonPrivileged
 	if app.Config.Intents.Valid {
-		intents = gateway.Intents(app.Config.Intents.Int64)
+		intents = disgateway.Intents(app.Config.Intents.Int64)
 	}
 	return intents
 }
 
-func presenceOptsFromApp(app *model.App) []gateway.PresenceOpt {
-	res := []gateway.PresenceOpt{}
+func presenceOptsFromApp(app *model.App) []disgateway.PresenceOpt {
+	res := []disgateway.PresenceOpt{}
 	if app.Config.Presence != nil {
 		presence := app.Config.Presence
 		if presence.Status.Valid {
-			res = append(res, gateway.WithOnlineStatus(discord.OnlineStatus(presence.Status.String)))
+			res = append(res, disgateway.WithOnlineStatus(discord.OnlineStatus(presence.Status.String)))
 		}
 
 		if presence.Activity != nil {
-			activityOpts := []gateway.ActivityOpt{}
+			activityOpts := []disgateway.ActivityOpt{}
 
 			switch presence.Activity.Type {
 			case "watching":
 				res = append(
 					res,
-					gateway.WithWatchingActivity(presence.Activity.Name, activityOpts...),
+					disgateway.WithWatchingActivity(presence.Activity.Name, activityOpts...),
 				)
 			case "listening":
 				res = append(
 					res,
-					gateway.WithListeningActivity(presence.Activity.Name, activityOpts...),
+					disgateway.WithListeningActivity(presence.Activity.Name, activityOpts...),
 				)
 			case "competing":
 				res = append(
 					res,
-					gateway.WithCompetingActivity(presence.Activity.Name, activityOpts...),
+					disgateway.WithCompetingActivity(presence.Activity.Name, activityOpts...),
 				)
 			case "streaming":
 				res = append(
 					res,
-					gateway.WithStreamingActivity(presence.Activity.Name, presence.Activity.URL, activityOpts...),
+					disgateway.WithStreamingActivity(presence.Activity.Name, presence.Activity.URL, activityOpts...),
 				)
 			case "playing":
 				res = append(
 					res,
-					gateway.WithPlayingActivity(presence.Activity.Name, activityOpts...),
+					disgateway.WithPlayingActivity(presence.Activity.Name, activityOpts...),
 				)
 			default:
 				res = append(
 					res,
-					gateway.WithCustomActivity(presence.Activity.Name, activityOpts...),
+					disgateway.WithCustomActivity(presence.Activity.Name, activityOpts...),
 				)
 			}
 		}
@@ -119,16 +120,16 @@ func (a *App) disableIfFatal(ctx context.Context, err error) {
 	if errors.As(err, &wsError) {
 		switch wsError.Code {
 		case 4004:
-			a.disable(ctx, model.AppDisabledCodeInvalidToken, wsError.Text)
+			a.disable(ctx, gateway.AppDisabledCodeInvalidToken, wsError.Text)
 		case 4013:
-			a.disable(ctx, model.AppDisabledCodeInvalidIntents, wsError.Text)
+			a.disable(ctx, gateway.AppDisabledCodeInvalidIntents, wsError.Text)
 		case 4014:
-			a.disable(ctx, model.AppDisabledCodeDisallowedIntents, wsError.Text)
+			a.disable(ctx, gateway.AppDisabledCodeDisallowedIntents, wsError.Text)
 		}
 	}
 }
 
-func (a *App) disable(ctx context.Context, code model.AppDisabledCode, message string) {
+func (a *App) disable(ctx context.Context, code gateway.AppDisabledCode, message string) {
 	_, err := a.appStore.DisableApp(ctx, store.DisableAppParams{
 		ID:              a.model.ID,
 		DisabledCode:    code,
@@ -148,7 +149,7 @@ func (a *App) disable(ctx context.Context, code model.AppDisabledCode, message s
 	}
 }
 
-func (a *App) storeSession(ctx context.Context, g gateway.Gateway) {
+func (a *App) storeSession(ctx context.Context, g disgateway.Gateway) {
 	sessionID := g.SessionID()
 	resumeURL := g.ResumeURL()
 	sequenceNumber := g.LastSequenceReceived()
@@ -179,7 +180,7 @@ func (a *App) storeSession(ctx context.Context, g gateway.Gateway) {
 	}
 }
 
-func (a *App) invalidateSession(ctx context.Context, g gateway.Gateway) {
+func (a *App) invalidateSession(ctx context.Context, g disgateway.Gateway) {
 	err := a.shardSessionStore.InvalidateShardSession(ctx, a.model.ID, g.ShardID(), g.ShardCount())
 	if err != nil {
 		slog.Error(

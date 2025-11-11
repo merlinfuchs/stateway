@@ -11,6 +11,7 @@ import (
 	"github.com/merlinfuchs/stateway/stateway-gateway/db/postgres/pgmodel"
 	"github.com/merlinfuchs/stateway/stateway-gateway/model"
 	"github.com/merlinfuchs/stateway/stateway-gateway/store"
+	"github.com/merlinfuchs/stateway/stateway-lib/gateway"
 	"gopkg.in/guregu/null.v4"
 )
 
@@ -218,8 +219,8 @@ func (c *Client) DeleteApp(ctx context.Context, id snowflake.ID) error {
 }
 
 func rowToApp(row pgmodel.GatewayApp) (*model.App, error) {
-	var constraints model.AppConstraints
-	var config model.AppConfig
+	var constraints gateway.AppConstraints
+	var config gateway.AppConfig
 	if row.Constraints != nil {
 		err := json.Unmarshal(row.Constraints, &constraints)
 		if err != nil {
@@ -245,7 +246,7 @@ func rowToApp(row pgmodel.GatewayApp) (*model.App, error) {
 		Constraints:         constraints,
 		Config:              config,
 		Disabled:            row.Disabled,
-		DisabledCode:        model.AppDisabledCode(row.DisabledCode.String),
+		DisabledCode:        gateway.AppDisabledCode(row.DisabledCode.String),
 		DisabledMessage:     null.NewString(row.DisabledMessage.String, row.DisabledMessage.Valid),
 		CreatedAt:           row.CreatedAt.Time,
 		UpdatedAt:           row.UpdatedAt.Time,
