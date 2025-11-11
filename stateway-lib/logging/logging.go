@@ -16,6 +16,7 @@ type LoggerConfig struct {
 	MaxSize    int
 	MaxAge     int
 	MaxBackups int
+	Debug      bool
 }
 
 func getLogWriter(cfg LoggerConfig) io.Writer {
@@ -38,7 +39,14 @@ func getLogWriter(cfg LoggerConfig) io.Writer {
 func SetupLogger(cfg LoggerConfig) *slog.Logger {
 	writer := getLogWriter(cfg)
 
-	handler := ctxlog.NewHandler(clog.NewHandler(writer))
+	level := slog.LevelInfo
+	if cfg.Debug {
+		level = slog.LevelDebug
+	}
+
+	handler := ctxlog.NewHandler(clog.HandlerOptions{
+		Level: level,
+	}.NewHandler(writer))
 
 	logger := slog.New(handler)
 	hostname, err := os.Hostname()

@@ -37,6 +37,7 @@ type LoggingConfig struct {
 	MaxSize    int    `toml:"max_size"`
 	MaxAge     int    `toml:"max_age"`
 	MaxBackups int    `toml:"max_backups"`
+	Debug      bool   `toml:"debug"`
 }
 
 type PostgresConfig struct {

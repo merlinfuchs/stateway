@@ -27,12 +27,16 @@ var CLI = cli.App{
 					Name:  "gateway-ids",
 					Usage: "The gateway IDs to process events from. Leave empty to process events from all gateways.",
 				},
+				&cli.BoolFlag{
+					Name:  "debug",
+					Usage: "Enable debug logging.",
+				},
 			},
 			Action: func(c *cli.Context) error {
 				ctx, cancel := signal.NotifyContext(c.Context, syscall.SIGINT, syscall.SIGTERM)
 				defer cancel()
 
-				env, err := setupEnv(ctx)
+				env, err := setupEnv(ctx, c.Bool("debug"))
 				if err != nil {
 					return fmt.Errorf("failed to setup environment: %w", err)
 				}
@@ -63,13 +67,18 @@ type env struct {
 	cfg *config.RootCacheConfig
 }
 
-func setupEnv(ctx context.Context) (*env, error) {
+func setupEnv(ctx context.Context, debug bool) (*env, error) {
 	cfg, err := config.LoadConfig[*config.RootCacheConfig]()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
 
-	logging.SetupLogger(logging.LoggerConfig(cfg.Logging))
+	loggingConfig := logging.LoggerConfig(cfg.Logging)
+	if debug {
+		loggingConfig.Debug = true
+	}
+
+	logging.SetupLogger(loggingConfig)
 
 	pg, err := postgres.New(ctx, postgres.ClientConfig(cfg.Database.Postgres))
 	if err != nil {

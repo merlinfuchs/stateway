@@ -15,6 +15,12 @@ import (
 var adminCMD = cli.Command{
 	Name:  "admin",
 	Usage: "Manage admin tasks.",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "debug",
+			Usage: "Enable debug logging.",
+		},
+	},
 	Subcommands: []*cli.Command{
 		{
 			Name:  "apps",
@@ -27,7 +33,7 @@ var adminCMD = cli.Command{
 						ctx, cancel := signal.NotifyContext(c.Context, syscall.SIGINT, syscall.SIGTERM)
 						defer cancel()
 
-						env, err := setupEnv(ctx)
+						env, err := setupEnv(ctx, c.Bool("debug"))
 						if err != nil {
 							return fmt.Errorf("failed to setup environment: %w", err)
 						}
@@ -52,7 +58,7 @@ var adminCMD = cli.Command{
 						ctx, cancel := signal.NotifyContext(c.Context, syscall.SIGINT, syscall.SIGTERM)
 						defer cancel()
 
-						env, err := setupEnv(ctx)
+						env, err := setupEnv(ctx, c.Bool("debug"))
 						if err != nil {
 							return fmt.Errorf("failed to setup environment: %w", err)
 						}
@@ -83,7 +89,7 @@ var adminCMD = cli.Command{
 						ctx, cancel := signal.NotifyContext(c.Context, syscall.SIGINT, syscall.SIGTERM)
 						defer cancel()
 
-						env, err := setupEnv(ctx)
+						env, err := setupEnv(ctx, c.Bool("debug"))
 						if err != nil {
 							return fmt.Errorf("failed to setup environment: %w", err)
 						}
@@ -127,7 +133,7 @@ var adminCMD = cli.Command{
 						ctx, cancel := signal.NotifyContext(c.Context, syscall.SIGINT, syscall.SIGTERM)
 						defer cancel()
 
-						env, err := setupEnv(ctx)
+						env, err := setupEnv(ctx, c.Bool("debug"))
 						if err != nil {
 							return fmt.Errorf("failed to setup environment: %w", err)
 						}
@@ -175,7 +181,7 @@ var adminCMD = cli.Command{
 						ctx, cancel := signal.NotifyContext(c.Context, syscall.SIGINT, syscall.SIGTERM)
 						defer cancel()
 
-						env, err := setupEnv(ctx)
+						env, err := setupEnv(ctx, c.Bool("debug"))
 						if err != nil {
 							return fmt.Errorf("failed to setup environment: %w", err)
 						}
@@ -221,7 +227,7 @@ var adminCMD = cli.Command{
 						ctx, cancel := signal.NotifyContext(c.Context, syscall.SIGINT, syscall.SIGTERM)
 						defer cancel()
 
-						env, err := setupEnv(ctx)
+						env, err := setupEnv(ctx, c.Bool("debug"))
 						if err != nil {
 							return fmt.Errorf("failed to setup environment: %w", err)
 						}
@@ -251,7 +257,7 @@ var adminCMD = cli.Command{
 						ctx, cancel := signal.NotifyContext(c.Context, syscall.SIGINT, syscall.SIGTERM)
 						defer cancel()
 
-						env, err := setupEnv(ctx)
+						env, err := setupEnv(ctx, c.Bool("debug"))
 						if err != nil {
 							return fmt.Errorf("failed to setup environment: %w", err)
 						}
@@ -276,7 +282,7 @@ var adminCMD = cli.Command{
 						ctx, cancel := signal.NotifyContext(c.Context, syscall.SIGINT, syscall.SIGTERM)
 						defer cancel()
 
-						env, err := setupEnv(ctx)
+						env, err := setupEnv(ctx, c.Bool("debug"))
 						if err != nil {
 							return fmt.Errorf("failed to setup environment: %w", err)
 						}

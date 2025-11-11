@@ -72,7 +72,7 @@ func (l *CacheListener) BalanceKey() string {
 		key += fmt.Sprintf("_%d", gatewayID)
 	}
 	if len(l.gatewayIDs) == 0 {
-		key += "_*"
+		key += "_all"
 	}
 	return key
 }
