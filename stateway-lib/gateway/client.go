@@ -18,7 +18,7 @@ func NewGatewayClient(b broker.Broker) *GatewayClient {
 }
 
 func (c *GatewayClient) GetApp(ctx context.Context, appID snowflake.ID) (*App, error) {
-	return gatewayRequest[*App](ctx, c.b, GatewayMethodAppGet, GetAppRequest{ID: appID})
+	return gatewayRequest[*App](ctx, c.b, GatewayMethodAppGet, GetAppRequest{AppID: appID})
 }
 
 func (c *GatewayClient) ListApps(ctx context.Context, params ListAppsRequest) ([]*App, error) {

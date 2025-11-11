@@ -6,6 +6,7 @@ require (
 	github.com/disgoorg/disgo v0.19.0-rc.11.0.20251109195943-e8f035b3937d
 	github.com/disgoorg/snowflake/v2 v2.0.3
 	github.com/golang-migrate/migrate/v4 v4.19.0
+	github.com/gorilla/websocket v1.5.3
 	github.com/jackc/pgx/v5 v5.7.6
 	github.com/merlinfuchs/stateway/stateway-lib v0.0.0-00010101000000-000000000000
 	github.com/nats-io/nats.go v1.47.0
@@ -23,11 +24,11 @@ require (
 	github.com/fatih/color v1.15.0 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.10 // indirect
+	github.com/go-ozzo/ozzo-validation/v4 v4.3.0 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.28.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
-	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect

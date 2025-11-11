@@ -29,6 +29,12 @@ func (s *genericBrokerService[REQUEST, RESPONSE, METHOD]) HandleRequest(ctx cont
 		return nil, err
 	}
 
+	if vReq, ok := any(req).(service.RequestValidate); ok {
+		if err := vReq.Validate(); err != nil {
+			return nil, service.ErrInvalidRequest("request validation failed", err)
+		}
+	}
+
 	response, err := s.inner.HandleRequest(ctx, METHOD(method), req)
 	if err != nil {
 		return nil, err

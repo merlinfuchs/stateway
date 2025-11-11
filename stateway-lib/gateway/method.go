@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/disgoorg/snowflake/v2"
+	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"gopkg.in/guregu/null.v4"
 )
 
@@ -70,15 +71,23 @@ type GatewayRequest interface {
 }
 
 type GetAppRequest struct {
-	AppID snowflake.ID `json:"app_id"`
+	AppID       snowflake.ID `json:"app_id"`
+	WithSecrets bool         `json:"with_secrets,omitempty"`
 }
 
 func (r GetAppRequest) gatewayRequest() {}
 
+func (r GetAppRequest) Validate() error {
+	return validation.ValidateStruct(&r,
+		validation.Field(&r.AppID, validation.Required),
+	)
+}
+
 type ListAppsRequest struct {
-	GroupID null.String `json:"group_id,omitempty"`
-	Limit   null.Int    `json:"limit,omitempty"`
-	Offset  null.Int    `json:"offset,omitempty"`
+	GroupID     null.String `json:"group_id,omitempty"`
+	Limit       null.Int    `json:"limit,omitempty"`
+	Offset      null.Int    `json:"offset,omitempty"`
+	WithSecrets bool        `json:"with_secrets,omitempty"`
 }
 
 func (r ListAppsRequest) gatewayRequest() {}
@@ -98,11 +107,28 @@ type UpsertAppRequest struct {
 
 func (r UpsertAppRequest) gatewayRequest() {}
 
+func (r UpsertAppRequest) Validate() error {
+	return validation.ValidateStruct(&r,
+		validation.Field(&r.ID, validation.Required),
+		validation.Field(&r.GroupID, validation.Required),
+		validation.Field(&r.DisplayName, validation.Required),
+		validation.Field(&r.DiscordClientID, validation.Required),
+		validation.Field(&r.DiscordBotToken, validation.Required),
+		validation.Field(&r.ShardCount, validation.Required, validation.Min(1)),
+	)
+}
+
 type DisableAppRequest struct {
 	AppID snowflake.ID `json:"app_id"`
 }
 
 func (r DisableAppRequest) gatewayRequest() {}
+
+func (r DisableAppRequest) Validate() error {
+	return validation.ValidateStruct(&r,
+		validation.Field(&r.AppID, validation.Required),
+	)
+}
 
 type DeleteAppRequest struct {
 	AppID snowflake.ID `json:"app_id"`
@@ -110,11 +136,23 @@ type DeleteAppRequest struct {
 
 func (r DeleteAppRequest) gatewayRequest() {}
 
+func (r DeleteAppRequest) Validate() error {
+	return validation.ValidateStruct(&r,
+		validation.Field(&r.AppID, validation.Required),
+	)
+}
+
 type GetGroupRequest struct {
 	GroupID string `json:"group_id"`
 }
 
 func (r GetGroupRequest) gatewayRequest() {}
+
+func (r GetGroupRequest) Validate() error {
+	return validation.ValidateStruct(&r,
+		validation.Field(&r.GroupID, validation.Required),
+	)
+}
 
 type ListGroupsRequest struct {
 }
@@ -130,8 +168,21 @@ type UpsertGroupRequest struct {
 
 func (r UpsertGroupRequest) gatewayRequest() {}
 
+func (r UpsertGroupRequest) Validate() error {
+	return validation.ValidateStruct(&r,
+		validation.Field(&r.ID, validation.Required),
+		validation.Field(&r.DisplayName, validation.Required),
+	)
+}
+
 type DeleteGroupRequest struct {
 	GroupID string `json:"group_id"`
 }
 
 func (r DeleteGroupRequest) gatewayRequest() {}
+
+func (r DeleteGroupRequest) Validate() error {
+	return validation.ValidateStruct(&r,
+		validation.Field(&r.GroupID, validation.Required),
+	)
+}

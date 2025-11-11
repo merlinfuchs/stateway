@@ -16,3 +16,7 @@ type Response struct {
 	Error   *Error          `json:"error,omitempty"`
 	Data    json.RawMessage `json:"data,omitempty"`
 }
+
+type RequestValidate interface {
+	Validate() error
+}

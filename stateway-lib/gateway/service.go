@@ -22,7 +22,7 @@ func (s *GatewayService) ServiceType() service.ServiceType {
 func (s *GatewayService) HandleRequest(ctx context.Context, method GatewayMethod, request GatewayRequest) (any, error) {
 	switch req := request.(type) {
 	case GetAppRequest:
-		return s.gateway.GetApp(ctx, req.ID)
+		return s.gateway.GetApp(ctx, req.AppID, req.WithSecrets)
 	case ListAppsRequest:
 		return s.gateway.GetApps(ctx, req)
 	case UpsertAppRequest:

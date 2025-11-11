@@ -93,7 +93,9 @@ DELETE FROM gateway.apps WHERE id = $1;
 SELECT * FROM gateway.apps WHERE id = $1 LIMIT 1;
 
 -- name: GetApps :many
-SELECT * FROM gateway.apps WHERE (group_id = sqlc.narg('group_id') OR sqlc.narg('group_id') IS NULL) LIMIT sqlc.narg('limit') OFFSET sqlc.narg('offset');
+SELECT * FROM gateway.apps 
+WHERE (sqlc.narg('group_id') IS NULL OR group_id = sqlc.narg('group_id'))
+LIMIT sqlc.narg('limit') OFFSET sqlc.narg('offset');
 
 -- name: GetEnabledApps :many
 SELECT * FROM gateway.apps WHERE disabled = FALSE AND (shard_count > 1 OR id % @gateway_count = @gateway_id);

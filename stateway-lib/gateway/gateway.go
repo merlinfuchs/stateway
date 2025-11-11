@@ -7,7 +7,7 @@ import (
 )
 
 type Gateway interface {
-	GetApp(ctx context.Context, appID snowflake.ID) (*App, error)
+	GetApp(ctx context.Context, appID snowflake.ID, withSecrets bool) (*App, error)
 	GetApps(ctx context.Context, params ListAppsRequest) ([]*App, error)
 	UpsertApp(ctx context.Context, app UpsertAppRequest) (*App, error)
 	DisableApp(ctx context.Context, appID snowflake.ID) error

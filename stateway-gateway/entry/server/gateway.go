@@ -24,13 +24,17 @@ func NewGateway(groupStore store.GroupStore, appStore store.AppStore) *Gateway {
 	}
 }
 
-func (g *Gateway) GetApp(ctx context.Context, appID snowflake.ID) (*gateway.App, error) {
+func (g *Gateway) GetApp(ctx context.Context, appID snowflake.ID, withSecrets bool) (*gateway.App, error) {
 	app, err := g.appStore.GetApp(ctx, appID)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			return nil, service.ErrNotFound("app not found")
 		}
 		return nil, err
+	}
+	if !withSecrets {
+		app.DiscordClientSecret = null.String{}
+		app.DiscordBotToken = ""
 	}
 	return app, nil
 }
@@ -46,6 +50,12 @@ func (g *Gateway) GetApps(ctx context.Context, params gateway.ListAppsRequest) (
 			return nil, service.ErrNotFound("apps not found")
 		}
 		return nil, err
+	}
+	for _, app := range apps {
+		if !params.WithSecrets {
+			app.DiscordClientSecret = null.String{}
+			app.DiscordBotToken = ""
+		}
 	}
 	return apps, nil
 }
