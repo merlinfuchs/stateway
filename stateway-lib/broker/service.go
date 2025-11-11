@@ -23,8 +23,8 @@ func (s *genericBrokerService[REQUEST, RESPONSE, METHOD]) ServiceType() service.
 func (s *genericBrokerService[REQUEST, RESPONSE, METHOD]) HandleRequest(ctx context.Context, rawMethod string, request json.RawMessage) (any, error) {
 	method := METHOD(rawMethod)
 
-	req := method.RequestType()
-	err := json.Unmarshal(request, req)
+	// Let the method handle unmarshaling directly - it knows the concrete type
+	req, err := method.UnmarshalRequest(request)
 	if err != nil {
 		return nil, err
 	}
@@ -49,5 +49,5 @@ func Provide[REQUEST any, RESPONSE any, METHOD ServiceMethod[REQUEST]](ctx conte
 type ServiceMethod[REQUEST any] interface {
 	~string
 
-	RequestType() REQUEST
+	UnmarshalRequest(data json.RawMessage) (REQUEST, error)
 }

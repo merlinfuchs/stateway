@@ -250,7 +250,7 @@ func (b *NATSBroker) Provide(ctx context.Context, service GenericBrokerService) 
 	subject := fmt.Sprintf("service.%s.>", service.ServiceType())
 
 	sub, err := b.nc.Subscribe(subject, func(msg *nats.Msg) {
-		method := strings.SplitN(msg.Subject, ".", 2)[1]
+		method := strings.SplitN(msg.Subject, ".", 3)[2]
 		data, err := service.HandleRequest(ctx, method, msg.Data)
 
 		var resp Response

@@ -1,6 +1,9 @@
 package gateway
 
 import (
+	"encoding/json"
+	"fmt"
+
 	"github.com/disgoorg/snowflake/v2"
 	"gopkg.in/guregu/null.v4"
 )
@@ -19,28 +22,46 @@ const (
 	GatewayMethodGroupDelete GatewayMethod = "group.delete"
 )
 
-func (m GatewayMethod) RequestType() GatewayRequest {
+func (m GatewayMethod) UnmarshalRequest(data json.RawMessage) (GatewayRequest, error) {
 	switch m {
 	case GatewayMethodAppGet:
-		return GetAppRequest{}
+		var req GetAppRequest
+		err := json.Unmarshal(data, &req)
+		return req, err
 	case GatewayMethodAppList:
-		return ListAppsRequest{}
+		var req ListAppsRequest
+		err := json.Unmarshal(data, &req)
+		return req, err
 	case GatewayMethodAppUpsert:
-		return UpsertAppRequest{}
+		var req UpsertAppRequest
+		err := json.Unmarshal(data, &req)
+		return req, err
 	case GatewayMethodAppDisable:
-		return DisableAppRequest{}
+		var req DisableAppRequest
+		err := json.Unmarshal(data, &req)
+		return req, err
 	case GatewayMethodAppDelete:
-		return UpsertAppRequest{}
+		var req UpsertAppRequest
+		err := json.Unmarshal(data, &req)
+		return req, err
 	case GatewayMethodGroupGet:
-		return GetGroupRequest{}
+		var req GetGroupRequest
+		err := json.Unmarshal(data, &req)
+		return req, err
 	case GatewayMethodGroupList:
-		return ListGroupsRequest{}
+		var req ListGroupsRequest
+		err := json.Unmarshal(data, &req)
+		return req, err
 	case GatewayMethodGroupUpsert:
-		return UpsertGroupRequest{}
+		var req UpsertGroupRequest
+		err := json.Unmarshal(data, &req)
+		return req, err
 	case GatewayMethodGroupDelete:
-		return DeleteGroupRequest{}
+		var req DeleteGroupRequest
+		err := json.Unmarshal(data, &req)
+		return req, err
 	default:
-		return nil
+		return nil, fmt.Errorf("unknown gateway method: %v", m)
 	}
 }
 

@@ -2,6 +2,7 @@ package cache
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/disgoorg/snowflake/v2"
 )
@@ -20,28 +21,46 @@ const (
 	CacheMethodSearchRoles    CacheMethod = "role.search"
 )
 
-func (m CacheMethod) RequestType() CacheRequest {
+func (m CacheMethod) UnmarshalRequest(data json.RawMessage) (CacheRequest, error) {
 	switch m {
 	case CacheMethodGetGuild:
-		return GuildGetRequest{}
+		var req GuildGetRequest
+		err := json.Unmarshal(data, &req)
+		return req, err
 	case CacheMethodListGuilds:
-		return GuildListRequest{}
+		var req GuildListRequest
+		err := json.Unmarshal(data, &req)
+		return req, err
 	case CacheMethodSearchGuilds:
-		return GuildSearchRequest{}
+		var req GuildSearchRequest
+		err := json.Unmarshal(data, &req)
+		return req, err
 	case CacheMethodGetChannel:
-		return ChannelGetRequest{}
+		var req ChannelGetRequest
+		err := json.Unmarshal(data, &req)
+		return req, err
 	case CacheMethodListChannels:
-		return ChannelListRequest{}
+		var req ChannelListRequest
+		err := json.Unmarshal(data, &req)
+		return req, err
 	case CacheMethodSearchChannels:
-		return ChannelSearchRequest{}
+		var req ChannelSearchRequest
+		err := json.Unmarshal(data, &req)
+		return req, err
 	case CacheMethodGetRole:
-		return RoleGetRequest{}
+		var req RoleGetRequest
+		err := json.Unmarshal(data, &req)
+		return req, err
 	case CacheMethodListRoles:
-		return RoleListRequest{}
+		var req RoleListRequest
+		err := json.Unmarshal(data, &req)
+		return req, err
 	case CacheMethodSearchRoles:
-		return RoleSearchRequest{}
+		var req RoleSearchRequest
+		err := json.Unmarshal(data, &req)
+		return req, err
 	default:
-		return nil
+		return nil, fmt.Errorf("unknown cache method: %v", m)
 	}
 }
 
