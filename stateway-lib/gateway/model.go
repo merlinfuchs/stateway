@@ -32,6 +32,7 @@ const (
 	AppDisabledCodeInvalidToken      AppDisabledCode = "invalid_token"
 	AppDisabledCodeInvalidIntents    AppDisabledCode = "invalid_intents"
 	AppDisabledCodeDisallowedIntents AppDisabledCode = "disallowed_intents"
+	AppDisabledConstraintExceeded    AppDisabledCode = "constraint_exceeded"
 )
 
 type AppConstraints struct {

@@ -11,7 +11,6 @@ import (
 	disgateway "github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/disgo/sharding"
 	"github.com/gorilla/websocket"
-	"github.com/merlinfuchs/stateway/stateway-gateway/model"
 	"github.com/merlinfuchs/stateway/stateway-gateway/store"
 	"github.com/merlinfuchs/stateway/stateway-lib/gateway"
 	"gopkg.in/guregu/null.v4"
@@ -58,18 +57,18 @@ func (a *App) shardsFromApp(ctx context.Context, gatewayCount int, gatewayID int
 	return shardCount, shardConcurrency, shards, nil
 }
 
-func intentsFromApp(app *model.App) disgateway.Intents {
+func intentsFromConfig(config gateway.AppConfig) disgateway.Intents {
 	intents := disgateway.IntentsNonPrivileged
-	if app.Config.Intents.Valid {
-		intents = disgateway.Intents(app.Config.Intents.Int64)
+	if config.Intents.Valid {
+		intents = disgateway.Intents(config.Intents.Int64)
 	}
 	return intents
 }
 
-func presenceOptsFromApp(app *model.App) []disgateway.PresenceOpt {
+func presenceOptsFromConfig(config gateway.AppConfig) []disgateway.PresenceOpt {
 	res := []disgateway.PresenceOpt{}
-	if app.Config.Presence != nil {
-		presence := app.Config.Presence
+	if config.Presence != nil {
+		presence := config.Presence
 		if presence.Status.Valid {
 			res = append(res, disgateway.WithOnlineStatus(discord.OnlineStatus(presence.Status.String)))
 		}

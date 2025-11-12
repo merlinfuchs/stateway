@@ -6,12 +6,13 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/disgoorg/disgo/gateway"
+	disgateway "github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/disgo/sharding"
 	"github.com/disgoorg/snowflake/v2"
 	"github.com/merlinfuchs/stateway/stateway-gateway/model"
 	"github.com/merlinfuchs/stateway/stateway-gateway/store"
 	"github.com/merlinfuchs/stateway/stateway-lib/event"
+	"github.com/merlinfuchs/stateway/stateway-lib/gateway"
 )
 
 type AppConfig struct {
@@ -22,6 +23,7 @@ type AppConfig struct {
 type App struct {
 	cfg   AppConfig
 	model *model.App
+	group *model.Group
 
 	appStore               store.AppStore
 	shardSessionStore      store.ShardSessionStore
@@ -34,6 +36,7 @@ type App struct {
 func NewApp(
 	cfg AppConfig,
 	model *model.App,
+	group *model.Group,
 	appStore store.AppStore,
 	shardSessionStore store.ShardSessionStore,
 	identifyRateLimitStore store.IdentifyRateLimitStore,
@@ -42,6 +45,7 @@ func NewApp(
 	return &App{
 		cfg:                    cfg,
 		model:                  model,
+		group:                  group,
 		appStore:               appStore,
 		shardSessionStore:      shardSessionStore,
 		identifyRateLimitStore: identifyRateLimitStore,
@@ -50,8 +54,11 @@ func NewApp(
 }
 
 func (a *App) Run(ctx context.Context) {
-	intents := intentsFromApp(a.model)
-	presenceOpts := presenceOptsFromApp(a.model)
+	constraints := a.resolveConstraints()
+	config := a.resolveConfig()
+
+	intents := intentsFromConfig(config)
+	presenceOpts := presenceOptsFromConfig(config)
 
 	shardCount, shardConcurrency, shards, err := a.shardsFromApp(ctx, a.cfg.GatewayCount, a.cfg.GatewayID)
 	if err != nil {
@@ -59,9 +66,14 @@ func (a *App) Run(ctx context.Context) {
 		return
 	}
 
+	if constraints.MaxShards.Valid && int64(shardCount) > constraints.MaxShards.Int64 {
+		a.disable(ctx, gateway.AppDisabledConstraintExceeded, "Max shards constraint exceeded")
+		return
+	}
+
 	shardManager := sharding.New(
 		a.model.DiscordBotToken,
-		func(g gateway.Gateway, eventType gateway.EventType, sequenceNumber int, ev gateway.EventData) {
+		func(g disgateway.Gateway, eventType disgateway.EventType, sequenceNumber int, ev disgateway.EventData) {
 			a.handleEvent(ctx, g, eventType, sequenceNumber, ev)
 		},
 		sharding.WithAutoScaling(false),
@@ -72,13 +84,13 @@ func (a *App) Run(ctx context.Context) {
 		sharding.WithShardIDsWithStates(shards),
 		sharding.WithLogger(slog.Default()),
 		sharding.WithGatewayConfigOpts(
-			gateway.WithIntents(intents),
-			gateway.WithEnableRawEvents(true),
-			gateway.WithPresenceOpts(presenceOpts...),
-			gateway.WithLogger(slog.Default()),
-			gateway.WithAutoReconnect(true),
+			disgateway.WithIntents(intents),
+			disgateway.WithEnableRawEvents(true),
+			disgateway.WithPresenceOpts(presenceOpts...),
+			disgateway.WithLogger(slog.Default()),
+			disgateway.WithAutoReconnect(true),
 		),
-		sharding.WithCloseHandler(func(gateway gateway.Gateway, err error, reconnect bool) {
+		sharding.WithCloseHandler(func(gateway disgateway.Gateway, err error, reconnect bool) {
 			a.handleClose(ctx, gateway, err, reconnect)
 		}),
 	)
@@ -88,18 +100,21 @@ func (a *App) Run(ctx context.Context) {
 }
 
 func (a *App) Close(ctx context.Context) {
-	a.shardManager.Close(ctx)
-	a.shardManager = nil
+	if a.shardManager != nil {
+		a.shardManager.Close(ctx)
+		a.shardManager = nil
+	}
 }
 
-func (a *App) Update(ctx context.Context, model *model.App) {
+func (a *App) Update(ctx context.Context, model *model.App, group *model.Group) {
 	a.Close(ctx)
 	// TODO: Re-use client if possible
 	a.model = model
+	a.group = group
 	go a.Run(ctx)
 }
 
-func (a *App) handleClose(ctx context.Context, g gateway.Gateway, err error, reconnect bool) {
+func (a *App) handleClose(ctx context.Context, g disgateway.Gateway, err error, reconnect bool) {
 	slog.Info(
 		"Discord shard CLOSED",
 		slog.String("group_id", a.model.GroupID),
@@ -114,9 +129,9 @@ func (a *App) handleClose(ctx context.Context, g gateway.Gateway, err error, rec
 	a.invalidateSession(ctx, g)
 }
 
-func (a *App) handleEvent(ctx context.Context, g gateway.Gateway, _ gateway.EventType, _ int, ev gateway.EventData) {
+func (a *App) handleEvent(ctx context.Context, g disgateway.Gateway, _ disgateway.EventType, _ int, ev disgateway.EventData) {
 	switch e := ev.(type) {
-	case gateway.EventRaw:
+	case disgateway.EventRaw:
 		data, err := io.ReadAll(e.Payload)
 		if err != nil {
 			slog.Error("Failed to read event payload", slog.Any("error", err))
@@ -132,7 +147,7 @@ func (a *App) handleEvent(ctx context.Context, g gateway.Gateway, _ gateway.Even
 			Type:      string(e.EventType),
 			Data:      data,
 		})
-	case gateway.EventReady:
+	case disgateway.EventReady:
 		slog.Info(
 			"Discord shard READY",
 			slog.String("group_id", a.model.GroupID),
@@ -143,7 +158,7 @@ func (a *App) handleEvent(ctx context.Context, g gateway.Gateway, _ gateway.Even
 		)
 
 		go a.storeSession(ctx, g)
-	case gateway.EventResumed:
+	case disgateway.EventResumed:
 		slog.Info(
 			"Discord shard RESUMED",
 			slog.String("group_id", a.model.GroupID),
@@ -153,7 +168,7 @@ func (a *App) handleEvent(ctx context.Context, g gateway.Gateway, _ gateway.Even
 		)
 
 		go a.storeSession(ctx, g)
-	case gateway.EventRateLimited:
+	case disgateway.EventRateLimited:
 		slog.Info(
 			"Discord shard RATE_LIMITED",
 			slog.String("group_id", a.model.GroupID),
@@ -161,7 +176,15 @@ func (a *App) handleEvent(ctx context.Context, g gateway.Gateway, _ gateway.Even
 			slog.Int("shard_id", g.ShardID()),
 			slog.String("display_name", a.model.DisplayName),
 		)
-	case gateway.EventHeartbeatAck:
+	case disgateway.EventHeartbeatAck:
 		go a.storeSession(ctx, g)
 	}
+}
+
+func (a *App) resolveConstraints() gateway.AppConstraints {
+	return a.group.DefaultConstraints.Merge(a.model.Constraints)
+}
+
+func (a *App) resolveConfig() gateway.AppConfig {
+	return a.group.DefaultConfig.Merge(a.model.Config)
 }

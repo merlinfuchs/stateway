@@ -22,16 +22,19 @@ type AppManager struct {
 
 	cfg                    AppManagerConfig
 	appStore               store.AppStore
+	groupStore             store.GroupStore
 	shardSessionStore      store.ShardSessionStore
 	identifyRateLimitStore store.IdentifyRateLimitStore
 	eventHandler           event.EventHandler
 
-	apps map[snowflake.ID]*App
+	groups map[string]*model.Group
+	apps   map[snowflake.ID]*App
 }
 
 func NewAppManager(
 	cfg AppManagerConfig,
 	appStore store.AppStore,
+	groupStore store.GroupStore,
 	shardSessionStore store.ShardSessionStore,
 	identifyRateLimitStore store.IdentifyRateLimitStore,
 	eventHandler event.EventHandler,
@@ -42,15 +45,18 @@ func NewAppManager(
 	return &AppManager{
 		cfg:                    cfg,
 		appStore:               appStore,
+		groupStore:             groupStore,
 		shardSessionStore:      shardSessionStore,
 		identifyRateLimitStore: identifyRateLimitStore,
 		eventHandler:           eventHandler,
 
-		apps: make(map[snowflake.ID]*App),
+		apps:   make(map[snowflake.ID]*App),
+		groups: make(map[string]*model.Group),
 	}
 }
 
 func (m *AppManager) Run(ctx context.Context) {
+	m.populateGroups(ctx)
 	m.populateApps(ctx, time.Time{})
 
 	lastUpdate := time.Now()
@@ -59,9 +65,25 @@ func (m *AppManager) Run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-time.After(10 * time.Second):
+			m.populateGroups(ctx)
 			m.populateApps(ctx, lastUpdate)
 			lastUpdate = time.Now()
 		}
+	}
+}
+
+func (m *AppManager) populateGroups(ctx context.Context) {
+	groups, err := m.groupStore.GetGroups(ctx)
+	if err != nil {
+		slog.Error("Failed to get groups", slog.Any("error", err))
+		return
+	}
+
+	m.Lock()
+	defer m.Unlock()
+
+	for _, group := range groups {
+		m.groups[group.ID] = group
 	}
 }
 
@@ -89,12 +111,19 @@ func (m *AppManager) addOrUpdateApp(ctx context.Context, app *model.App) {
 	m.Lock()
 	defer m.Unlock()
 
+	group, ok := m.groups[app.GroupID]
+	if !ok {
+		slog.Error("Group not found", slog.String("group_id", app.GroupID))
+		return
+	}
+
 	if _, ok := m.apps[app.ID]; ok {
-		m.apps[app.ID].Update(ctx, app)
+		m.apps[app.ID].Update(ctx, app, group)
 	} else {
 		newApp := NewApp(
 			AppConfig(m.cfg),
 			app,
+			group,
 			m.appStore,
 			m.shardSessionStore,
 			m.identifyRateLimitStore,
