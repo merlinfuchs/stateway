@@ -13,4 +13,5 @@ type Broker interface {
 	Listen(ctx context.Context, listener GenericListener) error
 	Request(ctx context.Context, serviceType service.ServiceType, method string, request any, opts ...RequestOption) (service.Response, error)
 	Provide(ctx context.Context, svc GenericBrokerService) error
+	Close(ctx context.Context) error
 }

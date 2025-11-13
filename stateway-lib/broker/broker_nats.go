@@ -254,8 +254,9 @@ func (b *NATSBroker) Request(
 
 func (b *NATSBroker) Provide(ctx context.Context, svc GenericBrokerService) error {
 	subject := fmt.Sprintf("service.%s.>", svc.ServiceType())
+	queue := string(svc.ServiceType())
 
-	sub, err := b.nc.Subscribe(subject, func(msg *nats.Msg) {
+	sub, err := b.nc.QueueSubscribe(subject, queue, func(msg *nats.Msg) {
 		method := strings.SplitN(msg.Subject, ".", 3)[2]
 		data, err := svc.HandleRequest(ctx, method, msg.Data)
 
@@ -335,4 +336,8 @@ func (b *NATSBroker) Provide(ctx context.Context, svc GenericBrokerService) erro
 	}()
 
 	return nil
+}
+
+func (b *NATSBroker) Close(ctx context.Context) error {
+	return b.nc.Drain()
 }
