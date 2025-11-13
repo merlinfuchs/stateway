@@ -89,10 +89,13 @@ func (g *DisgoGateway) Open(ctx context.Context) error {
 
 	for i := 0; i < g.config.GatewayCount; i++ {
 		listener := gatewayListener{
-			gatewayIDs:  []int{i},
-			groupIDs:    g.config.GroupIDs,
-			appIDs:      g.config.AppIDs,
-			eventTypes:  g.config.EventTypes,
+			eventFilter: broker.EventFilter{
+				GatewayIDs: []int{i},
+				GroupIDs:   g.config.GroupIDs,
+				AppIDs:     g.config.AppIDs,
+				EventTypes: g.config.EventTypes,
+			},
+			gateway:     g,
 			handlerFunc: g.EventHandlerFunc,
 		}
 
@@ -106,10 +109,7 @@ func (g *DisgoGateway) Open(ctx context.Context) error {
 }
 
 type gatewayListener struct {
-	gatewayIDs []int
-	groupIDs   []string
-	appIDs     []snowflake.ID
-	eventTypes []string
+	eventFilter broker.EventFilter
 
 	gateway     gateway.Gateway
 	handlerFunc gateway.EventHandlerFunc
@@ -117,19 +117,14 @@ type gatewayListener struct {
 
 func (l gatewayListener) BalanceKey() string {
 	key := "gateway"
-	for _, gatewayID := range l.gatewayIDs {
+	for _, gatewayID := range l.eventFilter.GatewayIDs {
 		key += fmt.Sprintf("_%d", gatewayID)
 	}
 	return key
 }
 
 func (l gatewayListener) EventFilter() broker.EventFilter {
-	return broker.EventFilter{
-		GatewayIDs: l.gatewayIDs,
-		GroupIDs:   l.groupIDs,
-		AppIDs:     l.appIDs,
-		EventTypes: l.eventTypes,
-	}
+	return l.eventFilter
 }
 
 func (l gatewayListener) HandleEvent(ctx context.Context, event *event.GatewayEvent) error {
