@@ -34,8 +34,14 @@ func (c *Client) GetEmojis(ctx context.Context, appID snowflake.ID, guildID snow
 	rows, err := c.Q.GetEmojis(ctx, pgmodel.GetEmojisParams{
 		AppID:   int64(appID),
 		GuildID: int64(guildID),
-		Limit:   int32(limit),
-		Offset:  int32(offset),
+		Limit: pgtype.Int4{
+			Int32: int32(limit),
+			Valid: limit != 0,
+		},
+		Offset: pgtype.Int4{
+			Int32: int32(offset),
+			Valid: offset != 0,
+		},
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -60,8 +66,14 @@ func (c *Client) SearchEmojis(ctx context.Context, params store.SearchEmojisPara
 		AppID:   int64(params.AppID),
 		GuildID: int64(params.GuildID),
 		Data:    params.Data,
-		Limit:   int32(params.Limit),
-		Offset:  int32(params.Offset),
+		Limit: pgtype.Int4{
+			Int32: int32(params.Limit),
+			Valid: params.Limit != 0,
+		},
+		Offset: pgtype.Int4{
+			Int32: int32(params.Offset),
+			Valid: params.Offset != 0,
+		},
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

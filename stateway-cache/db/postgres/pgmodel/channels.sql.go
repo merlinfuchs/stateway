@@ -7,6 +7,8 @@ package pgmodel
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const deleteChannel = `-- name: DeleteChannel :exec
@@ -50,22 +52,22 @@ func (q *Queries) GetChannel(ctx context.Context, arg GetChannelParams) (CacheCh
 }
 
 const getChannels = `-- name: GetChannels :many
-SELECT app_id, guild_id, channel_id, data, tainted, created_at, updated_at FROM cache.channels WHERE app_id = $1 AND guild_id = $2 ORDER BY channel_id LIMIT $3 OFFSET $4
+SELECT app_id, guild_id, channel_id, data, tainted, created_at, updated_at FROM cache.channels WHERE app_id = $1 AND guild_id = $2 ORDER BY channel_id LIMIT $4 OFFSET $3
 `
 
 type GetChannelsParams struct {
 	AppID   int64
 	GuildID int64
-	Limit   int32
-	Offset  int32
+	Offset  pgtype.Int4
+	Limit   pgtype.Int4
 }
 
 func (q *Queries) GetChannels(ctx context.Context, arg GetChannelsParams) ([]CacheChannel, error) {
 	rows, err := q.db.Query(ctx, getChannels,
 		arg.AppID,
 		arg.GuildID,
-		arg.Limit,
 		arg.Offset,
+		arg.Limit,
 	)
 	if err != nil {
 		return nil, err
@@ -94,24 +96,24 @@ func (q *Queries) GetChannels(ctx context.Context, arg GetChannelsParams) ([]Cac
 }
 
 const getChannelsByType = `-- name: GetChannelsByType :many
-SELECT app_id, guild_id, channel_id, data, tainted, created_at, updated_at FROM cache.channels WHERE app_id = $1 AND guild_id = $2 AND (data->>'type')::INT = ANY($5::INT[]) ORDER BY channel_id LIMIT $3 OFFSET $4
+SELECT app_id, guild_id, channel_id, data, tainted, created_at, updated_at FROM cache.channels WHERE app_id = $1 AND guild_id = $2 AND (data->>'type')::INT = ANY($3::INT[]) ORDER BY channel_id LIMIT $5 OFFSET $4
 `
 
 type GetChannelsByTypeParams struct {
 	AppID   int64
 	GuildID int64
-	Limit   int32
-	Offset  int32
 	Types   []int32
+	Offset  pgtype.Int4
+	Limit   pgtype.Int4
 }
 
 func (q *Queries) GetChannelsByType(ctx context.Context, arg GetChannelsByTypeParams) ([]CacheChannel, error) {
 	rows, err := q.db.Query(ctx, getChannelsByType,
 		arg.AppID,
 		arg.GuildID,
-		arg.Limit,
-		arg.Offset,
 		arg.Types,
+		arg.Offset,
+		arg.Limit,
 	)
 	if err != nil {
 		return nil, err
@@ -155,15 +157,15 @@ func (q *Queries) MarkShardChannelsTainted(ctx context.Context, arg MarkShardCha
 }
 
 const searchChannels = `-- name: SearchChannels :many
-SELECT app_id, guild_id, channel_id, data, tainted, created_at, updated_at FROM cache.channels WHERE app_id = $1 AND guild_id = $2 AND data @> $3 ORDER BY channel_id LIMIT $4 OFFSET $5
+SELECT app_id, guild_id, channel_id, data, tainted, created_at, updated_at FROM cache.channels WHERE app_id = $1 AND guild_id = $2 AND data @> $3 ORDER BY channel_id LIMIT $5 OFFSET $4
 `
 
 type SearchChannelsParams struct {
 	AppID   int64
 	GuildID int64
 	Data    []byte
-	Limit   int32
-	Offset  int32
+	Offset  pgtype.Int4
+	Limit   pgtype.Int4
 }
 
 func (q *Queries) SearchChannels(ctx context.Context, arg SearchChannelsParams) ([]CacheChannel, error) {
@@ -171,8 +173,8 @@ func (q *Queries) SearchChannels(ctx context.Context, arg SearchChannelsParams) 
 		arg.AppID,
 		arg.GuildID,
 		arg.Data,
-		arg.Limit,
 		arg.Offset,
+		arg.Limit,
 	)
 	if err != nil {
 		return nil, err

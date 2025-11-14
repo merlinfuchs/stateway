@@ -7,6 +7,8 @@ package pgmodel
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const deleteRole = `-- name: DeleteRole :exec
@@ -50,22 +52,22 @@ func (q *Queries) GetRole(ctx context.Context, arg GetRoleParams) (CacheRole, er
 }
 
 const getRoles = `-- name: GetRoles :many
-SELECT app_id, guild_id, role_id, data, tainted, created_at, updated_at FROM cache.roles WHERE app_id = $1 AND guild_id = $2 ORDER BY role_id LIMIT $3 OFFSET $4
+SELECT app_id, guild_id, role_id, data, tainted, created_at, updated_at FROM cache.roles WHERE app_id = $1 AND guild_id = $2 ORDER BY role_id LIMIT $4 OFFSET $3
 `
 
 type GetRolesParams struct {
 	AppID   int64
 	GuildID int64
-	Limit   int32
-	Offset  int32
+	Offset  pgtype.Int4
+	Limit   pgtype.Int4
 }
 
 func (q *Queries) GetRoles(ctx context.Context, arg GetRolesParams) ([]CacheRole, error) {
 	rows, err := q.db.Query(ctx, getRoles,
 		arg.AppID,
 		arg.GuildID,
-		arg.Limit,
 		arg.Offset,
+		arg.Limit,
 	)
 	if err != nil {
 		return nil, err
@@ -109,15 +111,15 @@ func (q *Queries) MarkShardRolesTainted(ctx context.Context, arg MarkShardRolesT
 }
 
 const searchRoles = `-- name: SearchRoles :many
-SELECT app_id, guild_id, role_id, data, tainted, created_at, updated_at FROM cache.roles WHERE app_id = $1 AND guild_id = $2 AND data @> $3 ORDER BY role_id LIMIT $4 OFFSET $5
+SELECT app_id, guild_id, role_id, data, tainted, created_at, updated_at FROM cache.roles WHERE app_id = $1 AND guild_id = $2 AND data @> $3 ORDER BY role_id LIMIT $5 OFFSET $4
 `
 
 type SearchRolesParams struct {
 	AppID   int64
 	GuildID int64
 	Data    []byte
-	Limit   int32
-	Offset  int32
+	Offset  pgtype.Int4
+	Limit   pgtype.Int4
 }
 
 func (q *Queries) SearchRoles(ctx context.Context, arg SearchRolesParams) ([]CacheRole, error) {
@@ -125,8 +127,8 @@ func (q *Queries) SearchRoles(ctx context.Context, arg SearchRolesParams) ([]Cac
 		arg.AppID,
 		arg.GuildID,
 		arg.Data,
-		arg.Limit,
 		arg.Offset,
+		arg.Limit,
 	)
 	if err != nil {
 		return nil, err

@@ -7,6 +7,8 @@ package pgmodel
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const deleteEmoji = `-- name: DeleteEmoji :exec
@@ -50,22 +52,22 @@ func (q *Queries) GetEmoji(ctx context.Context, arg GetEmojiParams) (CacheEmoji,
 }
 
 const getEmojis = `-- name: GetEmojis :many
-SELECT app_id, guild_id, emoji_id, data, tainted, created_at, updated_at FROM cache.emojis WHERE app_id = $1 AND guild_id = $2 ORDER BY emoji_id LIMIT $3 OFFSET $4
+SELECT app_id, guild_id, emoji_id, data, tainted, created_at, updated_at FROM cache.emojis WHERE app_id = $1 AND guild_id = $2 ORDER BY emoji_id LIMIT $4 OFFSET $3
 `
 
 type GetEmojisParams struct {
 	AppID   int64
 	GuildID int64
-	Limit   int32
-	Offset  int32
+	Offset  pgtype.Int4
+	Limit   pgtype.Int4
 }
 
 func (q *Queries) GetEmojis(ctx context.Context, arg GetEmojisParams) ([]CacheEmoji, error) {
 	rows, err := q.db.Query(ctx, getEmojis,
 		arg.AppID,
 		arg.GuildID,
-		arg.Limit,
 		arg.Offset,
+		arg.Limit,
 	)
 	if err != nil {
 		return nil, err
@@ -109,15 +111,15 @@ func (q *Queries) MarkShardEmojisTainted(ctx context.Context, arg MarkShardEmoji
 }
 
 const searchEmojis = `-- name: SearchEmojis :many
-SELECT app_id, guild_id, emoji_id, data, tainted, created_at, updated_at FROM cache.emojis WHERE app_id = $1 AND guild_id = $2 AND data @> $3 ORDER BY emoji_id LIMIT $4 OFFSET $5
+SELECT app_id, guild_id, emoji_id, data, tainted, created_at, updated_at FROM cache.emojis WHERE app_id = $1 AND guild_id = $2 AND data @> $3 ORDER BY emoji_id LIMIT $5 OFFSET $4
 `
 
 type SearchEmojisParams struct {
 	AppID   int64
 	GuildID int64
 	Data    []byte
-	Limit   int32
-	Offset  int32
+	Offset  pgtype.Int4
+	Limit   pgtype.Int4
 }
 
 func (q *Queries) SearchEmojis(ctx context.Context, arg SearchEmojisParams) ([]CacheEmoji, error) {
@@ -125,8 +127,8 @@ func (q *Queries) SearchEmojis(ctx context.Context, arg SearchEmojisParams) ([]C
 		arg.AppID,
 		arg.GuildID,
 		arg.Data,
-		arg.Limit,
 		arg.Offset,
+		arg.Limit,
 	)
 	if err != nil {
 		return nil, err

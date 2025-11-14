@@ -7,6 +7,8 @@ package pgmodel
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const deleteGuild = `-- name: DeleteGuild :exec
@@ -48,17 +50,17 @@ func (q *Queries) GetGuild(ctx context.Context, arg GetGuildParams) (CacheGuild,
 }
 
 const getGuilds = `-- name: GetGuilds :many
-SELECT app_id, guild_id, data, unavailable, tainted, created_at, updated_at FROM cache.guilds WHERE app_id = $1 ORDER BY guild_id LIMIT $2 OFFSET $3
+SELECT app_id, guild_id, data, unavailable, tainted, created_at, updated_at FROM cache.guilds WHERE app_id = $1 ORDER BY guild_id LIMIT $3 OFFSET $2
 `
 
 type GetGuildsParams struct {
 	AppID  int64
-	Limit  int32
-	Offset int32
+	Offset pgtype.Int4
+	Limit  pgtype.Int4
 }
 
 func (q *Queries) GetGuilds(ctx context.Context, arg GetGuildsParams) ([]CacheGuild, error) {
-	rows, err := q.db.Query(ctx, getGuilds, arg.AppID, arg.Limit, arg.Offset)
+	rows, err := q.db.Query(ctx, getGuilds, arg.AppID, arg.Offset, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
@@ -115,22 +117,22 @@ func (q *Queries) MarkShardGuildsTainted(ctx context.Context, arg MarkShardGuild
 }
 
 const searchGuilds = `-- name: SearchGuilds :many
-SELECT app_id, guild_id, data, unavailable, tainted, created_at, updated_at FROM cache.guilds WHERE app_id = $1 AND data @> $2 ORDER BY guild_id LIMIT $3 OFFSET $4
+SELECT app_id, guild_id, data, unavailable, tainted, created_at, updated_at FROM cache.guilds WHERE app_id = $1 AND data @> $2 ORDER BY guild_id LIMIT $4 OFFSET $3
 `
 
 type SearchGuildsParams struct {
 	AppID  int64
 	Data   []byte
-	Limit  int32
-	Offset int32
+	Offset pgtype.Int4
+	Limit  pgtype.Int4
 }
 
 func (q *Queries) SearchGuilds(ctx context.Context, arg SearchGuildsParams) ([]CacheGuild, error) {
 	rows, err := q.db.Query(ctx, searchGuilds,
 		arg.AppID,
 		arg.Data,
-		arg.Limit,
 		arg.Offset,
+		arg.Limit,
 	)
 	if err != nil {
 		return nil, err

@@ -7,6 +7,8 @@ package pgmodel
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const deleteSticker = `-- name: DeleteSticker :exec
@@ -50,22 +52,22 @@ func (q *Queries) GetSticker(ctx context.Context, arg GetStickerParams) (CacheSt
 }
 
 const getStickers = `-- name: GetStickers :many
-SELECT app_id, guild_id, sticker_id, data, tainted, created_at, updated_at FROM cache.stickers WHERE app_id = $1 AND guild_id = $2 ORDER BY sticker_id LIMIT $3 OFFSET $4
+SELECT app_id, guild_id, sticker_id, data, tainted, created_at, updated_at FROM cache.stickers WHERE app_id = $1 AND guild_id = $2 ORDER BY sticker_id LIMIT $4 OFFSET $3
 `
 
 type GetStickersParams struct {
 	AppID   int64
 	GuildID int64
-	Limit   int32
-	Offset  int32
+	Offset  pgtype.Int4
+	Limit   pgtype.Int4
 }
 
 func (q *Queries) GetStickers(ctx context.Context, arg GetStickersParams) ([]CacheSticker, error) {
 	rows, err := q.db.Query(ctx, getStickers,
 		arg.AppID,
 		arg.GuildID,
-		arg.Limit,
 		arg.Offset,
+		arg.Limit,
 	)
 	if err != nil {
 		return nil, err
@@ -109,15 +111,15 @@ func (q *Queries) MarkShardStickersTainted(ctx context.Context, arg MarkShardSti
 }
 
 const searchStickers = `-- name: SearchStickers :many
-SELECT app_id, guild_id, sticker_id, data, tainted, created_at, updated_at FROM cache.stickers WHERE app_id = $1 AND guild_id = $2 AND data @> $3 ORDER BY sticker_id LIMIT $4 OFFSET $5
+SELECT app_id, guild_id, sticker_id, data, tainted, created_at, updated_at FROM cache.stickers WHERE app_id = $1 AND guild_id = $2 AND data @> $3 ORDER BY sticker_id LIMIT $5 OFFSET $4
 `
 
 type SearchStickersParams struct {
 	AppID   int64
 	GuildID int64
 	Data    []byte
-	Limit   int32
-	Offset  int32
+	Offset  pgtype.Int4
+	Limit   pgtype.Int4
 }
 
 func (q *Queries) SearchStickers(ctx context.Context, arg SearchStickersParams) ([]CacheSticker, error) {
@@ -125,8 +127,8 @@ func (q *Queries) SearchStickers(ctx context.Context, arg SearchStickersParams) 
 		arg.AppID,
 		arg.GuildID,
 		arg.Data,
-		arg.Limit,
 		arg.Offset,
+		arg.Limit,
 	)
 	if err != nil {
 		return nil, err

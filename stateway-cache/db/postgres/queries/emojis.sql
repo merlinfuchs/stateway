@@ -2,10 +2,10 @@
 SELECT * FROM cache.emojis WHERE app_id = $1 AND guild_id = $2 AND emoji_id = $3 LIMIT 1;
 
 -- name: GetEmojis :many
-SELECT * FROM cache.emojis WHERE app_id = $1 AND guild_id = $2 ORDER BY emoji_id LIMIT $3 OFFSET $4;
+SELECT * FROM cache.emojis WHERE app_id = $1 AND guild_id = $2 ORDER BY emoji_id LIMIT sqlc.narg('limit') OFFSET sqlc.narg('offset');
 
 -- name: SearchEmojis :many
-SELECT * FROM cache.emojis WHERE app_id = $1 AND guild_id = $2 AND data @> $3 ORDER BY emoji_id LIMIT $4 OFFSET $5;
+SELECT * FROM cache.emojis WHERE app_id = $1 AND guild_id = $2 AND data @> $3 ORDER BY emoji_id LIMIT sqlc.narg('limit') OFFSET sqlc.narg('offset');
 
 -- name: UpsertEmojis :batchexec
 INSERT INTO cache.emojis (

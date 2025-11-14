@@ -2,10 +2,10 @@
 SELECT * FROM cache.guilds WHERE app_id = $1 AND guild_id = $2 LIMIT 1;
 
 -- name: GetGuilds :many
-SELECT * FROM cache.guilds WHERE app_id = $1 ORDER BY guild_id LIMIT $2 OFFSET $3;
+SELECT * FROM cache.guilds WHERE app_id = $1 ORDER BY guild_id LIMIT sqlc.narg('limit') OFFSET sqlc.narg('offset');
 
 -- name: SearchGuilds :many
-SELECT * FROM cache.guilds WHERE app_id = $1 AND data @> $2 ORDER BY guild_id LIMIT $3 OFFSET $4;
+SELECT * FROM cache.guilds WHERE app_id = $1 AND data @> $2 ORDER BY guild_id LIMIT sqlc.narg('limit') OFFSET sqlc.narg('offset');
 
 -- name: UpsertGuilds :batchexec
 INSERT INTO cache.guilds (

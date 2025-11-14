@@ -31,9 +31,15 @@ func (c *Client) GetGuild(ctx context.Context, appID snowflake.ID, guildID snowf
 
 func (c *Client) GetGuilds(ctx context.Context, appID snowflake.ID, limit int, offset int) ([]*model.Guild, error) {
 	rows, err := c.Q.GetGuilds(ctx, pgmodel.GetGuildsParams{
-		AppID:  int64(appID),
-		Limit:  int32(limit),
-		Offset: int32(offset),
+		AppID: int64(appID),
+		Limit: pgtype.Int4{
+			Int32: int32(limit),
+			Valid: limit != 0,
+		},
+		Offset: pgtype.Int4{
+			Int32: int32(offset),
+			Valid: offset != 0,
+		},
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -55,10 +61,16 @@ func (c *Client) GetGuilds(ctx context.Context, appID snowflake.ID, limit int, o
 
 func (c *Client) SearchGuilds(ctx context.Context, params store.SearchGuildsParams) ([]*model.Guild, error) {
 	rows, err := c.Q.SearchGuilds(ctx, pgmodel.SearchGuildsParams{
-		AppID:  int64(params.AppID),
-		Data:   params.Data,
-		Limit:  int32(params.Limit),
-		Offset: int32(params.Offset),
+		AppID: int64(params.AppID),
+		Data:  params.Data,
+		Limit: pgtype.Int4{
+			Int32: int32(params.Limit),
+			Valid: params.Limit != 0,
+		},
+		Offset: pgtype.Int4{
+			Int32: int32(params.Offset),
+			Valid: params.Offset != 0,
+		},
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

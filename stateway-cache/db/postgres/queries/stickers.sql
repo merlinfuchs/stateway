@@ -2,10 +2,10 @@
 SELECT * FROM cache.stickers WHERE app_id = $1 AND guild_id = $2 AND sticker_id = $3 LIMIT 1;
 
 -- name: GetStickers :many
-SELECT * FROM cache.stickers WHERE app_id = $1 AND guild_id = $2 ORDER BY sticker_id LIMIT $3 OFFSET $4;
+SELECT * FROM cache.stickers WHERE app_id = $1 AND guild_id = $2 ORDER BY sticker_id LIMIT sqlc.narg('limit') OFFSET sqlc.narg('offset');
 
 -- name: SearchStickers :many
-SELECT * FROM cache.stickers WHERE app_id = $1 AND guild_id = $2 AND data @> $3 ORDER BY sticker_id LIMIT $4 OFFSET $5;
+SELECT * FROM cache.stickers WHERE app_id = $1 AND guild_id = $2 AND data @> $3 ORDER BY sticker_id LIMIT sqlc.narg('limit') OFFSET sqlc.narg('offset');
 
 -- name: UpsertStickers :batchexec
 INSERT INTO cache.stickers (
