@@ -9,6 +9,8 @@ import (
 	"github.com/merlinfuchs/stateway/stateway-lib/service"
 )
 
+var _ Gateway = (*GatewayClient)(nil)
+
 type GatewayClient struct {
 	b broker.Broker
 }
@@ -17,17 +19,16 @@ func NewGatewayClient(b broker.Broker) *GatewayClient {
 	return &GatewayClient{b: b}
 }
 
-func (c *GatewayClient) GetApp(ctx context.Context, appID snowflake.ID) (*App, error) {
-	return gatewayRequest[*App](ctx, c.b, GatewayMethodAppGet, GetAppRequest{AppID: appID})
+func (c *GatewayClient) GetApp(ctx context.Context, appID snowflake.ID, withSecrets bool) (*App, error) {
+	return gatewayRequest[*App](ctx, c.b, GatewayMethodAppGet, GetAppRequest{AppID: appID, WithSecrets: withSecrets})
 }
 
-func (c *GatewayClient) ListApps(ctx context.Context, params ListAppsRequest) ([]*App, error) {
+func (c *GatewayClient) GetApps(ctx context.Context, params ListAppsRequest) ([]*App, error) {
 	return gatewayRequest[[]*App](ctx, c.b, GatewayMethodAppList, params)
 }
 
-func (c *GatewayClient) UpsertApp(ctx context.Context, app UpsertAppRequest) error {
-	_, err := gatewayRequest[struct{}](ctx, c.b, GatewayMethodAppUpsert, app)
-	return err
+func (c *GatewayClient) UpsertApp(ctx context.Context, app UpsertAppRequest) (*App, error) {
+	return gatewayRequest[*App](ctx, c.b, GatewayMethodAppUpsert, app)
 }
 
 func (c *GatewayClient) DisableApp(ctx context.Context, appID snowflake.ID) error {
@@ -44,13 +45,12 @@ func (c *GatewayClient) GetGroup(ctx context.Context, groupID string) (*Group, e
 	return gatewayRequest[*Group](ctx, c.b, GatewayMethodGroupGet, GetGroupRequest{GroupID: groupID})
 }
 
-func (c *GatewayClient) ListGroups(ctx context.Context) ([]*Group, error) {
+func (c *GatewayClient) GetGroups(ctx context.Context) ([]*Group, error) {
 	return gatewayRequest[[]*Group](ctx, c.b, GatewayMethodGroupList, ListGroupsRequest{})
 }
 
-func (c *GatewayClient) UpsertGroup(ctx context.Context, group UpsertGroupRequest) error {
-	_, err := gatewayRequest[struct{}](ctx, c.b, GatewayMethodGroupUpsert, group)
-	return err
+func (c *GatewayClient) UpsertGroup(ctx context.Context, group UpsertGroupRequest) (*Group, error) {
+	return gatewayRequest[*Group](ctx, c.b, GatewayMethodGroupUpsert, group)
 }
 
 func (c *GatewayClient) DeleteGroup(ctx context.Context, groupID string) error {
