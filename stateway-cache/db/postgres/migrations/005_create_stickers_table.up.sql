@@ -9,3 +9,5 @@ CREATE TABLE IF NOT EXISTS cache.stickers (
 
     PRIMARY KEY (app_id, guild_id, sticker_id)
 );
+
+CREATE INDEX IF NOT EXISTS idx_cache_stickers_app_id_sticker_id ON cache.stickers (app_id, sticker_id);

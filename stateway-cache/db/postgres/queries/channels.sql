@@ -1,14 +1,32 @@
--- name: GetChannel :one
+-- name: GetGuildChannel :one
 SELECT * FROM cache.channels WHERE app_id = $1 AND guild_id = $2 AND channel_id = $3 LIMIT 1;
 
--- name: GetChannels :many
+-- name: GetChannel :one
+SELECT * FROM cache.channels WHERE app_id = $1 AND channel_id = $2 LIMIT 1;
+
+-- name: GetGuildChannels :many
 SELECT * FROM cache.channels WHERE app_id = $1 AND guild_id = $2 ORDER BY channel_id LIMIT sqlc.narg('limit') OFFSET sqlc.narg('offset');
 
--- name: GetChannelsByType :many
+-- name: GetChannels :many
+SELECT * FROM cache.channels WHERE app_id = $1 ORDER BY channel_id LIMIT sqlc.narg('limit') OFFSET sqlc.narg('offset');
+
+-- name: CountGuildChannels :one
+SELECT COUNT(*) FROM cache.channels WHERE app_id = $1 AND guild_id = $2;
+
+-- name: CountChannels :one
+SELECT COUNT(*) FROM cache.channels WHERE app_id = $1;
+
+-- name: GetGuildChannelsByType :many
 SELECT * FROM cache.channels WHERE app_id = $1 AND guild_id = $2 AND (data->>'type')::INT = ANY(@types::INT[]) ORDER BY channel_id LIMIT sqlc.narg('limit') OFFSET sqlc.narg('offset');
 
--- name: SearchChannels :many
+-- name: GetChannelsByType :many
+SELECT * FROM cache.channels WHERE app_id = $1 AND (data->>'type')::INT = ANY(@types::INT[]) ORDER BY channel_id LIMIT sqlc.narg('limit') OFFSET sqlc.narg('offset');
+
+-- name: SearchGuildChannels :many
 SELECT * FROM cache.channels WHERE app_id = $1 AND guild_id = $2 AND data @> $3 ORDER BY channel_id LIMIT sqlc.narg('limit') OFFSET sqlc.narg('offset');
+
+-- name: SearchChannels :many
+SELECT * FROM cache.channels WHERE app_id = $1 AND data @> $2 ORDER BY channel_id LIMIT sqlc.narg('limit') OFFSET sqlc.narg('offset');
 
 -- name: UpsertChannels :batchexec
 INSERT INTO cache.channels (

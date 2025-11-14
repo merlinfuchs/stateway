@@ -11,6 +11,33 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countChannels = `-- name: CountChannels :one
+SELECT COUNT(*) FROM cache.channels WHERE app_id = $1
+`
+
+func (q *Queries) CountChannels(ctx context.Context, appID int64) (int64, error) {
+	row := q.db.QueryRow(ctx, countChannels, appID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countGuildChannels = `-- name: CountGuildChannels :one
+SELECT COUNT(*) FROM cache.channels WHERE app_id = $1 AND guild_id = $2
+`
+
+type CountGuildChannelsParams struct {
+	AppID   int64
+	GuildID int64
+}
+
+func (q *Queries) CountGuildChannels(ctx context.Context, arg CountGuildChannelsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countGuildChannels, arg.AppID, arg.GuildID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const deleteChannel = `-- name: DeleteChannel :exec
 DELETE FROM cache.channels WHERE app_id = $1 AND guild_id = $2 AND channel_id = $3
 `
@@ -27,17 +54,16 @@ func (q *Queries) DeleteChannel(ctx context.Context, arg DeleteChannelParams) er
 }
 
 const getChannel = `-- name: GetChannel :one
-SELECT app_id, guild_id, channel_id, data, tainted, created_at, updated_at FROM cache.channels WHERE app_id = $1 AND guild_id = $2 AND channel_id = $3 LIMIT 1
+SELECT app_id, guild_id, channel_id, data, tainted, created_at, updated_at FROM cache.channels WHERE app_id = $1 AND channel_id = $2 LIMIT 1
 `
 
 type GetChannelParams struct {
 	AppID     int64
-	GuildID   int64
 	ChannelID int64
 }
 
 func (q *Queries) GetChannel(ctx context.Context, arg GetChannelParams) (CacheChannel, error) {
-	row := q.db.QueryRow(ctx, getChannel, arg.AppID, arg.GuildID, arg.ChannelID)
+	row := q.db.QueryRow(ctx, getChannel, arg.AppID, arg.ChannelID)
 	var i CacheChannel
 	err := row.Scan(
 		&i.AppID,
@@ -52,18 +78,125 @@ func (q *Queries) GetChannel(ctx context.Context, arg GetChannelParams) (CacheCh
 }
 
 const getChannels = `-- name: GetChannels :many
-SELECT app_id, guild_id, channel_id, data, tainted, created_at, updated_at FROM cache.channels WHERE app_id = $1 AND guild_id = $2 ORDER BY channel_id LIMIT $4 OFFSET $3
+SELECT app_id, guild_id, channel_id, data, tainted, created_at, updated_at FROM cache.channels WHERE app_id = $1 ORDER BY channel_id LIMIT $3 OFFSET $2
 `
 
 type GetChannelsParams struct {
+	AppID  int64
+	Offset pgtype.Int4
+	Limit  pgtype.Int4
+}
+
+func (q *Queries) GetChannels(ctx context.Context, arg GetChannelsParams) ([]CacheChannel, error) {
+	rows, err := q.db.Query(ctx, getChannels, arg.AppID, arg.Offset, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CacheChannel
+	for rows.Next() {
+		var i CacheChannel
+		if err := rows.Scan(
+			&i.AppID,
+			&i.GuildID,
+			&i.ChannelID,
+			&i.Data,
+			&i.Tainted,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getChannelsByType = `-- name: GetChannelsByType :many
+SELECT app_id, guild_id, channel_id, data, tainted, created_at, updated_at FROM cache.channels WHERE app_id = $1 AND (data->>'type')::INT = ANY($2::INT[]) ORDER BY channel_id LIMIT $4 OFFSET $3
+`
+
+type GetChannelsByTypeParams struct {
+	AppID  int64
+	Types  []int32
+	Offset pgtype.Int4
+	Limit  pgtype.Int4
+}
+
+func (q *Queries) GetChannelsByType(ctx context.Context, arg GetChannelsByTypeParams) ([]CacheChannel, error) {
+	rows, err := q.db.Query(ctx, getChannelsByType,
+		arg.AppID,
+		arg.Types,
+		arg.Offset,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CacheChannel
+	for rows.Next() {
+		var i CacheChannel
+		if err := rows.Scan(
+			&i.AppID,
+			&i.GuildID,
+			&i.ChannelID,
+			&i.Data,
+			&i.Tainted,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getGuildChannel = `-- name: GetGuildChannel :one
+SELECT app_id, guild_id, channel_id, data, tainted, created_at, updated_at FROM cache.channels WHERE app_id = $1 AND guild_id = $2 AND channel_id = $3 LIMIT 1
+`
+
+type GetGuildChannelParams struct {
+	AppID     int64
+	GuildID   int64
+	ChannelID int64
+}
+
+func (q *Queries) GetGuildChannel(ctx context.Context, arg GetGuildChannelParams) (CacheChannel, error) {
+	row := q.db.QueryRow(ctx, getGuildChannel, arg.AppID, arg.GuildID, arg.ChannelID)
+	var i CacheChannel
+	err := row.Scan(
+		&i.AppID,
+		&i.GuildID,
+		&i.ChannelID,
+		&i.Data,
+		&i.Tainted,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getGuildChannels = `-- name: GetGuildChannels :many
+SELECT app_id, guild_id, channel_id, data, tainted, created_at, updated_at FROM cache.channels WHERE app_id = $1 AND guild_id = $2 ORDER BY channel_id LIMIT $4 OFFSET $3
+`
+
+type GetGuildChannelsParams struct {
 	AppID   int64
 	GuildID int64
 	Offset  pgtype.Int4
 	Limit   pgtype.Int4
 }
 
-func (q *Queries) GetChannels(ctx context.Context, arg GetChannelsParams) ([]CacheChannel, error) {
-	rows, err := q.db.Query(ctx, getChannels,
+func (q *Queries) GetGuildChannels(ctx context.Context, arg GetGuildChannelsParams) ([]CacheChannel, error) {
+	rows, err := q.db.Query(ctx, getGuildChannels,
 		arg.AppID,
 		arg.GuildID,
 		arg.Offset,
@@ -95,11 +228,11 @@ func (q *Queries) GetChannels(ctx context.Context, arg GetChannelsParams) ([]Cac
 	return items, nil
 }
 
-const getChannelsByType = `-- name: GetChannelsByType :many
+const getGuildChannelsByType = `-- name: GetGuildChannelsByType :many
 SELECT app_id, guild_id, channel_id, data, tainted, created_at, updated_at FROM cache.channels WHERE app_id = $1 AND guild_id = $2 AND (data->>'type')::INT = ANY($3::INT[]) ORDER BY channel_id LIMIT $5 OFFSET $4
 `
 
-type GetChannelsByTypeParams struct {
+type GetGuildChannelsByTypeParams struct {
 	AppID   int64
 	GuildID int64
 	Types   []int32
@@ -107,8 +240,8 @@ type GetChannelsByTypeParams struct {
 	Limit   pgtype.Int4
 }
 
-func (q *Queries) GetChannelsByType(ctx context.Context, arg GetChannelsByTypeParams) ([]CacheChannel, error) {
-	rows, err := q.db.Query(ctx, getChannelsByType,
+func (q *Queries) GetGuildChannelsByType(ctx context.Context, arg GetGuildChannelsByTypeParams) ([]CacheChannel, error) {
+	rows, err := q.db.Query(ctx, getGuildChannelsByType,
 		arg.AppID,
 		arg.GuildID,
 		arg.Types,
@@ -157,10 +290,54 @@ func (q *Queries) MarkShardChannelsTainted(ctx context.Context, arg MarkShardCha
 }
 
 const searchChannels = `-- name: SearchChannels :many
-SELECT app_id, guild_id, channel_id, data, tainted, created_at, updated_at FROM cache.channels WHERE app_id = $1 AND guild_id = $2 AND data @> $3 ORDER BY channel_id LIMIT $5 OFFSET $4
+SELECT app_id, guild_id, channel_id, data, tainted, created_at, updated_at FROM cache.channels WHERE app_id = $1 AND data @> $2 ORDER BY channel_id LIMIT $4 OFFSET $3
 `
 
 type SearchChannelsParams struct {
+	AppID  int64
+	Data   []byte
+	Offset pgtype.Int4
+	Limit  pgtype.Int4
+}
+
+func (q *Queries) SearchChannels(ctx context.Context, arg SearchChannelsParams) ([]CacheChannel, error) {
+	rows, err := q.db.Query(ctx, searchChannels,
+		arg.AppID,
+		arg.Data,
+		arg.Offset,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CacheChannel
+	for rows.Next() {
+		var i CacheChannel
+		if err := rows.Scan(
+			&i.AppID,
+			&i.GuildID,
+			&i.ChannelID,
+			&i.Data,
+			&i.Tainted,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const searchGuildChannels = `-- name: SearchGuildChannels :many
+SELECT app_id, guild_id, channel_id, data, tainted, created_at, updated_at FROM cache.channels WHERE app_id = $1 AND guild_id = $2 AND data @> $3 ORDER BY channel_id LIMIT $5 OFFSET $4
+`
+
+type SearchGuildChannelsParams struct {
 	AppID   int64
 	GuildID int64
 	Data    []byte
@@ -168,8 +345,8 @@ type SearchChannelsParams struct {
 	Limit   pgtype.Int4
 }
 
-func (q *Queries) SearchChannels(ctx context.Context, arg SearchChannelsParams) ([]CacheChannel, error) {
-	rows, err := q.db.Query(ctx, searchChannels,
+func (q *Queries) SearchGuildChannels(ctx context.Context, arg SearchGuildChannelsParams) ([]CacheChannel, error) {
+	rows, err := q.db.Query(ctx, searchGuildChannels,
 		arg.AppID,
 		arg.GuildID,
 		arg.Data,

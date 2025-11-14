@@ -9,3 +9,5 @@ CREATE TABLE IF NOT EXISTS cache.emojis (
 
     PRIMARY KEY (app_id, guild_id, emoji_id)
 );
+
+CREATE INDEX IF NOT EXISTS idx_cache_emojis_app_id_emoji_id ON cache.emojis (app_id, emoji_id);

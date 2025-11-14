@@ -15,8 +15,125 @@ import (
 	"github.com/merlinfuchs/stateway/stateway-cache/store"
 )
 
-func (c *Client) GetChannel(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, channelID snowflake.ID) (*model.Channel, error) {
+var _ store.CacheChannelStore = (*Client)(nil)
+
+func (c *Client) GetChannel(ctx context.Context, appID snowflake.ID, channelID snowflake.ID) (*model.Channel, error) {
 	row, err := c.Q.GetChannel(ctx, pgmodel.GetChannelParams{
+		AppID:     int64(appID),
+		ChannelID: int64(channelID),
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, store.ErrNotFound
+		}
+		return nil, err
+	}
+	return rowToChannel(row)
+}
+
+func (c *Client) GetChannels(ctx context.Context, appID snowflake.ID, limit int, offset int) ([]*model.Channel, error) {
+	rows, err := c.Q.GetChannels(ctx, pgmodel.GetChannelsParams{
+		AppID: int64(appID),
+		Limit: pgtype.Int4{
+			Int32: int32(limit),
+			Valid: limit != 0,
+		},
+		Offset: pgtype.Int4{
+			Int32: int32(offset),
+			Valid: offset != 0,
+		},
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, store.ErrNotFound
+		}
+		return nil, err
+	}
+
+	channels := make([]*model.Channel, len(rows))
+	for i, row := range rows {
+		channel, err := rowToChannel(row)
+		if err != nil {
+			return nil, err
+		}
+		channels[i] = channel
+	}
+	return channels, nil
+}
+
+func (c *Client) GetChannelsByType(ctx context.Context, appID snowflake.ID, types []int, limit int, offset int) ([]*model.Channel, error) {
+	types32 := make([]int32, len(types))
+	for i, t := range types {
+		types32[i] = int32(t)
+	}
+
+	rows, err := c.Q.GetChannelsByType(ctx, pgmodel.GetChannelsByTypeParams{
+		AppID: int64(appID),
+		Types: types32,
+		Limit: pgtype.Int4{
+			Int32: int32(limit),
+			Valid: limit != 0,
+		},
+		Offset: pgtype.Int4{
+			Int32: int32(offset),
+			Valid: offset != 0,
+		},
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, store.ErrNotFound
+		}
+		return nil, err
+	}
+
+	channels := make([]*model.Channel, len(rows))
+	for i, row := range rows {
+		channel, err := rowToChannel(row)
+		if err != nil {
+			return nil, err
+		}
+		channels[i] = channel
+	}
+	return channels, nil
+}
+
+func (c *Client) SearchChannels(ctx context.Context, params store.SearchChannelsParams) ([]*model.Channel, error) {
+	rows, err := c.Q.SearchChannels(ctx, pgmodel.SearchChannelsParams{
+		AppID: int64(params.AppID),
+		Data:  params.Data,
+		Limit: pgtype.Int4{
+			Int32: int32(params.Limit),
+			Valid: params.Limit != 0,
+		},
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, store.ErrNotFound
+		}
+		return nil, err
+	}
+
+	channels := make([]*model.Channel, len(rows))
+	for i, row := range rows {
+		channel, err := rowToChannel(row)
+		if err != nil {
+			return nil, err
+		}
+		channels[i] = channel
+	}
+	return channels, nil
+}
+
+func (c *Client) CountChannels(ctx context.Context, appID snowflake.ID) (int, error) {
+	res, err := c.Q.CountChannels(ctx, int64(appID))
+	if err != nil {
+		return 0, err
+	}
+	return int(res), nil
+}
+
+func (c *Client) GetGuildChannel(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, channelID snowflake.ID) (*model.Channel, error) {
+	row, err := c.Q.GetGuildChannel(ctx, pgmodel.GetGuildChannelParams{
 		AppID:     int64(appID),
 		GuildID:   int64(guildID),
 		ChannelID: int64(channelID),
@@ -30,8 +147,8 @@ func (c *Client) GetChannel(ctx context.Context, appID snowflake.ID, guildID sno
 	return rowToChannel(row)
 }
 
-func (c *Client) GetChannels(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, limit int, offset int) ([]*model.Channel, error) {
-	rows, err := c.Q.GetChannels(ctx, pgmodel.GetChannelsParams{
+func (c *Client) GetGuildChannels(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, limit int, offset int) ([]*model.Channel, error) {
+	rows, err := c.Q.GetGuildChannels(ctx, pgmodel.GetGuildChannelsParams{
 		AppID:   int64(appID),
 		GuildID: int64(guildID),
 		Limit: pgtype.Int4{
@@ -61,13 +178,13 @@ func (c *Client) GetChannels(ctx context.Context, appID snowflake.ID, guildID sn
 	return channels, nil
 }
 
-func (c *Client) GetChannelsByType(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, types []int, limit int, offset int) ([]*model.Channel, error) {
+func (c *Client) GetGuildChannelsByType(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, types []int, limit int, offset int) ([]*model.Channel, error) {
 	types32 := make([]int32, len(types))
 	for i, t := range types {
 		types32[i] = int32(t)
 	}
 
-	rows, err := c.Q.GetChannelsByType(ctx, pgmodel.GetChannelsByTypeParams{
+	rows, err := c.Q.GetGuildChannelsByType(ctx, pgmodel.GetGuildChannelsByTypeParams{
 		AppID:   int64(appID),
 		GuildID: int64(guildID),
 		Types:   types32,
@@ -98,8 +215,8 @@ func (c *Client) GetChannelsByType(ctx context.Context, appID snowflake.ID, guil
 	return channels, nil
 }
 
-func (c *Client) SearchChannels(ctx context.Context, params store.SearchChannelsParams) ([]*model.Channel, error) {
-	rows, err := c.Q.SearchChannels(ctx, pgmodel.SearchChannelsParams{
+func (c *Client) SearchGuildChannels(ctx context.Context, params store.SearchGuildChannelsParams) ([]*model.Channel, error) {
+	rows, err := c.Q.SearchGuildChannels(ctx, pgmodel.SearchGuildChannelsParams{
 		AppID:   int64(params.AppID),
 		GuildID: int64(params.GuildID),
 		Data:    params.Data,
@@ -128,6 +245,17 @@ func (c *Client) SearchChannels(ctx context.Context, params store.SearchChannels
 		channels[i] = channel
 	}
 	return channels, nil
+}
+
+func (c *Client) CountGuildChannels(ctx context.Context, appID snowflake.ID, guildID snowflake.ID) (int, error) {
+	res, err := c.Q.CountGuildChannels(ctx, pgmodel.CountGuildChannelsParams{
+		AppID:   int64(appID),
+		GuildID: int64(guildID),
+	})
+	if err != nil {
+		return 0, err
+	}
+	return int(res), nil
 }
 
 func (c *Client) UpsertChannels(ctx context.Context, channels ...store.UpsertChannelParams) error {

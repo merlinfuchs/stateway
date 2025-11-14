@@ -1,11 +1,26 @@
--- name: GetSticker :one
+-- name: GetGuildSticker :one
 SELECT * FROM cache.stickers WHERE app_id = $1 AND guild_id = $2 AND sticker_id = $3 LIMIT 1;
 
--- name: GetStickers :many
+-- name: GetSticker :one
+SELECT * FROM cache.stickers WHERE app_id = $1 AND sticker_id = $2 LIMIT 1;
+
+-- name: GetGuildStickers :many
 SELECT * FROM cache.stickers WHERE app_id = $1 AND guild_id = $2 ORDER BY sticker_id LIMIT sqlc.narg('limit') OFFSET sqlc.narg('offset');
 
--- name: SearchStickers :many
+-- name: GetStickers :many
+SELECT * FROM cache.stickers WHERE app_id = $1 ORDER BY sticker_id LIMIT sqlc.narg('limit') OFFSET sqlc.narg('offset');
+
+-- name: SearchGuildStickers :many
 SELECT * FROM cache.stickers WHERE app_id = $1 AND guild_id = $2 AND data @> $3 ORDER BY sticker_id LIMIT sqlc.narg('limit') OFFSET sqlc.narg('offset');
+
+-- name: SearchStickers :many
+SELECT * FROM cache.stickers WHERE app_id = $1 AND data @> $2 ORDER BY sticker_id LIMIT sqlc.narg('limit') OFFSET sqlc.narg('offset');
+
+-- name: CountGuildStickers :one
+SELECT COUNT(*) FROM cache.stickers WHERE app_id = $1 AND guild_id = $2;
+
+-- name: CountStickers :one
+SELECT COUNT(*) FROM cache.stickers WHERE app_id = $1;
 
 -- name: UpsertStickers :batchexec
 INSERT INTO cache.stickers (

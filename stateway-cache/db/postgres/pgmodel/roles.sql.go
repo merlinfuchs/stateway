@@ -11,6 +11,33 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countGuildRoles = `-- name: CountGuildRoles :one
+SELECT COUNT(*) FROM cache.roles WHERE app_id = $1 AND guild_id = $2
+`
+
+type CountGuildRolesParams struct {
+	AppID   int64
+	GuildID int64
+}
+
+func (q *Queries) CountGuildRoles(ctx context.Context, arg CountGuildRolesParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countGuildRoles, arg.AppID, arg.GuildID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countRoles = `-- name: CountRoles :one
+SELECT COUNT(*) FROM cache.roles WHERE app_id = $1
+`
+
+func (q *Queries) CountRoles(ctx context.Context, appID int64) (int64, error) {
+	row := q.db.QueryRow(ctx, countRoles, appID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const deleteRole = `-- name: DeleteRole :exec
 DELETE FROM cache.roles WHERE app_id = $1 AND guild_id = $2 AND role_id = $3
 `
@@ -26,18 +53,86 @@ func (q *Queries) DeleteRole(ctx context.Context, arg DeleteRoleParams) error {
 	return err
 }
 
-const getRole = `-- name: GetRole :one
+const getGuildRole = `-- name: GetGuildRole :one
 SELECT app_id, guild_id, role_id, data, tainted, created_at, updated_at FROM cache.roles WHERE app_id = $1 AND guild_id = $2 AND role_id = $3 LIMIT 1
 `
 
-type GetRoleParams struct {
+type GetGuildRoleParams struct {
 	AppID   int64
 	GuildID int64
 	RoleID  int64
 }
 
+func (q *Queries) GetGuildRole(ctx context.Context, arg GetGuildRoleParams) (CacheRole, error) {
+	row := q.db.QueryRow(ctx, getGuildRole, arg.AppID, arg.GuildID, arg.RoleID)
+	var i CacheRole
+	err := row.Scan(
+		&i.AppID,
+		&i.GuildID,
+		&i.RoleID,
+		&i.Data,
+		&i.Tainted,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getGuildRoles = `-- name: GetGuildRoles :many
+SELECT app_id, guild_id, role_id, data, tainted, created_at, updated_at FROM cache.roles WHERE app_id = $1 AND guild_id = $2 ORDER BY role_id LIMIT $4 OFFSET $3
+`
+
+type GetGuildRolesParams struct {
+	AppID   int64
+	GuildID int64
+	Offset  pgtype.Int4
+	Limit   pgtype.Int4
+}
+
+func (q *Queries) GetGuildRoles(ctx context.Context, arg GetGuildRolesParams) ([]CacheRole, error) {
+	rows, err := q.db.Query(ctx, getGuildRoles,
+		arg.AppID,
+		arg.GuildID,
+		arg.Offset,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CacheRole
+	for rows.Next() {
+		var i CacheRole
+		if err := rows.Scan(
+			&i.AppID,
+			&i.GuildID,
+			&i.RoleID,
+			&i.Data,
+			&i.Tainted,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getRole = `-- name: GetRole :one
+SELECT app_id, guild_id, role_id, data, tainted, created_at, updated_at FROM cache.roles WHERE app_id = $1 AND role_id = $2 LIMIT 1
+`
+
+type GetRoleParams struct {
+	AppID  int64
+	RoleID int64
+}
+
 func (q *Queries) GetRole(ctx context.Context, arg GetRoleParams) (CacheRole, error) {
-	row := q.db.QueryRow(ctx, getRole, arg.AppID, arg.GuildID, arg.RoleID)
+	row := q.db.QueryRow(ctx, getRole, arg.AppID, arg.RoleID)
 	var i CacheRole
 	err := row.Scan(
 		&i.AppID,
@@ -52,23 +147,17 @@ func (q *Queries) GetRole(ctx context.Context, arg GetRoleParams) (CacheRole, er
 }
 
 const getRoles = `-- name: GetRoles :many
-SELECT app_id, guild_id, role_id, data, tainted, created_at, updated_at FROM cache.roles WHERE app_id = $1 AND guild_id = $2 ORDER BY role_id LIMIT $4 OFFSET $3
+SELECT app_id, guild_id, role_id, data, tainted, created_at, updated_at FROM cache.roles WHERE app_id = $1 ORDER BY role_id LIMIT $3 OFFSET $2
 `
 
 type GetRolesParams struct {
-	AppID   int64
-	GuildID int64
-	Offset  pgtype.Int4
-	Limit   pgtype.Int4
+	AppID  int64
+	Offset pgtype.Int4
+	Limit  pgtype.Int4
 }
 
 func (q *Queries) GetRoles(ctx context.Context, arg GetRolesParams) ([]CacheRole, error) {
-	rows, err := q.db.Query(ctx, getRoles,
-		arg.AppID,
-		arg.GuildID,
-		arg.Offset,
-		arg.Limit,
-	)
+	rows, err := q.db.Query(ctx, getRoles, arg.AppID, arg.Offset, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
@@ -110,11 +199,11 @@ func (q *Queries) MarkShardRolesTainted(ctx context.Context, arg MarkShardRolesT
 	return err
 }
 
-const searchRoles = `-- name: SearchRoles :many
+const searchGuildRoles = `-- name: SearchGuildRoles :many
 SELECT app_id, guild_id, role_id, data, tainted, created_at, updated_at FROM cache.roles WHERE app_id = $1 AND guild_id = $2 AND data @> $3 ORDER BY role_id LIMIT $5 OFFSET $4
 `
 
-type SearchRolesParams struct {
+type SearchGuildRolesParams struct {
 	AppID   int64
 	GuildID int64
 	Data    []byte
@@ -122,10 +211,54 @@ type SearchRolesParams struct {
 	Limit   pgtype.Int4
 }
 
+func (q *Queries) SearchGuildRoles(ctx context.Context, arg SearchGuildRolesParams) ([]CacheRole, error) {
+	rows, err := q.db.Query(ctx, searchGuildRoles,
+		arg.AppID,
+		arg.GuildID,
+		arg.Data,
+		arg.Offset,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CacheRole
+	for rows.Next() {
+		var i CacheRole
+		if err := rows.Scan(
+			&i.AppID,
+			&i.GuildID,
+			&i.RoleID,
+			&i.Data,
+			&i.Tainted,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const searchRoles = `-- name: SearchRoles :many
+SELECT app_id, guild_id, role_id, data, tainted, created_at, updated_at FROM cache.roles WHERE app_id = $1 AND data @> $2 ORDER BY role_id LIMIT $4 OFFSET $3
+`
+
+type SearchRolesParams struct {
+	AppID  int64
+	Data   []byte
+	Offset pgtype.Int4
+	Limit  pgtype.Int4
+}
+
 func (q *Queries) SearchRoles(ctx context.Context, arg SearchRolesParams) ([]CacheRole, error) {
 	rows, err := q.db.Query(ctx, searchRoles,
 		arg.AppID,
-		arg.GuildID,
 		arg.Data,
 		arg.Offset,
 		arg.Limit,

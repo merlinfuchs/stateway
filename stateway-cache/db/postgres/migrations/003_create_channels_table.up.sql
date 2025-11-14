@@ -11,3 +11,4 @@ CREATE TABLE IF NOT EXISTS cache.channels (
 );
 
 CREATE INDEX IF NOT EXISTS idx_cache_channels_data_type ON cache.channels ((data->>'type'));
+CREATE INDEX IF NOT EXISTS idx_cache_channels_app_id_channel_id ON cache.channels (app_id, channel_id);

@@ -50,6 +50,17 @@ func (c *CacheClient) GetGuilds(ctx context.Context, opts ...CacheOption) ([]*Gu
 	})
 }
 
+func (c *CacheClient) CountGuilds(ctx context.Context, opts ...CacheOption) (int, error) {
+	options := c.options
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	return cacheRequest[int](ctx, c.b, CacheMethodCountGuilds, GuildCountRequest{
+		Options: options,
+	})
+}
+
 func (c *CacheClient) SearchGuilds(ctx context.Context, data json.RawMessage, opts ...CacheOption) ([]*Guild, error) {
 	options := c.options
 	for _, opt := range opts {
@@ -62,27 +73,36 @@ func (c *CacheClient) SearchGuilds(ctx context.Context, data json.RawMessage, op
 	})
 }
 
-func (c *CacheClient) GetChannel(ctx context.Context, guildID snowflake.ID, channelID snowflake.ID, opts ...CacheOption) (*Channel, error) {
+func (c *CacheClient) GetChannel(ctx context.Context, channelID snowflake.ID, opts ...CacheOption) (*Channel, error) {
 	options := c.options
 	for _, opt := range opts {
 		opt(&options)
 	}
 
 	return cacheRequest[*Channel](ctx, c.b, CacheMethodGetChannel, ChannelGetRequest{
-		GuildID:   guildID,
 		ChannelID: channelID,
 		Options:   options,
 	})
 }
 
-func (c *CacheClient) GetChannels(ctx context.Context, guildID snowflake.ID, opts ...CacheOption) ([]*Channel, error) {
+func (c *CacheClient) GetChannels(ctx context.Context, opts ...CacheOption) ([]*Channel, error) {
 	options := c.options
 	for _, opt := range opts {
 		opt(&options)
 	}
 
 	return cacheRequest[[]*Channel](ctx, c.b, CacheMethodListChannels, ChannelListRequest{
-		GuildID: guildID,
+		Options: options,
+	})
+}
+
+func (c *CacheClient) CountChannels(ctx context.Context, opts ...CacheOption) (int, error) {
+	options := c.options
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	return cacheRequest[int](ctx, c.b, CacheMethodCountChannels, ChannelCountRequest{
 		Options: options,
 	})
 }
@@ -99,27 +119,86 @@ func (c *CacheClient) SearchChannels(ctx context.Context, data json.RawMessage, 
 	})
 }
 
-func (c *CacheClient) GetRole(ctx context.Context, guildID snowflake.ID, roleID snowflake.ID, opts ...CacheOption) (*Role, error) {
+func (c *CacheClient) GetGuildChannel(ctx context.Context, guildID snowflake.ID, channelID snowflake.ID, opts ...CacheOption) (*Channel, error) {
+	options := c.options
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	return cacheRequest[*Channel](ctx, c.b, CacheMethodGetChannel, ChannelGetRequest{
+		GuildID:   &guildID,
+		ChannelID: channelID,
+		Options:   options,
+	})
+}
+
+func (c *CacheClient) GetGuildChannels(ctx context.Context, guildID snowflake.ID, opts ...CacheOption) ([]*Channel, error) {
+	options := c.options
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	return cacheRequest[[]*Channel](ctx, c.b, CacheMethodListChannels, ChannelListRequest{
+		GuildID: &guildID,
+		Options: options,
+	})
+}
+
+func (c *CacheClient) SearchGuildChannels(ctx context.Context, guildID snowflake.ID, data json.RawMessage, opts ...CacheOption) ([]*Channel, error) {
+	options := c.options
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	return cacheRequest[[]*Channel](ctx, c.b, CacheMethodSearchChannels, ChannelSearchRequest{
+		GuildID: &guildID,
+		Data:    data,
+		Options: options,
+	})
+}
+
+func (c *CacheClient) CountGuildChannels(ctx context.Context, guildID snowflake.ID, opts ...CacheOption) (int, error) {
+	options := c.options
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	return cacheRequest[int](ctx, c.b, CacheMethodCountChannels, ChannelCountRequest{
+		GuildID: &guildID,
+		Options: options,
+	})
+}
+
+func (c *CacheClient) GetRole(ctx context.Context, roleID snowflake.ID, opts ...CacheOption) (*Role, error) {
 	options := c.options
 	for _, opt := range opts {
 		opt(&options)
 	}
 
 	return cacheRequest[*Role](ctx, c.b, CacheMethodGetRole, RoleGetRequest{
-		GuildID: guildID,
 		RoleID:  roleID,
 		Options: options,
 	})
 }
 
-func (c *CacheClient) GetRoles(ctx context.Context, guildID snowflake.ID, opts ...CacheOption) ([]*Role, error) {
+func (c *CacheClient) GetRoles(ctx context.Context, opts ...CacheOption) ([]*Role, error) {
 	options := c.options
 	for _, opt := range opts {
 		opt(&options)
 	}
 
 	return cacheRequest[[]*Role](ctx, c.b, CacheMethodListRoles, RoleListRequest{
-		GuildID: guildID,
+		Options: options,
+	})
+}
+
+func (c *CacheClient) CountRoles(ctx context.Context, opts ...CacheOption) (int, error) {
+	options := c.options
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	return cacheRequest[int](ctx, c.b, CacheMethodCountRoles, RoleCountRequest{
 		Options: options,
 	})
 }
@@ -131,6 +210,56 @@ func (c *CacheClient) SearchRoles(ctx context.Context, data json.RawMessage, opt
 	}
 
 	return cacheRequest[[]*Role](ctx, c.b, CacheMethodSearchRoles, RoleSearchRequest{
+		Data:    data,
+		Options: options,
+	})
+}
+
+func (c *CacheClient) GetGuildRole(ctx context.Context, guildID snowflake.ID, roleID snowflake.ID, opts ...CacheOption) (*Role, error) {
+	options := c.options
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	return cacheRequest[*Role](ctx, c.b, CacheMethodGetRole, RoleGetRequest{
+		GuildID: &guildID,
+		RoleID:  roleID,
+		Options: options,
+	})
+}
+
+func (c *CacheClient) GetGuildRoles(ctx context.Context, guildID snowflake.ID, opts ...CacheOption) ([]*Role, error) {
+	options := c.options
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	return cacheRequest[[]*Role](ctx, c.b, CacheMethodListRoles, RoleListRequest{
+		GuildID: &guildID,
+		Options: options,
+	})
+}
+
+func (c *CacheClient) CountGuildRoles(ctx context.Context, guildID snowflake.ID, opts ...CacheOption) (int, error) {
+	options := c.options
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	return cacheRequest[int](ctx, c.b, CacheMethodCountRoles, RoleCountRequest{
+		GuildID: &guildID,
+		Options: options,
+	})
+}
+
+func (c *CacheClient) SearchGuildRoles(ctx context.Context, guildID snowflake.ID, data json.RawMessage, opts ...CacheOption) ([]*Role, error) {
+	options := c.options
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	return cacheRequest[[]*Role](ctx, c.b, CacheMethodSearchRoles, RoleSearchRequest{
+		GuildID: &guildID,
 		Data:    data,
 		Options: options,
 	})

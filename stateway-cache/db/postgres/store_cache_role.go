@@ -15,8 +15,8 @@ import (
 	"github.com/merlinfuchs/stateway/stateway-cache/store"
 )
 
-func (c *Client) GetRole(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, roleID snowflake.ID) (*model.Role, error) {
-	row, err := c.Q.GetRole(ctx, pgmodel.GetRoleParams{
+func (c *Client) GetGuildRole(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, roleID snowflake.ID) (*model.Role, error) {
+	row, err := c.Q.GetGuildRole(ctx, pgmodel.GetGuildRoleParams{
 		AppID:   int64(appID),
 		GuildID: int64(guildID),
 		RoleID:  int64(roleID),
@@ -30,8 +30,22 @@ func (c *Client) GetRole(ctx context.Context, appID snowflake.ID, guildID snowfl
 	return rowToRole(row)
 }
 
-func (c *Client) GetRoles(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, limit int, offset int) ([]*model.Role, error) {
-	rows, err := c.Q.GetRoles(ctx, pgmodel.GetRolesParams{
+func (c *Client) GetRole(ctx context.Context, appID snowflake.ID, roleID snowflake.ID) (*model.Role, error) {
+	row, err := c.Q.GetRole(ctx, pgmodel.GetRoleParams{
+		AppID:  int64(appID),
+		RoleID: int64(roleID),
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, store.ErrNotFound
+		}
+		return nil, err
+	}
+	return rowToRole(row)
+}
+
+func (c *Client) GetGuildRoles(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, limit int, offset int) ([]*model.Role, error) {
+	rows, err := c.Q.GetGuildRoles(ctx, pgmodel.GetGuildRolesParams{
 		AppID:   int64(appID),
 		GuildID: int64(guildID),
 		Limit: pgtype.Int4{
@@ -61,8 +75,38 @@ func (c *Client) GetRoles(ctx context.Context, appID snowflake.ID, guildID snowf
 	return roles, nil
 }
 
-func (c *Client) SearchRoles(ctx context.Context, params store.SearchRolesParams) ([]*model.Role, error) {
-	rows, err := c.Q.SearchRoles(ctx, pgmodel.SearchRolesParams{
+func (c *Client) GetRoles(ctx context.Context, appID snowflake.ID, limit int, offset int) ([]*model.Role, error) {
+	rows, err := c.Q.GetRoles(ctx, pgmodel.GetRolesParams{
+		AppID: int64(appID),
+		Limit: pgtype.Int4{
+			Int32: int32(limit),
+			Valid: limit != 0,
+		},
+		Offset: pgtype.Int4{
+			Int32: int32(offset),
+			Valid: offset != 0,
+		},
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, store.ErrNotFound
+		}
+		return nil, err
+	}
+
+	roles := make([]*model.Role, len(rows))
+	for i, row := range rows {
+		role, err := rowToRole(row)
+		if err != nil {
+			return nil, err
+		}
+		roles[i] = role
+	}
+	return roles, nil
+}
+
+func (c *Client) SearchGuildRoles(ctx context.Context, params store.SearchGuildRolesParams) ([]*model.Role, error) {
+	rows, err := c.Q.SearchGuildRoles(ctx, pgmodel.SearchGuildRolesParams{
 		AppID:   int64(params.AppID),
 		GuildID: int64(params.GuildID),
 		Data:    params.Data,
@@ -91,6 +135,56 @@ func (c *Client) SearchRoles(ctx context.Context, params store.SearchRolesParams
 		roles[i] = role
 	}
 	return roles, nil
+}
+
+func (c *Client) SearchRoles(ctx context.Context, params store.SearchRolesParams) ([]*model.Role, error) {
+	rows, err := c.Q.SearchRoles(ctx, pgmodel.SearchRolesParams{
+		AppID: int64(params.AppID),
+		Data:  params.Data,
+		Limit: pgtype.Int4{
+			Int32: int32(params.Limit),
+			Valid: params.Limit != 0,
+		},
+		Offset: pgtype.Int4{
+			Int32: int32(params.Offset),
+			Valid: params.Offset != 0,
+		},
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, store.ErrNotFound
+		}
+		return nil, err
+	}
+
+	roles := make([]*model.Role, len(rows))
+	for i, row := range rows {
+		role, err := rowToRole(row)
+		if err != nil {
+			return nil, err
+		}
+		roles[i] = role
+	}
+	return roles, nil
+}
+
+func (c *Client) CountGuildRoles(ctx context.Context, appID snowflake.ID, guildID snowflake.ID) (int, error) {
+	res, err := c.Q.CountGuildRoles(ctx, pgmodel.CountGuildRolesParams{
+		AppID:   int64(appID),
+		GuildID: int64(guildID),
+	})
+	if err != nil {
+		return 0, err
+	}
+	return int(res), nil
+}
+
+func (c *Client) CountRoles(ctx context.Context, appID snowflake.ID) (int, error) {
+	res, err := c.Q.CountRoles(ctx, int64(appID))
+	if err != nil {
+		return 0, err
+	}
+	return int(res), nil
 }
 
 func (c *Client) UpsertRoles(ctx context.Context, roles ...store.UpsertRoleParams) error {

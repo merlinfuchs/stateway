@@ -19,15 +19,16 @@ type DisgoCaches struct {
 	discache.Caches
 }
 
-func NewDisgoCaches(cache cache.Cache) *DisgoCaches {
+func NewDisgoCaches(ctx context.Context, cache cache.Cache) *DisgoCaches {
 	return &DisgoCaches{Caches: discache.New(
-		discache.WithGuildCache(&GuildCache{cache: cache}),
-		discache.WithChannelCache(&ChannelCache{cache: cache}),
-		discache.WithRoleCache(&RoleCache{cache: cache}),
+		discache.WithGuildCache(&GuildCache{ctx: ctx, cache: cache}),
+		discache.WithChannelCache(&ChannelCache{ctx: ctx, cache: cache}),
+		discache.WithRoleCache(&RoleCache{ctx: ctx, cache: cache}),
 	)}
 }
 
 type GuildCache struct {
+	ctx   context.Context
 	cache cache.GuildCache
 }
 
@@ -62,7 +63,7 @@ func (c *GuildCache) UnavailableGuildIDs() []snowflake.ID {
 }
 
 func (c *GuildCache) Guild(guildID snowflake.ID) (discord.Guild, bool) {
-	ctx, cancel := cacheCtx()
+	ctx, cancel := cacheCtx(c.ctx)
 	defer cancel()
 
 	guild, err := c.cache.GetGuild(ctx, guildID)
@@ -81,22 +82,33 @@ func (c *GuildCache) Guild(guildID snowflake.ID) (discord.Guild, bool) {
 }
 
 func (c *GuildCache) Guilds() iter.Seq[discord.Guild] {
-	ctx, cancel := cacheCtx()
-	defer cancel()
-
-	guilds, err := c.cache.GetGuilds(ctx)
-	if err != nil {
-		slog.Error(
-			"Failed to get guilds from cache",
-			slog.Any("error", err),
-		)
-	}
+	var offset int
 
 	return func(fn func(discord.Guild) bool) {
-		for _, guild := range guilds {
-			if fn(guild.Data) {
-				return
+		for {
+			ctx, cancel := cacheCtx(c.ctx)
+
+			guilds, err := c.cache.GetGuilds(ctx, cache.WithLimit(100), cache.WithOffset(offset))
+			if err != nil {
+				slog.Error(
+					"Failed to get guilds from cache",
+					slog.Any("error", err),
+				)
 			}
+
+			cancel()
+
+			for _, guild := range guilds {
+				if fn(guild.Data) {
+					return
+				}
+			}
+
+			if len(guilds) < 100 {
+				break
+			}
+
+			offset += 100
 		}
 	}
 }
@@ -113,6 +125,7 @@ func (c *GuildCache) RemoveGuild(guildID snowflake.ID) (discord.Guild, bool) {
 }
 
 type ChannelCache struct {
+	ctx   context.Context
 	cache cache.ChannelCache
 }
 
@@ -125,20 +138,72 @@ func (c *ChannelCache) ChannelCache() discache.Cache[discord.GuildChannel] {
 }
 
 func (c *ChannelCache) Channel(channelID snowflake.ID) (discord.GuildChannel, bool) {
-	// TODO: Implement cache method for this
-	return nil, false
+	ctx, cancel := cacheCtx(c.ctx)
+	defer cancel()
+
+	channel, err := c.cache.GetChannel(ctx, channelID)
+	if err != nil {
+		if !service.IsErrorCode(err, service.ErrorCodeNotFound) {
+			slog.Error(
+				"Failed to get channel from cache",
+				slog.String("channel_id", channelID.String()),
+				slog.Any("error", err),
+			)
+		}
+
+		return nil, false
+	}
+
+	guildChannel, ok := channel.Data.(discord.GuildChannel)
+	if !ok {
+		return nil, false
+	}
+
+	return guildChannel, true
 }
 
 func (c *ChannelCache) Channels() iter.Seq[discord.GuildChannel] {
-	// TODO: Implement cache method for this
-	return nil
+	var offset int
+
+	return func(fn func(discord.GuildChannel) bool) {
+		for {
+			ctx, cancel := cacheCtx(c.ctx)
+
+			channels, err := c.cache.GetChannels(ctx, cache.WithLimit(100), cache.WithOffset(offset))
+			if err != nil {
+				slog.Error(
+					"Failed to get channels from cache",
+					slog.Any("error", err),
+				)
+			}
+
+			cancel()
+
+			for _, channel := range channels {
+				guildChannel, ok := channel.Data.(discord.GuildChannel)
+				if !ok {
+					continue
+				}
+
+				if fn(guildChannel) {
+					return
+				}
+			}
+
+			if len(channels) < 100 {
+				break
+			}
+
+			offset += 100
+		}
+	}
 }
 
 func (c *ChannelCache) ChannelsForGuild(guildID snowflake.ID) iter.Seq[discord.GuildChannel] {
-	ctx, cancel := cacheCtx()
+	ctx, cancel := cacheCtx(c.ctx)
 	defer cancel()
 
-	channels, err := c.cache.GetChannels(ctx, guildID)
+	channels, err := c.cache.GetGuildChannels(ctx, guildID)
 	if err != nil {
 		slog.Error(
 			"Failed to get channels from cache",
@@ -162,7 +227,18 @@ func (c *ChannelCache) ChannelsForGuild(guildID snowflake.ID) iter.Seq[discord.G
 }
 
 func (c *ChannelCache) ChannelsLen() int {
-	return 0 // TODO: Implement cache method for this
+	ctx, cancel := cacheCtx(c.ctx)
+	defer cancel()
+
+	count, err := c.cache.CountChannels(ctx)
+	if err != nil {
+		slog.Error(
+			"Failed to get channels count from cache",
+			slog.Any("error", err),
+		)
+	}
+
+	return count
 }
 
 func (c *ChannelCache) AddChannel(channel discord.GuildChannel) {
@@ -176,6 +252,7 @@ func (c *ChannelCache) RemoveChannelsByGuildID(guildID snowflake.ID) {
 }
 
 type RoleCache struct {
+	ctx   context.Context
 	cache cache.RoleCache
 }
 
@@ -190,10 +267,10 @@ func (c *RoleCache) RoleCache() discache.GroupedCache[discord.Role] {
 }
 
 func (c *RoleCache) Role(guildID snowflake.ID, roleID snowflake.ID) (discord.Role, bool) {
-	ctx, cancel := cacheCtx()
+	ctx, cancel := cacheCtx(c.ctx)
 	defer cancel()
 
-	role, err := c.cache.GetRole(ctx, guildID, roleID)
+	role, err := c.cache.GetGuildRole(ctx, guildID, roleID)
 	if err != nil {
 		if !service.IsErrorCode(err, service.ErrorCodeNotFound) {
 			slog.Error(
@@ -210,10 +287,10 @@ func (c *RoleCache) Role(guildID snowflake.ID, roleID snowflake.ID) (discord.Rol
 }
 
 func (c *RoleCache) Roles(guildID snowflake.ID) iter.Seq[discord.Role] {
-	ctx, cancel := cacheCtx()
+	ctx, cancel := cacheCtx(c.ctx)
 	defer cancel()
 
-	roles, err := c.cache.GetRoles(ctx, guildID)
+	roles, err := c.cache.GetGuildRoles(ctx, guildID)
 	if err != nil {
 		slog.Error(
 			"Failed to get roles from cache",
@@ -232,11 +309,34 @@ func (c *RoleCache) Roles(guildID snowflake.ID) iter.Seq[discord.Role] {
 }
 
 func (c *RoleCache) RolesLen(groupID snowflake.ID) int {
-	return 0 // TODO: Implement cache method for this
+	ctx, cancel := cacheCtx(c.ctx)
+	defer cancel()
+
+	count, err := c.cache.CountGuildRoles(ctx, groupID)
+	if err != nil {
+		slog.Error(
+			"Failed to get roles count from cache",
+			slog.String("guild_id", groupID.String()),
+			slog.Any("error", err),
+		)
+	}
+
+	return count
 }
 
 func (c *RoleCache) RolesAllLen() int {
-	return 0 // TODO: Implement cache method for this
+	ctx, cancel := cacheCtx(c.ctx)
+	defer cancel()
+
+	count, err := c.cache.CountRoles(ctx)
+	if err != nil {
+		slog.Error(
+			"Failed to get roles count from cache",
+			slog.Any("error", err),
+		)
+	}
+
+	return count
 }
 
 func (c *RoleCache) AddRole(role discord.Role) {
@@ -276,8 +376,8 @@ func (c *anyCache[T]) Len() int {
 	return c.lenFunc()
 }
 
-func cacheCtx() (context.Context, context.CancelFunc) {
-	return context.WithTimeout(context.Background(), 3*time.Second)
+func cacheCtx(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(ctx, 3*time.Second)
 }
 
 type groupCache[T any] struct {

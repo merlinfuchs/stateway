@@ -11,6 +11,33 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countEmojis = `-- name: CountEmojis :one
+SELECT COUNT(*) FROM cache.emojis WHERE app_id = $1
+`
+
+func (q *Queries) CountEmojis(ctx context.Context, appID int64) (int64, error) {
+	row := q.db.QueryRow(ctx, countEmojis, appID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countGuildEmojis = `-- name: CountGuildEmojis :one
+SELECT COUNT(*) FROM cache.emojis WHERE app_id = $1 AND guild_id = $2
+`
+
+type CountGuildEmojisParams struct {
+	AppID   int64
+	GuildID int64
+}
+
+func (q *Queries) CountGuildEmojis(ctx context.Context, arg CountGuildEmojisParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countGuildEmojis, arg.AppID, arg.GuildID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const deleteEmoji = `-- name: DeleteEmoji :exec
 DELETE FROM cache.emojis WHERE app_id = $1 AND guild_id = $2 AND emoji_id = $3
 `
@@ -27,17 +54,16 @@ func (q *Queries) DeleteEmoji(ctx context.Context, arg DeleteEmojiParams) error 
 }
 
 const getEmoji = `-- name: GetEmoji :one
-SELECT app_id, guild_id, emoji_id, data, tainted, created_at, updated_at FROM cache.emojis WHERE app_id = $1 AND guild_id = $2 AND emoji_id = $3 LIMIT 1
+SELECT app_id, guild_id, emoji_id, data, tainted, created_at, updated_at FROM cache.emojis WHERE app_id = $1 AND emoji_id = $2 LIMIT 1
 `
 
 type GetEmojiParams struct {
 	AppID   int64
-	GuildID int64
 	EmojiID int64
 }
 
 func (q *Queries) GetEmoji(ctx context.Context, arg GetEmojiParams) (CacheEmoji, error) {
-	row := q.db.QueryRow(ctx, getEmoji, arg.AppID, arg.GuildID, arg.EmojiID)
+	row := q.db.QueryRow(ctx, getEmoji, arg.AppID, arg.EmojiID)
 	var i CacheEmoji
 	err := row.Scan(
 		&i.AppID,
@@ -52,18 +78,81 @@ func (q *Queries) GetEmoji(ctx context.Context, arg GetEmojiParams) (CacheEmoji,
 }
 
 const getEmojis = `-- name: GetEmojis :many
-SELECT app_id, guild_id, emoji_id, data, tainted, created_at, updated_at FROM cache.emojis WHERE app_id = $1 AND guild_id = $2 ORDER BY emoji_id LIMIT $4 OFFSET $3
+SELECT app_id, guild_id, emoji_id, data, tainted, created_at, updated_at FROM cache.emojis WHERE app_id = $1 ORDER BY emoji_id LIMIT $3 OFFSET $2
 `
 
 type GetEmojisParams struct {
+	AppID  int64
+	Offset pgtype.Int4
+	Limit  pgtype.Int4
+}
+
+func (q *Queries) GetEmojis(ctx context.Context, arg GetEmojisParams) ([]CacheEmoji, error) {
+	rows, err := q.db.Query(ctx, getEmojis, arg.AppID, arg.Offset, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CacheEmoji
+	for rows.Next() {
+		var i CacheEmoji
+		if err := rows.Scan(
+			&i.AppID,
+			&i.GuildID,
+			&i.EmojiID,
+			&i.Data,
+			&i.Tainted,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getGuildEmoji = `-- name: GetGuildEmoji :one
+SELECT app_id, guild_id, emoji_id, data, tainted, created_at, updated_at FROM cache.emojis WHERE app_id = $1 AND guild_id = $2 AND emoji_id = $3 LIMIT 1
+`
+
+type GetGuildEmojiParams struct {
+	AppID   int64
+	GuildID int64
+	EmojiID int64
+}
+
+func (q *Queries) GetGuildEmoji(ctx context.Context, arg GetGuildEmojiParams) (CacheEmoji, error) {
+	row := q.db.QueryRow(ctx, getGuildEmoji, arg.AppID, arg.GuildID, arg.EmojiID)
+	var i CacheEmoji
+	err := row.Scan(
+		&i.AppID,
+		&i.GuildID,
+		&i.EmojiID,
+		&i.Data,
+		&i.Tainted,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getGuildEmojis = `-- name: GetGuildEmojis :many
+SELECT app_id, guild_id, emoji_id, data, tainted, created_at, updated_at FROM cache.emojis WHERE app_id = $1 AND guild_id = $2 ORDER BY emoji_id LIMIT $4 OFFSET $3
+`
+
+type GetGuildEmojisParams struct {
 	AppID   int64
 	GuildID int64
 	Offset  pgtype.Int4
 	Limit   pgtype.Int4
 }
 
-func (q *Queries) GetEmojis(ctx context.Context, arg GetEmojisParams) ([]CacheEmoji, error) {
-	rows, err := q.db.Query(ctx, getEmojis,
+func (q *Queries) GetGuildEmojis(ctx context.Context, arg GetGuildEmojisParams) ([]CacheEmoji, error) {
+	rows, err := q.db.Query(ctx, getGuildEmojis,
 		arg.AppID,
 		arg.GuildID,
 		arg.Offset,
@@ -111,10 +200,54 @@ func (q *Queries) MarkShardEmojisTainted(ctx context.Context, arg MarkShardEmoji
 }
 
 const searchEmojis = `-- name: SearchEmojis :many
-SELECT app_id, guild_id, emoji_id, data, tainted, created_at, updated_at FROM cache.emojis WHERE app_id = $1 AND guild_id = $2 AND data @> $3 ORDER BY emoji_id LIMIT $5 OFFSET $4
+SELECT app_id, guild_id, emoji_id, data, tainted, created_at, updated_at FROM cache.emojis WHERE app_id = $1 AND data @> $2 ORDER BY emoji_id LIMIT $4 OFFSET $3
 `
 
 type SearchEmojisParams struct {
+	AppID  int64
+	Data   []byte
+	Offset pgtype.Int4
+	Limit  pgtype.Int4
+}
+
+func (q *Queries) SearchEmojis(ctx context.Context, arg SearchEmojisParams) ([]CacheEmoji, error) {
+	rows, err := q.db.Query(ctx, searchEmojis,
+		arg.AppID,
+		arg.Data,
+		arg.Offset,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CacheEmoji
+	for rows.Next() {
+		var i CacheEmoji
+		if err := rows.Scan(
+			&i.AppID,
+			&i.GuildID,
+			&i.EmojiID,
+			&i.Data,
+			&i.Tainted,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const searchGuildEmojis = `-- name: SearchGuildEmojis :many
+SELECT app_id, guild_id, emoji_id, data, tainted, created_at, updated_at FROM cache.emojis WHERE app_id = $1 AND guild_id = $2 AND data @> $3 ORDER BY emoji_id LIMIT $5 OFFSET $4
+`
+
+type SearchGuildEmojisParams struct {
 	AppID   int64
 	GuildID int64
 	Data    []byte
@@ -122,8 +255,8 @@ type SearchEmojisParams struct {
 	Limit   pgtype.Int4
 }
 
-func (q *Queries) SearchEmojis(ctx context.Context, arg SearchEmojisParams) ([]CacheEmoji, error) {
-	rows, err := q.db.Query(ctx, searchEmojis,
+func (q *Queries) SearchGuildEmojis(ctx context.Context, arg SearchGuildEmojisParams) ([]CacheEmoji, error) {
+	rows, err := q.db.Query(ctx, searchGuildEmojis,
 		arg.AppID,
 		arg.GuildID,
 		arg.Data,

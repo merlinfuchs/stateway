@@ -9,3 +9,5 @@ CREATE TABLE IF NOT EXISTS cache.roles (
 
     PRIMARY KEY (app_id, guild_id, role_id)
 );
+
+CREATE INDEX IF NOT EXISTS idx_cache_roles_app_id_role_id ON cache.roles (app_id, role_id);

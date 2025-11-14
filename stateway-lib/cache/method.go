@@ -13,12 +13,15 @@ const (
 	CacheMethodGetGuild       CacheMethod = "guild.get"
 	CacheMethodListGuilds     CacheMethod = "guild.list"
 	CacheMethodSearchGuilds   CacheMethod = "guild.search"
+	CacheMethodCountGuilds    CacheMethod = "guild.coun"
 	CacheMethodGetChannel     CacheMethod = "channel.get"
 	CacheMethodListChannels   CacheMethod = "channel.list"
 	CacheMethodSearchChannels CacheMethod = "channel.search"
+	CacheMethodCountChannels  CacheMethod = "channel.count"
 	CacheMethodGetRole        CacheMethod = "role.get"
 	CacheMethodListRoles      CacheMethod = "role.list"
 	CacheMethodSearchRoles    CacheMethod = "role.search"
+	CacheMethodCountRoles     CacheMethod = "role.count"
 )
 
 func (m CacheMethod) UnmarshalRequest(data json.RawMessage) (CacheRequest, error) {
@@ -88,46 +91,68 @@ type GuildSearchRequest struct {
 
 func (r GuildSearchRequest) cacheRequest() {}
 
+type GuildCountRequest struct {
+	Options CacheOptions `json:"options,omitempty"`
+}
+
+func (r GuildCountRequest) cacheRequest() {}
+
 type ChannelGetRequest struct {
-	GuildID   snowflake.ID `json:"guild_id"`
-	ChannelID snowflake.ID `json:"channel_id"`
-	Options   CacheOptions `json:"options,omitempty"`
+	GuildID   *snowflake.ID `json:"guild_id,omitempty"`
+	ChannelID snowflake.ID  `json:"channel_id"`
+	Options   CacheOptions  `json:"options,omitempty"`
 }
 
 func (r ChannelGetRequest) cacheRequest() {}
 
 type ChannelListRequest struct {
-	GuildID snowflake.ID `json:"guild_id"`
-	Options CacheOptions `json:"options,omitempty"`
+	GuildID *snowflake.ID `json:"guild_id,omitempty"`
+	Options CacheOptions  `json:"options,omitempty"`
 }
 
 func (r ChannelListRequest) cacheRequest() {}
 
 type ChannelSearchRequest struct {
+	GuildID *snowflake.ID   `json:"guild_id,omitempty"`
 	Data    json.RawMessage `json:"data,omitempty"`
 	Options CacheOptions    `json:"options,omitempty"`
 }
 
 func (r ChannelSearchRequest) cacheRequest() {}
 
+type ChannelCountRequest struct {
+	GuildID *snowflake.ID `json:"guild_id,omitempty"`
+	Options CacheOptions  `json:"options,omitempty"`
+}
+
+func (r ChannelCountRequest) cacheRequest() {}
+
 type RoleGetRequest struct {
-	GuildID snowflake.ID `json:"guild_id"`
-	RoleID  snowflake.ID `json:"role_id"`
-	Options CacheOptions `json:"options,omitempty"`
+	GuildID *snowflake.ID `json:"guild_id,omitempty"`
+	RoleID  snowflake.ID  `json:"role_id"`
+	Options CacheOptions  `json:"options,omitempty"`
 }
 
 func (r RoleGetRequest) cacheRequest() {}
 
 type RoleListRequest struct {
-	GuildID snowflake.ID `json:"guild_id"`
-	Options CacheOptions `json:"options,omitempty"`
+	GuildID *snowflake.ID `json:"guild_id,omitempty"`
+	Options CacheOptions  `json:"options,omitempty"`
 }
 
 func (r RoleListRequest) cacheRequest() {}
 
 type RoleSearchRequest struct {
+	GuildID *snowflake.ID   `json:"guild_id,omitempty"`
 	Data    json.RawMessage `json:"data,omitempty"`
 	Options CacheOptions    `json:"options,omitempty"`
 }
 
 func (r RoleSearchRequest) cacheRequest() {}
+
+type RoleCountRequest struct {
+	GuildID *snowflake.ID `json:"guild_id,omitempty"`
+	Options CacheOptions  `json:"options,omitempty"`
+}
+
+func (r RoleCountRequest) cacheRequest() {}

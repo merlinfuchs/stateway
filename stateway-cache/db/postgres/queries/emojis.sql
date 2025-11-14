@@ -1,11 +1,26 @@
--- name: GetEmoji :one
+-- name: GetGuildEmoji :one
 SELECT * FROM cache.emojis WHERE app_id = $1 AND guild_id = $2 AND emoji_id = $3 LIMIT 1;
 
--- name: GetEmojis :many
+-- name: GetEmoji :one
+SELECT * FROM cache.emojis WHERE app_id = $1 AND emoji_id = $2 LIMIT 1;
+
+-- name: GetGuildEmojis :many
 SELECT * FROM cache.emojis WHERE app_id = $1 AND guild_id = $2 ORDER BY emoji_id LIMIT sqlc.narg('limit') OFFSET sqlc.narg('offset');
 
--- name: SearchEmojis :many
+-- name: GetEmojis :many
+SELECT * FROM cache.emojis WHERE app_id = $1 ORDER BY emoji_id LIMIT sqlc.narg('limit') OFFSET sqlc.narg('offset');
+
+-- name: SearchGuildEmojis :many
 SELECT * FROM cache.emojis WHERE app_id = $1 AND guild_id = $2 AND data @> $3 ORDER BY emoji_id LIMIT sqlc.narg('limit') OFFSET sqlc.narg('offset');
+
+-- name: SearchEmojis :many
+SELECT * FROM cache.emojis WHERE app_id = $1 AND data @> $2 ORDER BY emoji_id LIMIT sqlc.narg('limit') OFFSET sqlc.narg('offset');
+
+-- name: CountGuildEmojis :one
+SELECT COUNT(*) FROM cache.emojis WHERE app_id = $1 AND guild_id = $2;
+
+-- name: CountEmojis :one
+SELECT COUNT(*) FROM cache.emojis WHERE app_id = $1;
 
 -- name: UpsertEmojis :batchexec
 INSERT INTO cache.emojis (

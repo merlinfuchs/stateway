@@ -20,6 +20,13 @@ type UpsertStickerParams struct {
 }
 
 type SearchStickersParams struct {
+	AppID  snowflake.ID
+	Limit  int
+	Offset int
+	Data   json.RawMessage
+}
+
+type SearchGuildStickersParams struct {
 	AppID   snowflake.ID
 	GuildID snowflake.ID
 	Limit   int
@@ -29,8 +36,13 @@ type SearchStickersParams struct {
 
 type CacheStickerStore interface {
 	GetSticker(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, stickerID snowflake.ID) (*model.Sticker, error)
-	GetStickers(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, limit int, offset int) ([]*model.Sticker, error)
+	GetGuildSticker(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, stickerID snowflake.ID) (*model.Sticker, error)
+	GetStickers(ctx context.Context, appID snowflake.ID, limit int, offset int) ([]*model.Sticker, error)
+	GetGuildStickers(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, limit int, offset int) ([]*model.Sticker, error)
 	SearchStickers(ctx context.Context, params SearchStickersParams) ([]*model.Sticker, error)
+	SearchGuildStickers(ctx context.Context, params SearchGuildStickersParams) ([]*model.Sticker, error)
+	CountGuildStickers(ctx context.Context, appID snowflake.ID, guildID snowflake.ID) (int, error)
+	CountStickers(ctx context.Context, appID snowflake.ID) (int, error)
 	UpsertStickers(ctx context.Context, stickers ...UpsertStickerParams) error
 	DeleteSticker(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, stickerID snowflake.ID) error
 }

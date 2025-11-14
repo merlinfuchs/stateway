@@ -28,17 +28,41 @@ func (s *CacheService) HandleRequest(ctx context.Context, method CacheMethod, re
 	case GuildSearchRequest:
 		return s.caches.SearchGuilds(ctx, req.Data, req.Options.Destructure()...)
 	case ChannelGetRequest:
-		return s.caches.GetChannel(ctx, req.GuildID, req.ChannelID, req.Options.Destructure()...)
+		if req.GuildID == nil {
+			return s.caches.GetChannel(ctx, req.ChannelID, req.Options.Destructure()...)
+		} else {
+			return s.caches.GetGuildChannel(ctx, *req.GuildID, req.ChannelID, req.Options.Destructure()...)
+		}
 	case ChannelListRequest:
-		return s.caches.GetChannels(ctx, req.GuildID, req.Options.Destructure()...)
+		if req.GuildID == nil {
+			return s.caches.GetChannels(ctx, req.Options.Destructure()...)
+		} else {
+			return s.caches.GetGuildChannels(ctx, *req.GuildID, req.Options.Destructure()...)
+		}
 	case ChannelSearchRequest:
-		return s.caches.SearchChannels(ctx, req.Data, req.Options.Destructure()...)
+		if req.GuildID == nil {
+			return s.caches.SearchChannels(ctx, req.Data, req.Options.Destructure()...)
+		} else {
+			return s.caches.SearchGuildChannels(ctx, *req.GuildID, req.Data, req.Options.Destructure()...)
+		}
 	case RoleGetRequest:
-		return s.caches.GetRole(ctx, req.GuildID, req.RoleID, req.Options.Destructure()...)
+		if req.GuildID == nil {
+			return s.caches.GetRole(ctx, req.RoleID, req.Options.Destructure()...)
+		} else {
+			return s.caches.GetGuildRole(ctx, *req.GuildID, req.RoleID, req.Options.Destructure()...)
+		}
 	case RoleListRequest:
-		return s.caches.GetRoles(ctx, req.GuildID, req.Options.Destructure()...)
+		if req.GuildID == nil {
+			return s.caches.GetRoles(ctx, req.Options.Destructure()...)
+		} else {
+			return s.caches.GetGuildRoles(ctx, *req.GuildID, req.Options.Destructure()...)
+		}
 	case RoleSearchRequest:
-		return s.caches.SearchRoles(ctx, req.Data, req.Options.Destructure()...)
+		if req.GuildID == nil {
+			return s.caches.SearchRoles(ctx, req.Data, req.Options.Destructure()...)
+		} else {
+			return s.caches.SearchGuildRoles(ctx, *req.GuildID, req.Data, req.Options.Destructure()...)
+		}
 	}
 	return nil, fmt.Errorf("unknown request type: %T", request)
 }

@@ -15,8 +15,8 @@ import (
 	"github.com/merlinfuchs/stateway/stateway-cache/store"
 )
 
-func (c *Client) GetEmoji(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, emojiID snowflake.ID) (*model.Emoji, error) {
-	row, err := c.Q.GetEmoji(ctx, pgmodel.GetEmojiParams{
+func (c *Client) GetGuildEmoji(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, emojiID snowflake.ID) (*model.Emoji, error) {
+	row, err := c.Q.GetGuildEmoji(ctx, pgmodel.GetGuildEmojiParams{
 		AppID:   int64(appID),
 		GuildID: int64(guildID),
 		EmojiID: int64(emojiID),
@@ -30,8 +30,22 @@ func (c *Client) GetEmoji(ctx context.Context, appID snowflake.ID, guildID snowf
 	return rowToEmoji(row)
 }
 
-func (c *Client) GetEmojis(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, limit int, offset int) ([]*model.Emoji, error) {
-	rows, err := c.Q.GetEmojis(ctx, pgmodel.GetEmojisParams{
+func (c *Client) GetEmoji(ctx context.Context, appID snowflake.ID, emojiID snowflake.ID) (*model.Emoji, error) {
+	row, err := c.Q.GetEmoji(ctx, pgmodel.GetEmojiParams{
+		AppID:   int64(appID),
+		EmojiID: int64(emojiID),
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, store.ErrNotFound
+		}
+		return nil, err
+	}
+	return rowToEmoji(row)
+}
+
+func (c *Client) GetGuildEmojis(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, limit int, offset int) ([]*model.Emoji, error) {
+	rows, err := c.Q.GetGuildEmojis(ctx, pgmodel.GetGuildEmojisParams{
 		AppID:   int64(appID),
 		GuildID: int64(guildID),
 		Limit: pgtype.Int4{
@@ -61,8 +75,38 @@ func (c *Client) GetEmojis(ctx context.Context, appID snowflake.ID, guildID snow
 	return emojis, nil
 }
 
-func (c *Client) SearchEmojis(ctx context.Context, params store.SearchEmojisParams) ([]*model.Emoji, error) {
-	rows, err := c.Q.SearchEmojis(ctx, pgmodel.SearchEmojisParams{
+func (c *Client) GetEmojis(ctx context.Context, appID snowflake.ID, limit int, offset int) ([]*model.Emoji, error) {
+	rows, err := c.Q.GetEmojis(ctx, pgmodel.GetEmojisParams{
+		AppID: int64(appID),
+		Limit: pgtype.Int4{
+			Int32: int32(limit),
+			Valid: limit != 0,
+		},
+		Offset: pgtype.Int4{
+			Int32: int32(offset),
+			Valid: offset != 0,
+		},
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, store.ErrNotFound
+		}
+		return nil, err
+	}
+
+	emojis := make([]*model.Emoji, len(rows))
+	for i, row := range rows {
+		emoji, err := rowToEmoji(row)
+		if err != nil {
+			return nil, err
+		}
+		emojis[i] = emoji
+	}
+	return emojis, nil
+}
+
+func (c *Client) SearchGuildEmojis(ctx context.Context, params store.SearchGuildEmojisParams) ([]*model.Emoji, error) {
+	rows, err := c.Q.SearchGuildEmojis(ctx, pgmodel.SearchGuildEmojisParams{
 		AppID:   int64(params.AppID),
 		GuildID: int64(params.GuildID),
 		Data:    params.Data,
@@ -91,6 +135,56 @@ func (c *Client) SearchEmojis(ctx context.Context, params store.SearchEmojisPara
 		emojis[i] = emoji
 	}
 	return emojis, nil
+}
+
+func (c *Client) SearchEmojis(ctx context.Context, params store.SearchEmojisParams) ([]*model.Emoji, error) {
+	rows, err := c.Q.SearchEmojis(ctx, pgmodel.SearchEmojisParams{
+		AppID: int64(params.AppID),
+		Data:  params.Data,
+		Limit: pgtype.Int4{
+			Int32: int32(params.Limit),
+			Valid: params.Limit != 0,
+		},
+		Offset: pgtype.Int4{
+			Int32: int32(params.Offset),
+			Valid: params.Offset != 0,
+		},
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, store.ErrNotFound
+		}
+		return nil, err
+	}
+
+	emojis := make([]*model.Emoji, len(rows))
+	for i, row := range rows {
+		emoji, err := rowToEmoji(row)
+		if err != nil {
+			return nil, err
+		}
+		emojis[i] = emoji
+	}
+	return emojis, nil
+}
+
+func (c *Client) CountGuildEmojis(ctx context.Context, appID snowflake.ID, guildID snowflake.ID) (int, error) {
+	res, err := c.Q.CountGuildEmojis(ctx, pgmodel.CountGuildEmojisParams{
+		AppID:   int64(appID),
+		GuildID: int64(guildID),
+	})
+	if err != nil {
+		return 0, err
+	}
+	return int(res), nil
+}
+
+func (c *Client) CountEmojis(ctx context.Context, appID snowflake.ID) (int, error) {
+	res, err := c.Q.CountEmojis(ctx, int64(appID))
+	if err != nil {
+		return 0, err
+	}
+	return int(res), nil
 }
 
 func (c *Client) UpsertEmojis(ctx context.Context, emojis ...store.UpsertEmojiParams) error {

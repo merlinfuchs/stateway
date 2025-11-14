@@ -11,6 +11,33 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countGuildStickers = `-- name: CountGuildStickers :one
+SELECT COUNT(*) FROM cache.stickers WHERE app_id = $1 AND guild_id = $2
+`
+
+type CountGuildStickersParams struct {
+	AppID   int64
+	GuildID int64
+}
+
+func (q *Queries) CountGuildStickers(ctx context.Context, arg CountGuildStickersParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countGuildStickers, arg.AppID, arg.GuildID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countStickers = `-- name: CountStickers :one
+SELECT COUNT(*) FROM cache.stickers WHERE app_id = $1
+`
+
+func (q *Queries) CountStickers(ctx context.Context, appID int64) (int64, error) {
+	row := q.db.QueryRow(ctx, countStickers, appID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const deleteSticker = `-- name: DeleteSticker :exec
 DELETE FROM cache.stickers WHERE app_id = $1 AND guild_id = $2 AND sticker_id = $3
 `
@@ -26,18 +53,86 @@ func (q *Queries) DeleteSticker(ctx context.Context, arg DeleteStickerParams) er
 	return err
 }
 
-const getSticker = `-- name: GetSticker :one
+const getGuildSticker = `-- name: GetGuildSticker :one
 SELECT app_id, guild_id, sticker_id, data, tainted, created_at, updated_at FROM cache.stickers WHERE app_id = $1 AND guild_id = $2 AND sticker_id = $3 LIMIT 1
 `
 
-type GetStickerParams struct {
+type GetGuildStickerParams struct {
 	AppID     int64
 	GuildID   int64
 	StickerID int64
 }
 
+func (q *Queries) GetGuildSticker(ctx context.Context, arg GetGuildStickerParams) (CacheSticker, error) {
+	row := q.db.QueryRow(ctx, getGuildSticker, arg.AppID, arg.GuildID, arg.StickerID)
+	var i CacheSticker
+	err := row.Scan(
+		&i.AppID,
+		&i.GuildID,
+		&i.StickerID,
+		&i.Data,
+		&i.Tainted,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getGuildStickers = `-- name: GetGuildStickers :many
+SELECT app_id, guild_id, sticker_id, data, tainted, created_at, updated_at FROM cache.stickers WHERE app_id = $1 AND guild_id = $2 ORDER BY sticker_id LIMIT $4 OFFSET $3
+`
+
+type GetGuildStickersParams struct {
+	AppID   int64
+	GuildID int64
+	Offset  pgtype.Int4
+	Limit   pgtype.Int4
+}
+
+func (q *Queries) GetGuildStickers(ctx context.Context, arg GetGuildStickersParams) ([]CacheSticker, error) {
+	rows, err := q.db.Query(ctx, getGuildStickers,
+		arg.AppID,
+		arg.GuildID,
+		arg.Offset,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CacheSticker
+	for rows.Next() {
+		var i CacheSticker
+		if err := rows.Scan(
+			&i.AppID,
+			&i.GuildID,
+			&i.StickerID,
+			&i.Data,
+			&i.Tainted,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getSticker = `-- name: GetSticker :one
+SELECT app_id, guild_id, sticker_id, data, tainted, created_at, updated_at FROM cache.stickers WHERE app_id = $1 AND sticker_id = $2 LIMIT 1
+`
+
+type GetStickerParams struct {
+	AppID     int64
+	StickerID int64
+}
+
 func (q *Queries) GetSticker(ctx context.Context, arg GetStickerParams) (CacheSticker, error) {
-	row := q.db.QueryRow(ctx, getSticker, arg.AppID, arg.GuildID, arg.StickerID)
+	row := q.db.QueryRow(ctx, getSticker, arg.AppID, arg.StickerID)
 	var i CacheSticker
 	err := row.Scan(
 		&i.AppID,
@@ -52,23 +147,17 @@ func (q *Queries) GetSticker(ctx context.Context, arg GetStickerParams) (CacheSt
 }
 
 const getStickers = `-- name: GetStickers :many
-SELECT app_id, guild_id, sticker_id, data, tainted, created_at, updated_at FROM cache.stickers WHERE app_id = $1 AND guild_id = $2 ORDER BY sticker_id LIMIT $4 OFFSET $3
+SELECT app_id, guild_id, sticker_id, data, tainted, created_at, updated_at FROM cache.stickers WHERE app_id = $1 ORDER BY sticker_id LIMIT $3 OFFSET $2
 `
 
 type GetStickersParams struct {
-	AppID   int64
-	GuildID int64
-	Offset  pgtype.Int4
-	Limit   pgtype.Int4
+	AppID  int64
+	Offset pgtype.Int4
+	Limit  pgtype.Int4
 }
 
 func (q *Queries) GetStickers(ctx context.Context, arg GetStickersParams) ([]CacheSticker, error) {
-	rows, err := q.db.Query(ctx, getStickers,
-		arg.AppID,
-		arg.GuildID,
-		arg.Offset,
-		arg.Limit,
-	)
+	rows, err := q.db.Query(ctx, getStickers, arg.AppID, arg.Offset, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
@@ -110,11 +199,11 @@ func (q *Queries) MarkShardStickersTainted(ctx context.Context, arg MarkShardSti
 	return err
 }
 
-const searchStickers = `-- name: SearchStickers :many
+const searchGuildStickers = `-- name: SearchGuildStickers :many
 SELECT app_id, guild_id, sticker_id, data, tainted, created_at, updated_at FROM cache.stickers WHERE app_id = $1 AND guild_id = $2 AND data @> $3 ORDER BY sticker_id LIMIT $5 OFFSET $4
 `
 
-type SearchStickersParams struct {
+type SearchGuildStickersParams struct {
 	AppID   int64
 	GuildID int64
 	Data    []byte
@@ -122,10 +211,54 @@ type SearchStickersParams struct {
 	Limit   pgtype.Int4
 }
 
+func (q *Queries) SearchGuildStickers(ctx context.Context, arg SearchGuildStickersParams) ([]CacheSticker, error) {
+	rows, err := q.db.Query(ctx, searchGuildStickers,
+		arg.AppID,
+		arg.GuildID,
+		arg.Data,
+		arg.Offset,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CacheSticker
+	for rows.Next() {
+		var i CacheSticker
+		if err := rows.Scan(
+			&i.AppID,
+			&i.GuildID,
+			&i.StickerID,
+			&i.Data,
+			&i.Tainted,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const searchStickers = `-- name: SearchStickers :many
+SELECT app_id, guild_id, sticker_id, data, tainted, created_at, updated_at FROM cache.stickers WHERE app_id = $1 AND data @> $2 ORDER BY sticker_id LIMIT $4 OFFSET $3
+`
+
+type SearchStickersParams struct {
+	AppID  int64
+	Data   []byte
+	Offset pgtype.Int4
+	Limit  pgtype.Int4
+}
+
 func (q *Queries) SearchStickers(ctx context.Context, arg SearchStickersParams) ([]CacheSticker, error) {
 	rows, err := q.db.Query(ctx, searchStickers,
 		arg.AppID,
-		arg.GuildID,
 		arg.Data,
 		arg.Offset,
 		arg.Limit,
