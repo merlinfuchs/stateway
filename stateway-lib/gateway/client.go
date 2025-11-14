@@ -66,6 +66,13 @@ func gatewayRequest[R any](ctx context.Context, b broker.Broker, method GatewayM
 		return r, err
 	}
 
+	if !response.Success {
+		if response.Error != nil {
+			return r, response.Error
+		}
+		return r, service.ErrUnknown("unknown error")
+	}
+
 	err = json.Unmarshal(response.Data, &r)
 	if err != nil {
 		return r, err

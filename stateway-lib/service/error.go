@@ -57,6 +57,10 @@ func (e *Error) Error() string {
 	return fmt.Sprintf("%s: %s", e.Code, e.Message)
 }
 
+func ErrUnknown(message string) *Error {
+	return NewError(ErrorCodeUnknown, message, nil)
+}
+
 func ErrNotFound(message string) *Error {
 	return NewError(ErrorCodeNotFound, message, nil)
 }
