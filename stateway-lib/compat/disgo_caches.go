@@ -99,7 +99,7 @@ func (c *GuildCache) Guilds() iter.Seq[discord.Guild] {
 			cancel()
 
 			for _, guild := range guilds {
-				if fn(guild.Data) {
+				if !fn(guild.Data) {
 					return
 				}
 			}
@@ -185,7 +185,7 @@ func (c *ChannelCache) Channels() iter.Seq[discord.GuildChannel] {
 					continue
 				}
 
-				if fn(guildChannel) {
+				if !fn(guildChannel) {
 					return
 				}
 			}
@@ -219,7 +219,7 @@ func (c *ChannelCache) ChannelsForGuild(guildID snowflake.ID) iter.Seq[discord.G
 				continue
 			}
 
-			if fn(guildChannel) {
+			if !fn(guildChannel) {
 				return
 			}
 		}
@@ -301,7 +301,7 @@ func (c *RoleCache) Roles(guildID snowflake.ID) iter.Seq[discord.Role] {
 
 	return func(fn func(discord.Role) bool) {
 		for _, role := range roles {
-			if fn(role.Data) {
+			if !fn(role.Data) {
 				return
 			}
 		}
