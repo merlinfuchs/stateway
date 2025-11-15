@@ -38,6 +38,7 @@ type CacheRoleStore interface {
 	GetGuildRole(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, roleID snowflake.ID) (*model.Role, error)
 	GetRole(ctx context.Context, appID snowflake.ID, roleID snowflake.ID) (*model.Role, error)
 	GetGuildRoles(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, limit int, offset int) ([]*model.Role, error)
+	GetGuildRolesByIDs(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, roleIDs []snowflake.ID) ([]*model.Role, error)
 	GetRoles(ctx context.Context, appID snowflake.ID, limit int, offset int) ([]*model.Role, error)
 	SearchGuildRoles(ctx context.Context, params SearchGuildRolesParams) ([]*model.Role, error)
 	SearchRoles(ctx context.Context, params SearchRolesParams) ([]*model.Role, error)

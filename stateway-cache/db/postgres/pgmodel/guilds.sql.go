@@ -49,6 +49,22 @@ func (q *Queries) GetGuild(ctx context.Context, arg GetGuildParams) (CacheGuild,
 	return i, err
 }
 
+const getGuildOwnerID = `-- name: GetGuildOwnerID :one
+SELECT (data->>'owner_id')::bigint FROM cache.guilds WHERE app_id = $1 AND guild_id = $2 LIMIT 1
+`
+
+type GetGuildOwnerIDParams struct {
+	AppID   int64
+	GuildID int64
+}
+
+func (q *Queries) GetGuildOwnerID(ctx context.Context, arg GetGuildOwnerIDParams) (int64, error) {
+	row := q.db.QueryRow(ctx, getGuildOwnerID, arg.AppID, arg.GuildID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const getGuilds = `-- name: GetGuilds :many
 SELECT app_id, guild_id, data, unavailable, tainted, created_at, updated_at FROM cache.guilds WHERE app_id = $1 ORDER BY guild_id LIMIT $3 OFFSET $2
 `

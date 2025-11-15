@@ -29,6 +29,20 @@ func (c *Client) GetGuild(ctx context.Context, appID snowflake.ID, guildID snowf
 	return rowToGuild(row)
 }
 
+func (c *Client) GetGuildOwnerID(ctx context.Context, appID snowflake.ID, guildID snowflake.ID) (snowflake.ID, error) {
+	row, err := c.Q.GetGuildOwnerID(ctx, pgmodel.GetGuildOwnerIDParams{
+		AppID:   int64(appID),
+		GuildID: int64(guildID),
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return 0, store.ErrNotFound
+		}
+		return 0, err
+	}
+	return snowflake.ID(row), nil
+}
+
 func (c *Client) GetGuilds(ctx context.Context, appID snowflake.ID, limit int, offset int) ([]*model.Guild, error) {
 	rows, err := c.Q.GetGuilds(ctx, pgmodel.GetGuildsParams{
 		AppID: int64(appID),

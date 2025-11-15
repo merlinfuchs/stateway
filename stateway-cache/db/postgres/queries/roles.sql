@@ -7,6 +7,9 @@ SELECT * FROM cache.roles WHERE app_id = $1 AND role_id = $2 LIMIT 1;
 -- name: GetGuildRoles :many
 SELECT * FROM cache.roles WHERE app_id = $1 AND guild_id = $2 ORDER BY role_id LIMIT sqlc.narg('limit') OFFSET sqlc.narg('offset');
 
+-- name: GetGuildRolesByIDs :many
+SELECT * FROM cache.roles WHERE app_id = $1 AND guild_id = $2 AND role_id = ANY(@role_ids::bigint[]) ORDER BY role_id;
+
 -- name: GetRoles :many
 SELECT * FROM cache.roles WHERE app_id = $1 ORDER BY role_id LIMIT sqlc.narg('limit') OFFSET sqlc.narg('offset');
 

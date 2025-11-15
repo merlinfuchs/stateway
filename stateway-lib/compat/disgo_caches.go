@@ -16,15 +16,52 @@ import (
 var _ discache.Caches = &DisgoCaches{}
 
 type DisgoCaches struct {
+	ctx   context.Context
+	cache cache.Cache
 	discache.Caches
 }
 
 func NewDisgoCaches(ctx context.Context, cache cache.Cache) *DisgoCaches {
-	return &DisgoCaches{Caches: discache.New(
+	return &DisgoCaches{ctx: ctx, cache: cache, Caches: discache.New(
 		discache.WithGuildCache(&GuildCache{ctx: ctx, cache: cache}),
 		discache.WithChannelCache(&ChannelCache{ctx: ctx, cache: cache}),
 		discache.WithRoleCache(&RoleCache{ctx: ctx, cache: cache}),
 	)}
+}
+
+func (c *DisgoCaches) MemberPermissions(member discord.Member) discord.Permissions {
+	ctx, cancel := cacheCtx(c.ctx)
+	defer cancel()
+
+	permissions, err := c.cache.ComputeGuildPermissions(ctx, member.GuildID, member.User.ID, member.RoleIDs)
+	if err != nil {
+		slog.Error(
+			"Failed to compute guild permissions",
+			slog.String("guild_id", member.GuildID.String()),
+			slog.String("user_id", member.User.ID.String()),
+			slog.Any("error", err),
+		)
+		return 0
+	}
+	return permissions
+}
+
+func (c *DisgoCaches) MemberPermissionsInChannel(channel discord.GuildChannel, member discord.Member) discord.Permissions {
+	ctx, cancel := cacheCtx(c.ctx)
+	defer cancel()
+
+	permissions, err := c.cache.ComputeChannelPermissions(ctx, channel.ID(), member.User.ID, member.RoleIDs)
+	if err != nil {
+		slog.Error(
+			"Failed to compute channel permissions",
+			slog.String("channel_id", channel.ID().String()),
+			slog.String("user_id", member.User.ID.String()),
+			slog.Any("error", err),
+		)
+		return 0
+	}
+
+	return permissions
 }
 
 type GuildCache struct {

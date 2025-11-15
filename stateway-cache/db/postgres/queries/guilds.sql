@@ -1,6 +1,9 @@
 -- name: GetGuild :one
 SELECT * FROM cache.guilds WHERE app_id = $1 AND guild_id = $2 LIMIT 1;
 
+-- name: GetGuildOwnerID :one
+SELECT (data->>'owner_id')::bigint FROM cache.guilds WHERE app_id = $1 AND guild_id = $2 LIMIT 1;
+
 -- name: GetGuilds :many
 SELECT * FROM cache.guilds WHERE app_id = $1 ORDER BY guild_id LIMIT sqlc.narg('limit') OFFSET sqlc.narg('offset');
 

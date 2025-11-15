@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 
+	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/snowflake/v2"
 	"github.com/merlinfuchs/stateway/stateway-cache/store"
 	"github.com/merlinfuchs/stateway/stateway-lib/cache"
@@ -68,6 +70,52 @@ func (c *Cache) SearchGuilds(ctx context.Context, data json.RawMessage, opts ...
 	}
 
 	return guilds, nil
+}
+
+func (c *Cache) ComputeGuildPermissions(
+	ctx context.Context,
+	guildID snowflake.ID,
+	userID snowflake.ID,
+	roleIDs []snowflake.ID,
+	opts ...cache.CacheOption,
+) (discord.Permissions, error) {
+	options := cache.ResolveOptions(opts...)
+
+	ownerID, err := c.cacheStore.GetGuildOwnerID(ctx, options.AppID, guildID)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return 0, service.ErrNotFound("guild not found")
+		}
+		return 0, fmt.Errorf("failed to get guild owner ID: %w", err)
+	}
+
+	if ownerID == userID {
+		return discord.PermissionsAll, nil
+	}
+
+	defaultRole, err := c.cacheStore.GetGuildRole(ctx, options.AppID, guildID, guildID)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return 0, service.ErrNotFound("default role not found")
+		}
+		return 0, fmt.Errorf("failed to get default role: %w", err)
+	}
+
+	permissions := defaultRole.Data.Permissions
+
+	roles, err := c.cacheStore.GetGuildRolesByIDs(ctx, options.AppID, guildID, roleIDs)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get guild roles by IDs: %w", err)
+	}
+
+	for _, role := range roles {
+		permissions.Add(role.Data.Permissions)
+		if permissions.Has(discord.PermissionAdministrator) {
+			return discord.PermissionsAll, nil
+		}
+	}
+
+	return permissions, nil
 }
 
 func (c *Cache) GetChannel(ctx context.Context, channelID snowflake.ID, opts ...cache.CacheOption) (*cache.Channel, error) {
@@ -185,6 +233,69 @@ func (c *Cache) SearchGuildChannels(ctx context.Context, guildID snowflake.ID, d
 	}
 
 	return channels, nil
+}
+
+func (c *Cache) ComputeChannelPermissions(
+	ctx context.Context,
+	channelID snowflake.ID,
+	userID snowflake.ID,
+	roleIDs []snowflake.ID,
+	opts ...cache.CacheOption,
+) (discord.Permissions, error) {
+	options := cache.ResolveOptions(opts...)
+
+	channel, err := c.cacheStore.GetChannel(ctx, options.AppID, channelID)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return 0, service.ErrNotFound("channel not found")
+		}
+		return 0, fmt.Errorf("failed to get channel: %w", err)
+	}
+
+	permissions, err := c.ComputeGuildPermissions(ctx, channel.GuildID, userID, roleIDs, opts...)
+	if err != nil {
+		return 0, fmt.Errorf("failed to compute guild permissions: %w", err)
+	}
+
+	if permissions.Has(discord.PermissionAdministrator) {
+		return discord.PermissionsAll, nil
+	}
+
+	guildChannel, ok := channel.Data.(discord.GuildChannel)
+	if !ok {
+		return 0, fmt.Errorf("channel is not a guild channel: %w", err)
+	}
+
+	if overwrite, ok := guildChannel.PermissionOverwrites().Role(channel.GuildID); ok {
+		permissions |= overwrite.Allow
+		permissions &= ^overwrite.Deny
+	}
+
+	var (
+		allow discord.Permissions
+		deny  discord.Permissions
+	)
+
+	for _, roleID := range roleIDs {
+		if roleID == channel.GuildID {
+			continue
+		}
+
+		if overwrite, ok := guildChannel.PermissionOverwrites().Role(roleID); ok {
+			allow |= overwrite.Allow
+			deny |= overwrite.Deny
+		}
+	}
+
+	if overwrite, ok := guildChannel.PermissionOverwrites().Member(userID); ok {
+		allow |= overwrite.Allow
+		deny |= overwrite.Deny
+	}
+
+	permissions &= ^deny
+	permissions |= allow
+
+	return permissions, nil
 }
 
 func (c *Cache) GetRole(ctx context.Context, roleID snowflake.ID, opts ...cache.CacheOption) (*cache.Role, error) {

@@ -75,6 +75,32 @@ func (c *Client) GetGuildRoles(ctx context.Context, appID snowflake.ID, guildID 
 	return roles, nil
 }
 
+func (c *Client) GetGuildRolesByIDs(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, roleIDs []snowflake.ID) ([]*model.Role, error) {
+	roleIDInts := make([]int64, len(roleIDs))
+	for i, roleID := range roleIDs {
+		roleIDInts[i] = int64(roleID)
+	}
+
+	rows, err := c.Q.GetGuildRolesByIDs(ctx, pgmodel.GetGuildRolesByIDsParams{
+		AppID:   int64(appID),
+		GuildID: int64(guildID),
+		RoleIds: roleIDInts,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	roles := make([]*model.Role, len(rows))
+	for i, row := range rows {
+		role, err := rowToRole(row)
+		if err != nil {
+			return nil, err
+		}
+		roles[i] = role
+	}
+	return roles, nil
+}
+
 func (c *Client) GetRoles(ctx context.Context, appID snowflake.ID, limit int, offset int) ([]*model.Role, error) {
 	rows, err := c.Q.GetRoles(ctx, pgmodel.GetRolesParams{
 		AppID: int64(appID),

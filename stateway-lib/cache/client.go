@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/snowflake/v2"
 	"github.com/merlinfuchs/stateway/stateway-lib/broker"
 	"github.com/merlinfuchs/stateway/stateway-lib/service"
@@ -69,6 +70,26 @@ func (c *CacheClient) SearchGuilds(ctx context.Context, data json.RawMessage, op
 
 	return cacheRequest[[]*Guild](ctx, c.b, CacheMethodSearchGuilds, GuildSearchRequest{
 		Data:    data,
+		Options: options,
+	})
+}
+
+func (c *CacheClient) ComputeGuildPermissions(
+	ctx context.Context,
+	guildID snowflake.ID,
+	userID snowflake.ID,
+	roleIDs []snowflake.ID,
+	opts ...CacheOption,
+) (discord.Permissions, error) {
+	options := c.options
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	return cacheRequest[discord.Permissions](ctx, c.b, CacheMethodComputePermissions, PermissionsComputeRequest{
+		GuildID: &guildID,
+		UserID:  userID,
+		RoleIDs: roleIDs,
 		Options: options,
 	})
 }
@@ -166,6 +187,26 @@ func (c *CacheClient) CountGuildChannels(ctx context.Context, guildID snowflake.
 	return cacheRequest[int](ctx, c.b, CacheMethodCountChannels, ChannelCountRequest{
 		GuildID: &guildID,
 		Options: options,
+	})
+}
+
+func (c *CacheClient) ComputeChannelPermissions(
+	ctx context.Context,
+	channelID snowflake.ID,
+	userID snowflake.ID,
+	roleIDs []snowflake.ID,
+	opts ...CacheOption,
+) (discord.Permissions, error) {
+	options := c.options
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	return cacheRequest[discord.Permissions](ctx, c.b, CacheMethodComputePermissions, PermissionsComputeRequest{
+		ChannelID: &channelID,
+		UserID:    userID,
+		RoleIDs:   roleIDs,
+		Options:   options,
 	})
 }
 

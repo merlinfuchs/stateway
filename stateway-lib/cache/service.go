@@ -63,6 +63,12 @@ func (s *CacheService) HandleRequest(ctx context.Context, method CacheMethod, re
 		} else {
 			return s.caches.SearchGuildRoles(ctx, *req.GuildID, req.Data, req.Options.Destructure()...)
 		}
+	case PermissionsComputeRequest:
+		if req.ChannelID != nil {
+			return s.caches.ComputeChannelPermissions(ctx, *req.ChannelID, req.UserID, req.RoleIDs, req.Options.Destructure()...)
+		} else if req.GuildID != nil {
+			return s.caches.ComputeGuildPermissions(ctx, *req.GuildID, req.UserID, req.RoleIDs, req.Options.Destructure()...)
+		}
 	}
 	return nil, fmt.Errorf("unknown request type: %T", request)
 }

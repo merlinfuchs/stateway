@@ -10,18 +10,19 @@ import (
 type CacheMethod string
 
 const (
-	CacheMethodGetGuild       CacheMethod = "guild.get"
-	CacheMethodListGuilds     CacheMethod = "guild.list"
-	CacheMethodSearchGuilds   CacheMethod = "guild.search"
-	CacheMethodCountGuilds    CacheMethod = "guild.coun"
-	CacheMethodGetChannel     CacheMethod = "channel.get"
-	CacheMethodListChannels   CacheMethod = "channel.list"
-	CacheMethodSearchChannels CacheMethod = "channel.search"
-	CacheMethodCountChannels  CacheMethod = "channel.count"
-	CacheMethodGetRole        CacheMethod = "role.get"
-	CacheMethodListRoles      CacheMethod = "role.list"
-	CacheMethodSearchRoles    CacheMethod = "role.search"
-	CacheMethodCountRoles     CacheMethod = "role.count"
+	CacheMethodGetGuild           CacheMethod = "guild.get"
+	CacheMethodListGuilds         CacheMethod = "guild.list"
+	CacheMethodSearchGuilds       CacheMethod = "guild.search"
+	CacheMethodCountGuilds        CacheMethod = "guild.count"
+	CacheMethodGetChannel         CacheMethod = "channel.get"
+	CacheMethodListChannels       CacheMethod = "channel.list"
+	CacheMethodSearchChannels     CacheMethod = "channel.search"
+	CacheMethodCountChannels      CacheMethod = "channel.count"
+	CacheMethodGetRole            CacheMethod = "role.get"
+	CacheMethodListRoles          CacheMethod = "role.list"
+	CacheMethodSearchRoles        CacheMethod = "role.search"
+	CacheMethodCountRoles         CacheMethod = "role.count"
+	CacheMethodComputePermissions CacheMethod = "permissions.compute"
 )
 
 func (m CacheMethod) UnmarshalRequest(data json.RawMessage) (CacheRequest, error) {
@@ -60,6 +61,10 @@ func (m CacheMethod) UnmarshalRequest(data json.RawMessage) (CacheRequest, error
 		return req, err
 	case CacheMethodSearchRoles:
 		var req RoleSearchRequest
+		err := json.Unmarshal(data, &req)
+		return req, err
+	case CacheMethodComputePermissions:
+		var req PermissionsComputeRequest
 		err := json.Unmarshal(data, &req)
 		return req, err
 	default:
@@ -156,3 +161,13 @@ type RoleCountRequest struct {
 }
 
 func (r RoleCountRequest) cacheRequest() {}
+
+type PermissionsComputeRequest struct {
+	GuildID   *snowflake.ID  `json:"guild_id,omitempty"`
+	ChannelID *snowflake.ID  `json:"channel_id,omitempty"`
+	UserID    snowflake.ID   `json:"user_id"`
+	RoleIDs   []snowflake.ID `json:"role_ids"`
+	Options   CacheOptions   `json:"options,omitempty"`
+}
+
+func (r PermissionsComputeRequest) cacheRequest() {}

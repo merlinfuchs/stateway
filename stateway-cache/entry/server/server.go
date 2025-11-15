@@ -122,6 +122,7 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 
 		channels := make([]store.UpsertChannelParams, len(e.Channels)+len(e.Threads))
 		for i, channel := range e.Channels {
+			channel := ensureChannelGuildID(channel, e.ID)
 			channels[i] = store.UpsertChannelParams{
 				AppID:     event.AppID,
 				GuildID:   e.ID,
@@ -132,11 +133,12 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 			}
 		}
 		for i, thread := range e.Threads {
+			channel := ensureChannelGuildID(thread, e.ID)
 			channels[i+len(e.Channels)] = store.UpsertChannelParams{
 				AppID:     event.AppID,
 				GuildID:   e.ID,
 				ChannelID: thread.ID(),
-				Data:      thread,
+				Data:      channel,
 				CreatedAt: time.Now().UTC(),
 				UpdatedAt: time.Now().UTC(),
 			}

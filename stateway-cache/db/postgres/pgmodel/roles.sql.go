@@ -122,6 +122,44 @@ func (q *Queries) GetGuildRoles(ctx context.Context, arg GetGuildRolesParams) ([
 	return items, nil
 }
 
+const getGuildRolesByIDs = `-- name: GetGuildRolesByIDs :many
+SELECT app_id, guild_id, role_id, data, tainted, created_at, updated_at FROM cache.roles WHERE app_id = $1 AND guild_id = $2 AND role_id = ANY($3::bigint[]) ORDER BY role_id
+`
+
+type GetGuildRolesByIDsParams struct {
+	AppID   int64
+	GuildID int64
+	RoleIds []int64
+}
+
+func (q *Queries) GetGuildRolesByIDs(ctx context.Context, arg GetGuildRolesByIDsParams) ([]CacheRole, error) {
+	rows, err := q.db.Query(ctx, getGuildRolesByIDs, arg.AppID, arg.GuildID, arg.RoleIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CacheRole
+	for rows.Next() {
+		var i CacheRole
+		if err := rows.Scan(
+			&i.AppID,
+			&i.GuildID,
+			&i.RoleID,
+			&i.Data,
+			&i.Tainted,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getRole = `-- name: GetRole :one
 SELECT app_id, guild_id, role_id, data, tainted, created_at, updated_at FROM cache.roles WHERE app_id = $1 AND role_id = $2 LIMIT 1
 `

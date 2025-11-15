@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/snowflake/v2"
 )
 
@@ -17,6 +18,13 @@ type GuildCache interface {
 	GetGuild(ctx context.Context, id snowflake.ID, opts ...CacheOption) (*Guild, error)
 	GetGuilds(ctx context.Context, opts ...CacheOption) ([]*Guild, error)
 	SearchGuilds(ctx context.Context, data json.RawMessage, opts ...CacheOption) ([]*Guild, error)
+	ComputeGuildPermissions(
+		ctx context.Context,
+		guildID snowflake.ID,
+		userID snowflake.ID,
+		roleIDs []snowflake.ID,
+		opts ...CacheOption,
+	) (discord.Permissions, error)
 }
 
 type ChannelCache interface {
@@ -28,6 +36,13 @@ type ChannelCache interface {
 	CountGuildChannels(ctx context.Context, guildID snowflake.ID, opts ...CacheOption) (int, error)
 	SearchChannels(ctx context.Context, data json.RawMessage, opts ...CacheOption) ([]*Channel, error)
 	SearchGuildChannels(ctx context.Context, guildID snowflake.ID, data json.RawMessage, opts ...CacheOption) ([]*Channel, error)
+	ComputeChannelPermissions(
+		ctx context.Context,
+		channelID snowflake.ID,
+		userID snowflake.ID,
+		roleIDs []snowflake.ID,
+		opts ...CacheOption,
+	) (discord.Permissions, error)
 }
 
 type RoleCache interface {
