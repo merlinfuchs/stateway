@@ -43,6 +43,14 @@ type ChannelCache interface {
 		roleIDs []snowflake.ID,
 		opts ...CacheOption,
 	) (discord.Permissions, error)
+	MassComputeChannelPermissions(
+		ctx context.Context,
+		guildID snowflake.ID,
+		channelIDs []snowflake.ID,
+		userID snowflake.ID,
+		roleIDs []snowflake.ID,
+		opts ...CacheOption,
+	) ([]discord.Permissions, error)
 }
 
 type RoleCache interface {

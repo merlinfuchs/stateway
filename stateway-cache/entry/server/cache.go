@@ -252,12 +252,12 @@ func (c *Cache) ComputeChannelPermissions(
 		return 0, fmt.Errorf("failed to get channel: %w", err)
 	}
 
-	permissions, err := c.ComputeGuildPermissions(ctx, channel.GuildID, userID, roleIDs, opts...)
+	guildPermissions, err := c.ComputeGuildPermissions(ctx, channel.GuildID, userID, roleIDs, opts...)
 	if err != nil {
 		return 0, fmt.Errorf("failed to compute guild permissions: %w", err)
 	}
 
-	if permissions.Has(discord.PermissionAdministrator) {
+	if guildPermissions.Has(discord.PermissionAdministrator) {
 		return discord.PermissionsAll, nil
 	}
 
@@ -266,36 +266,45 @@ func (c *Cache) ComputeChannelPermissions(
 		return 0, fmt.Errorf("channel is not a guild channel: %w", err)
 	}
 
-	if overwrite, ok := guildChannel.PermissionOverwrites().Role(channel.GuildID); ok {
-		permissions |= overwrite.Allow
-		permissions &= ^overwrite.Deny
+	return computeChannelPermissions(guildChannel, userID, roleIDs, guildPermissions), nil
+}
+
+func (c *Cache) MassComputeChannelPermissions(
+	ctx context.Context,
+	guildID snowflake.ID,
+	channelIDs []snowflake.ID,
+	userID snowflake.ID,
+	roleIDs []snowflake.ID,
+	opts ...cache.CacheOption,
+) ([]discord.Permissions, error) {
+	options := cache.ResolveOptions(opts...)
+
+	guildPermissions, err := c.ComputeGuildPermissions(ctx, guildID, userID, roleIDs, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compute guild permissions: %w", err)
 	}
 
-	var (
-		allow discord.Permissions
-		deny  discord.Permissions
-	)
-
-	for _, roleID := range roleIDs {
-		if roleID == channel.GuildID {
+	res := make([]discord.Permissions, len(channelIDs))
+	for i, channelID := range channelIDs {
+		if guildPermissions.Has(discord.PermissionAdministrator) {
+			res[i] = discord.PermissionsAll
 			continue
 		}
 
-		if overwrite, ok := guildChannel.PermissionOverwrites().Role(roleID); ok {
-			allow |= overwrite.Allow
-			deny |= overwrite.Deny
+		channel, err := c.cacheStore.GetChannel(ctx, options.AppID, channelID)
+		if err != nil {
+			continue
 		}
+
+		guildChannel, ok := channel.Data.(discord.GuildChannel)
+		if !ok {
+			continue
+		}
+
+		res[i] = computeChannelPermissions(guildChannel, userID, roleIDs, guildPermissions)
 	}
 
-	if overwrite, ok := guildChannel.PermissionOverwrites().Member(userID); ok {
-		allow |= overwrite.Allow
-		deny |= overwrite.Deny
-	}
-
-	permissions &= ^deny
-	permissions |= allow
-
-	return permissions, nil
+	return res, nil
 }
 
 func (c *Cache) GetRole(ctx context.Context, roleID snowflake.ID, opts ...cache.CacheOption) (*cache.Role, error) {

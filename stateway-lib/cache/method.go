@@ -10,19 +10,20 @@ import (
 type CacheMethod string
 
 const (
-	CacheMethodGetGuild           CacheMethod = "guild.get"
-	CacheMethodListGuilds         CacheMethod = "guild.list"
-	CacheMethodSearchGuilds       CacheMethod = "guild.search"
-	CacheMethodCountGuilds        CacheMethod = "guild.count"
-	CacheMethodGetChannel         CacheMethod = "channel.get"
-	CacheMethodListChannels       CacheMethod = "channel.list"
-	CacheMethodSearchChannels     CacheMethod = "channel.search"
-	CacheMethodCountChannels      CacheMethod = "channel.count"
-	CacheMethodGetRole            CacheMethod = "role.get"
-	CacheMethodListRoles          CacheMethod = "role.list"
-	CacheMethodSearchRoles        CacheMethod = "role.search"
-	CacheMethodCountRoles         CacheMethod = "role.count"
-	CacheMethodComputePermissions CacheMethod = "permissions.compute"
+	CacheMethodGetGuild               CacheMethod = "guild.get"
+	CacheMethodListGuilds             CacheMethod = "guild.list"
+	CacheMethodSearchGuilds           CacheMethod = "guild.search"
+	CacheMethodCountGuilds            CacheMethod = "guild.count"
+	CacheMethodGetChannel             CacheMethod = "channel.get"
+	CacheMethodListChannels           CacheMethod = "channel.list"
+	CacheMethodSearchChannels         CacheMethod = "channel.search"
+	CacheMethodCountChannels          CacheMethod = "channel.count"
+	CacheMethodGetRole                CacheMethod = "role.get"
+	CacheMethodListRoles              CacheMethod = "role.list"
+	CacheMethodSearchRoles            CacheMethod = "role.search"
+	CacheMethodCountRoles             CacheMethod = "role.count"
+	CacheMethodComputePermissions     CacheMethod = "permissions.compute"
+	CacheMethodMassComputePermissions CacheMethod = "permissions.mass_compute"
 )
 
 func (m CacheMethod) UnmarshalRequest(data json.RawMessage) (CacheRequest, error) {
@@ -65,6 +66,10 @@ func (m CacheMethod) UnmarshalRequest(data json.RawMessage) (CacheRequest, error
 		return req, err
 	case CacheMethodComputePermissions:
 		var req PermissionsComputeRequest
+		err := json.Unmarshal(data, &req)
+		return req, err
+	case CacheMethodMassComputePermissions:
+		var req MassComputePermissionsRequest
 		err := json.Unmarshal(data, &req)
 		return req, err
 	default:
@@ -171,3 +176,13 @@ type PermissionsComputeRequest struct {
 }
 
 func (r PermissionsComputeRequest) cacheRequest() {}
+
+type MassComputePermissionsRequest struct {
+	GuildID    snowflake.ID   `json:"guild_id,omitempty"`
+	ChannelIDs []snowflake.ID `json:"channel_ids,omitempty"`
+	UserID     snowflake.ID   `json:"user_id"`
+	RoleIDs    []snowflake.ID `json:"role_ids"`
+	Options    CacheOptions   `json:"options,omitempty"`
+}
+
+func (r MassComputePermissionsRequest) cacheRequest() {}

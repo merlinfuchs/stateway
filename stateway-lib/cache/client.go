@@ -210,6 +210,28 @@ func (c *CacheClient) ComputeChannelPermissions(
 	})
 }
 
+func (c *CacheClient) MassComputeChannelPermissions(
+	ctx context.Context,
+	guildID snowflake.ID,
+	channelIDs []snowflake.ID,
+	userID snowflake.ID,
+	roleIDs []snowflake.ID,
+	opts ...CacheOption,
+) ([]discord.Permissions, error) {
+	options := c.options
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	return cacheRequest[[]discord.Permissions](ctx, c.b, CacheMethodMassComputePermissions, MassComputePermissionsRequest{
+		GuildID:    guildID,
+		ChannelIDs: channelIDs,
+		UserID:     userID,
+		RoleIDs:    roleIDs,
+		Options:    options,
+	})
+}
+
 func (c *CacheClient) GetRole(ctx context.Context, roleID snowflake.ID, opts ...CacheOption) (*Role, error) {
 	options := c.options
 	for _, opt := range opts {
