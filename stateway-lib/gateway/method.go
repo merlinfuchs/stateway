@@ -42,7 +42,7 @@ func (m GatewayMethod) UnmarshalRequest(data json.RawMessage) (GatewayRequest, e
 		err := json.Unmarshal(data, &req)
 		return req, err
 	case GatewayMethodAppDelete:
-		var req UpsertAppRequest
+		var req DeleteAppRequest
 		err := json.Unmarshal(data, &req)
 		return req, err
 	case GatewayMethodGroupGet:

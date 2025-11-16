@@ -109,7 +109,7 @@ func (c *Cache) ComputeGuildPermissions(
 	}
 
 	for _, role := range roles {
-		permissions.Add(role.Data.Permissions)
+		permissions |= role.Data.Permissions
 		if permissions.Has(discord.PermissionAdministrator) {
 			return discord.PermissionsAll, nil
 		}

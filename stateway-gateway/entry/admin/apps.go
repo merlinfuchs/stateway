@@ -130,6 +130,22 @@ func DisableApp(ctx context.Context, appStore store.AppStore, id snowflake.ID, c
 func InitializeApps(ctx context.Context, pg *postgres.Client, cfg *config.RootGatewayConfig) error {
 	slog.Info("Initializing apps from config", slog.Int("app_count", len(cfg.Gateway.Apps)))
 
+	for _, groupCfg := range cfg.Gateway.Groups {
+		_, err := pg.UpsertGroup(ctx, store.UpsertGroupParams{
+			ID:          groupCfg.ID,
+			DisplayName: groupCfg.DisplayName,
+			DefaultConstraints: gateway.AppConstraints{
+				MaxShards: null.NewInt(int64(groupCfg.MaxShards), groupCfg.MaxShards != 0),
+				MaxGuilds: null.NewInt(int64(groupCfg.MaxGuilds), groupCfg.MaxGuilds != 0),
+			},
+			CreatedAt: time.Now().UTC(),
+			UpdatedAt: time.Now().UTC(),
+		})
+		if err != nil {
+			return fmt.Errorf("failed to upsert group: %w", err)
+		}
+	}
+
 	for _, appCfg := range cfg.Gateway.Apps {
 		client := rest.New(rest.NewClient(appCfg.Token))
 

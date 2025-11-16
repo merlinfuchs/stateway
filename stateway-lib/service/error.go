@@ -39,10 +39,16 @@ func (e *Error) UnmarshalJSON(data []byte) error {
 	e.Message = aux.Message
 
 	if e.Code == ErrorCodeInvalidRequest && aux.Details != nil {
-		var validationErrors ValidationErrors
-		if err := json.Unmarshal(aux.Details, &validationErrors); err != nil {
+		var rawValidationErrors map[string]string
+		if err := json.Unmarshal(aux.Details, &rawValidationErrors); err != nil {
 			return err
 		}
+
+		validationErrors := make(ValidationErrors, len(rawValidationErrors))
+		for field, message := range rawValidationErrors {
+			validationErrors[field] = errors.New(message)
+		}
+
 		e.Details = validationErrors
 	}
 

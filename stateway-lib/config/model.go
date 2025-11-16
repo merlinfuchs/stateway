@@ -57,9 +57,17 @@ type NATSConfig struct {
 }
 
 type GatewayConfig struct {
-	GatewayCount int                `toml:"gateway_count" validate:"required"`
-	GatewayID    int                `toml:"gateway_id"`
-	Apps         []GatewayAppConfig `toml:"apps"`
+	GatewayCount int                  `toml:"gateway_count" validate:"required"`
+	GatewayID    int                  `toml:"gateway_id"`
+	Groups       []GatewayGroupConfig `toml:"groups"`
+	Apps         []GatewayAppConfig   `toml:"apps"`
+}
+
+type GatewayGroupConfig struct {
+	ID          string `toml:"id" validate:"required"`
+	DisplayName string `toml:"display_name" validate:"required"`
+	MaxShards   int    `toml:"max_shards"`
+	MaxGuilds   int    `toml:"max_guilds"`
 }
 
 type GatewayAppConfig struct {
