@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/snowflake/v2"
 )
 
@@ -13,6 +14,7 @@ const (
 	CacheMethodGetGuild                    CacheMethod = "guild.get"
 	CacheMethodGetGuildWithPermissions     CacheMethod = "guild.get_with_permissions"
 	CacheMethodListGuilds                  CacheMethod = "guild.list"
+	CacheMethodCheckGuildsExist            CacheMethod = "guild.exists"
 	CacheMethodSearchGuilds                CacheMethod = "guild.search"
 	CacheMethodCountGuilds                 CacheMethod = "guild.count"
 	CacheMethodGetChannel                  CacheMethod = "channel.get"
@@ -36,6 +38,10 @@ func (m CacheMethod) UnmarshalRequest(data json.RawMessage) (CacheRequest, error
 		return req, err
 	case CacheMethodGetGuildWithPermissions:
 		var req GuildGetWithPermissionsRequest
+		err := json.Unmarshal(data, &req)
+		return req, err
+	case CacheMethodCheckGuildsExist:
+		var req GuildCheckExistRequest
 		err := json.Unmarshal(data, &req)
 		return req, err
 	case CacheMethodListGuilds:
@@ -102,7 +108,9 @@ type GuildGetWithPermissionsRequest struct {
 	GuildID snowflake.ID   `json:"guild_id"`
 	UserID  snowflake.ID   `json:"user_id"`
 	RoleIDs []snowflake.ID `json:"role_ids"`
-	Options CacheOptions   `json:"options,omitempty"`
+	// AbortAtPermissions is the permissions that will fulfill the request early if reached by any channel.
+	AbortAtPermissions discord.Permissions `json:"abort_at_permissions,omitempty"`
+	Options            CacheOptions        `json:"options,omitempty"`
 }
 
 func (r GuildGetWithPermissionsRequest) cacheRequest() {}
@@ -112,6 +120,13 @@ type GuildListRequest struct {
 }
 
 func (r GuildListRequest) cacheRequest() {}
+
+type GuildCheckExistRequest struct {
+	GuildIDs []snowflake.ID `json:"guild_ids"`
+	Options  CacheOptions   `json:"options,omitempty"`
+}
+
+func (r GuildCheckExistRequest) cacheRequest() {}
 
 type GuildSearchRequest struct {
 	Data    json.RawMessage `json:"data,omitempty"`

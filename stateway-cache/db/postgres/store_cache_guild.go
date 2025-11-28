@@ -73,6 +73,20 @@ func (c *Client) GetGuilds(ctx context.Context, appID snowflake.ID, limit int, o
 	return guilds, nil
 }
 
+func (c *Client) CheckGuildExist(ctx context.Context, appID snowflake.ID, guildID snowflake.ID) (bool, error) {
+	row, err := c.Q.CheckGuildExist(ctx, pgmodel.CheckGuildExistParams{
+		AppID:   int64(appID),
+		GuildID: int64(guildID),
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, store.ErrNotFound
+		}
+		return false, err
+	}
+	return row, nil
+}
+
 func (c *Client) SearchGuilds(ctx context.Context, params store.SearchGuildsParams) ([]*model.Guild, error) {
 	rows, err := c.Q.SearchGuilds(ctx, pgmodel.SearchGuildsParams{
 		AppID: int64(params.AppID),

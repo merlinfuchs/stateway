@@ -29,6 +29,7 @@ type CacheGuildStore interface {
 	GetGuild(ctx context.Context, appID snowflake.ID, guildID snowflake.ID) (*model.Guild, error)
 	GetGuildOwnerID(ctx context.Context, appID snowflake.ID, guildID snowflake.ID) (snowflake.ID, error)
 	GetGuilds(ctx context.Context, appID snowflake.ID, limit int, offset int) ([]*model.Guild, error)
+	CheckGuildExist(ctx context.Context, appID snowflake.ID, guildID snowflake.ID) (bool, error)
 	UpsertGuilds(ctx context.Context, guilds ...UpsertGuildParams) error
 	MarkGuildUnavailable(ctx context.Context, appID snowflake.ID, guildID snowflake.ID) error
 	DeleteGuild(ctx context.Context, appID snowflake.ID, guildID snowflake.ID) error

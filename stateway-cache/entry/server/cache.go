@@ -44,6 +44,7 @@ func (c *Cache) GetGuildWithPermissions(
 	guildID snowflake.ID,
 	userID snowflake.ID,
 	roleIDs []snowflake.ID,
+	abortAtPermissions discord.Permissions,
 	opts ...cache.CacheOption,
 ) (*cache.GuildWithPermissions, error) {
 	options := cache.ResolveOptions(opts...)
@@ -61,7 +62,15 @@ func (c *Cache) GetGuildWithPermissions(
 		return nil, fmt.Errorf("failed to compute guild permissions: %w", err)
 	}
 
-	channels, err := c.cacheStore.GetChannels(ctx, options.AppID, 0, 0)
+	if abortAtPermissions != 0 && guildPermissions.Has(abortAtPermissions) {
+		return &cache.GuildWithPermissions{
+			Guild:                 *guild,
+			GuildPermissions:      guildPermissions,
+			MaxChannelPermissions: guildPermissions,
+		}, nil
+	}
+
+	channels, err := c.cacheStore.GetGuildChannels(ctx, options.AppID, guildID, 0, 0)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			return nil, service.ErrNotFound("channels not found")
@@ -81,6 +90,10 @@ func (c *Cache) GetGuildWithPermissions(
 		permissions := computeChannelPermissions(guildChannel, userID, roleIDs, guildPermissions)
 		maxChannelPermissions |= permissions
 		minChannelPermissions &= permissions
+
+		if abortAtPermissions != 0 && permissions.Has(abortAtPermissions) {
+			break
+		}
 	}
 
 	return &cache.GuildWithPermissions{
@@ -103,6 +116,21 @@ func (c *Cache) GetGuilds(ctx context.Context, opts ...cache.CacheOption) ([]*ca
 	}
 
 	return guilds, nil
+}
+
+func (c *Cache) CheckGuildsExist(ctx context.Context, guildIDs []snowflake.ID, opts ...cache.CacheOption) ([]bool, error) {
+	options := cache.ResolveOptions(opts...)
+
+	res := make([]bool, len(guildIDs))
+	for i, guildID := range guildIDs {
+		exists, err := c.cacheStore.CheckGuildExist(ctx, options.AppID, guildID)
+		if err != nil {
+			return nil, err
+		}
+		res[i] = exists
+	}
+
+	return res, nil
 }
 
 func (c *Cache) SearchGuilds(ctx context.Context, data json.RawMessage, opts ...cache.CacheOption) ([]*cache.Guild, error) {

@@ -21,9 +21,11 @@ type GuildCache interface {
 		id snowflake.ID,
 		userID snowflake.ID,
 		roleIDs []snowflake.ID,
+		abortAtPermissions discord.Permissions,
 		opts ...CacheOption,
 	) (*GuildWithPermissions, error)
 	GetGuilds(ctx context.Context, opts ...CacheOption) ([]*Guild, error)
+	CheckGuildsExist(ctx context.Context, guildIDs []snowflake.ID, opts ...CacheOption) ([]bool, error)
 	SearchGuilds(ctx context.Context, data json.RawMessage, opts ...CacheOption) ([]*Guild, error)
 	ComputeGuildPermissions(
 		ctx context.Context,

@@ -45,6 +45,7 @@ func (c *CacheClient) GetGuildWithPermissions(
 	guildID snowflake.ID,
 	userID snowflake.ID,
 	roleIDs []snowflake.ID,
+	abortAtPermissions discord.Permissions,
 	opts ...CacheOption,
 ) (*GuildWithPermissions, error) {
 	options := c.options
@@ -53,10 +54,11 @@ func (c *CacheClient) GetGuildWithPermissions(
 	}
 
 	return cacheRequest[*GuildWithPermissions](ctx, c.b, CacheMethodGetGuildWithPermissions, GuildGetWithPermissionsRequest{
-		GuildID: guildID,
-		UserID:  userID,
-		RoleIDs: roleIDs,
-		Options: options,
+		GuildID:            guildID,
+		UserID:             userID,
+		RoleIDs:            roleIDs,
+		AbortAtPermissions: abortAtPermissions,
+		Options:            options,
 	})
 }
 
@@ -68,6 +70,18 @@ func (c *CacheClient) GetGuilds(ctx context.Context, opts ...CacheOption) ([]*Gu
 
 	return cacheRequest[[]*Guild](ctx, c.b, CacheMethodListGuilds, GuildListRequest{
 		Options: options,
+	})
+}
+
+func (c *CacheClient) CheckGuildsExist(ctx context.Context, guildIDs []snowflake.ID, opts ...CacheOption) ([]bool, error) {
+	options := c.options
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	return cacheRequest[[]bool](ctx, c.b, CacheMethodCheckGuildsExist, GuildCheckExistRequest{
+		GuildIDs: guildIDs,
+		Options:  options,
 	})
 }
 

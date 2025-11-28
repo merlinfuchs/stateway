@@ -7,6 +7,9 @@ SELECT (data->>'owner_id')::bigint FROM cache.guilds WHERE app_id = $1 AND guild
 -- name: GetGuilds :many
 SELECT * FROM cache.guilds WHERE app_id = $1 ORDER BY guild_id LIMIT sqlc.narg('limit') OFFSET sqlc.narg('offset');
 
+-- name: CheckGuildExist :one
+SELECT EXISTS(SELECT 1 FROM cache.guilds WHERE app_id = $1 AND guild_id = $2) AS exists;
+
 -- name: SearchGuilds :many
 SELECT * FROM cache.guilds WHERE app_id = $1 AND data @> $2 ORDER BY guild_id LIMIT sqlc.narg('limit') OFFSET sqlc.narg('offset');
 

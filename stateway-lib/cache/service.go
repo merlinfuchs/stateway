@@ -23,8 +23,19 @@ func (s *CacheService) HandleRequest(ctx context.Context, method CacheMethod, re
 	switch req := request.(type) {
 	case GuildGetRequest:
 		return s.caches.GetGuild(ctx, req.GuildID, req.Options.Destructure()...)
+	case GuildGetWithPermissionsRequest:
+		return s.caches.GetGuildWithPermissions(
+			ctx,
+			req.GuildID,
+			req.UserID,
+			req.RoleIDs,
+			req.AbortAtPermissions,
+			req.Options.Destructure()...,
+		)
 	case GuildListRequest:
 		return s.caches.GetGuilds(ctx, req.Options.Destructure()...)
+	case GuildCheckExistRequest:
+		return s.caches.CheckGuildsExist(ctx, req.GuildIDs, req.Options.Destructure()...)
 	case GuildSearchRequest:
 		return s.caches.SearchGuilds(ctx, req.Data, req.Options.Destructure()...)
 	case ChannelGetRequest:

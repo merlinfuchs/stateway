@@ -11,6 +11,22 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const checkGuildExist = `-- name: CheckGuildExist :one
+SELECT EXISTS(SELECT 1 FROM cache.guilds WHERE app_id = $1 AND guild_id = $2) AS exists
+`
+
+type CheckGuildExistParams struct {
+	AppID   int64
+	GuildID int64
+}
+
+func (q *Queries) CheckGuildExist(ctx context.Context, arg CheckGuildExistParams) (bool, error) {
+	row := q.db.QueryRow(ctx, checkGuildExist, arg.AppID, arg.GuildID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const deleteGuild = `-- name: DeleteGuild :exec
 DELETE FROM cache.guilds WHERE app_id = $1 AND guild_id = $2
 `
