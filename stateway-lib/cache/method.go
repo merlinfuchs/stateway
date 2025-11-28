@@ -10,26 +10,32 @@ import (
 type CacheMethod string
 
 const (
-	CacheMethodGetGuild               CacheMethod = "guild.get"
-	CacheMethodListGuilds             CacheMethod = "guild.list"
-	CacheMethodSearchGuilds           CacheMethod = "guild.search"
-	CacheMethodCountGuilds            CacheMethod = "guild.count"
-	CacheMethodGetChannel             CacheMethod = "channel.get"
-	CacheMethodListChannels           CacheMethod = "channel.list"
-	CacheMethodSearchChannels         CacheMethod = "channel.search"
-	CacheMethodCountChannels          CacheMethod = "channel.count"
-	CacheMethodGetRole                CacheMethod = "role.get"
-	CacheMethodListRoles              CacheMethod = "role.list"
-	CacheMethodSearchRoles            CacheMethod = "role.search"
-	CacheMethodCountRoles             CacheMethod = "role.count"
-	CacheMethodComputePermissions     CacheMethod = "permissions.compute"
-	CacheMethodMassComputePermissions CacheMethod = "permissions.mass_compute"
+	CacheMethodGetGuild                    CacheMethod = "guild.get"
+	CacheMethodGetGuildWithPermissions     CacheMethod = "guild.get_with_permissions"
+	CacheMethodListGuilds                  CacheMethod = "guild.list"
+	CacheMethodSearchGuilds                CacheMethod = "guild.search"
+	CacheMethodCountGuilds                 CacheMethod = "guild.count"
+	CacheMethodGetChannel                  CacheMethod = "channel.get"
+	CacheMethodListChannels                CacheMethod = "channel.list"
+	CacheMethodListChannelsWithPermissions CacheMethod = "channel.list_with_permissions"
+	CacheMethodSearchChannels              CacheMethod = "channel.search"
+	CacheMethodCountChannels               CacheMethod = "channel.count"
+	CacheMethodGetRole                     CacheMethod = "role.get"
+	CacheMethodListRoles                   CacheMethod = "role.list"
+	CacheMethodSearchRoles                 CacheMethod = "role.search"
+	CacheMethodCountRoles                  CacheMethod = "role.count"
+	CacheMethodComputePermissions          CacheMethod = "permissions.compute"
+	CacheMethodMassComputePermissions      CacheMethod = "permissions.mass_compute"
 )
 
 func (m CacheMethod) UnmarshalRequest(data json.RawMessage) (CacheRequest, error) {
 	switch m {
 	case CacheMethodGetGuild:
 		var req GuildGetRequest
+		err := json.Unmarshal(data, &req)
+		return req, err
+	case CacheMethodGetGuildWithPermissions:
+		var req GuildGetWithPermissionsRequest
 		err := json.Unmarshal(data, &req)
 		return req, err
 	case CacheMethodListGuilds:
@@ -46,6 +52,10 @@ func (m CacheMethod) UnmarshalRequest(data json.RawMessage) (CacheRequest, error
 		return req, err
 	case CacheMethodListChannels:
 		var req ChannelListRequest
+		err := json.Unmarshal(data, &req)
+		return req, err
+	case CacheMethodListChannelsWithPermissions:
+		var req ChannelListWithPermissionsRequest
 		err := json.Unmarshal(data, &req)
 		return req, err
 	case CacheMethodSearchChannels:
@@ -88,6 +98,15 @@ type GuildGetRequest struct {
 
 func (r GuildGetRequest) cacheRequest() {}
 
+type GuildGetWithPermissionsRequest struct {
+	GuildID snowflake.ID   `json:"guild_id"`
+	UserID  snowflake.ID   `json:"user_id"`
+	RoleIDs []snowflake.ID `json:"role_ids"`
+	Options CacheOptions   `json:"options,omitempty"`
+}
+
+func (r GuildGetWithPermissionsRequest) cacheRequest() {}
+
 type GuildListRequest struct {
 	Options CacheOptions `json:"options,omitempty"`
 }
@@ -121,6 +140,15 @@ type ChannelListRequest struct {
 }
 
 func (r ChannelListRequest) cacheRequest() {}
+
+type ChannelListWithPermissionsRequest struct {
+	GuildID snowflake.ID   `json:"guild_id"`
+	UserID  snowflake.ID   `json:"user_id"`
+	RoleIDs []snowflake.ID `json:"role_ids"`
+	Options CacheOptions   `json:"options,omitempty"`
+}
+
+func (r ChannelListWithPermissionsRequest) cacheRequest() {}
 
 type ChannelSearchRequest struct {
 	GuildID *snowflake.ID   `json:"guild_id,omitempty"`

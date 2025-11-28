@@ -18,6 +18,11 @@ type Channel struct {
 	UpdatedAt time.Time       `json:"updated_at"`
 }
 
+type ChannelWithPermissions struct {
+	Channel
+	Permissions discord.Permissions `json:"permissions"`
+}
+
 type Emoji struct {
 	AppID     snowflake.ID  `json:"app_id"`
 	GuildID   snowflake.ID  `json:"guild_id"`
@@ -36,6 +41,15 @@ type Guild struct {
 	Tainted     bool          `json:"tainted"`
 	CreatedAt   time.Time     `json:"created_at"`
 	UpdatedAt   time.Time     `json:"updated_at"`
+}
+
+type GuildWithPermissions struct {
+	Guild
+	GuildPermissions discord.Permissions `json:"guild_permissions"`
+	// MaxChannelPermissions are all the all channel permissions combined
+	MaxChannelPermissions discord.Permissions `json:"max_channel_permissions"`
+	// MinChannelPermissions are the minimum permissions that the user has in all channels
+	MinChannelPermissions discord.Permissions `json:"min_channel_permissions"`
 }
 
 type Role struct {

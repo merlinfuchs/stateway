@@ -16,6 +16,13 @@ type Cache interface {
 
 type GuildCache interface {
 	GetGuild(ctx context.Context, id snowflake.ID, opts ...CacheOption) (*Guild, error)
+	GetGuildWithPermissions(
+		ctx context.Context,
+		id snowflake.ID,
+		userID snowflake.ID,
+		roleIDs []snowflake.ID,
+		opts ...CacheOption,
+	) (*GuildWithPermissions, error)
 	GetGuilds(ctx context.Context, opts ...CacheOption) ([]*Guild, error)
 	SearchGuilds(ctx context.Context, data json.RawMessage, opts ...CacheOption) ([]*Guild, error)
 	ComputeGuildPermissions(
@@ -33,6 +40,13 @@ type ChannelCache interface {
 	CountChannels(ctx context.Context, opts ...CacheOption) (int, error)
 	GetGuildChannel(ctx context.Context, guildID snowflake.ID, channelID snowflake.ID, opts ...CacheOption) (*Channel, error)
 	GetGuildChannels(ctx context.Context, guildID snowflake.ID, opts ...CacheOption) ([]*Channel, error)
+	GetGuildChannelsWithPermissions(
+		ctx context.Context,
+		guildID snowflake.ID,
+		userID snowflake.ID,
+		roleIDs []snowflake.ID,
+		opts ...CacheOption,
+	) ([]*ChannelWithPermissions, error)
 	CountGuildChannels(ctx context.Context, guildID snowflake.ID, opts ...CacheOption) (int, error)
 	SearchChannels(ctx context.Context, data json.RawMessage, opts ...CacheOption) ([]*Channel, error)
 	SearchGuildChannels(ctx context.Context, guildID snowflake.ID, data json.RawMessage, opts ...CacheOption) ([]*Channel, error)

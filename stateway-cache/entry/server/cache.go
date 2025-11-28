@@ -39,6 +39,58 @@ func (c *Cache) GetGuild(ctx context.Context, id snowflake.ID, opts ...cache.Cac
 	return guild, nil
 }
 
+func (c *Cache) GetGuildWithPermissions(
+	ctx context.Context,
+	guildID snowflake.ID,
+	userID snowflake.ID,
+	roleIDs []snowflake.ID,
+	opts ...cache.CacheOption,
+) (*cache.GuildWithPermissions, error) {
+	options := cache.ResolveOptions(opts...)
+
+	guild, err := c.cacheStore.GetGuild(ctx, options.AppID, guildID)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, service.ErrNotFound("guild not found")
+		}
+		return nil, err
+	}
+
+	guildPermissions, err := c.ComputeGuildPermissions(ctx, guildID, userID, roleIDs, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compute guild permissions: %w", err)
+	}
+
+	channels, err := c.cacheStore.GetChannels(ctx, options.AppID, 0, 0)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, service.ErrNotFound("channels not found")
+		}
+		return nil, err
+	}
+
+	maxChannelPermissions := discord.PermissionsNone
+	minChannelPermissions := discord.PermissionsAll
+
+	for _, channel := range channels {
+		guildChannel, ok := channel.Data.(discord.GuildChannel)
+		if !ok {
+			continue
+		}
+
+		permissions := computeChannelPermissions(guildChannel, userID, roleIDs, guildPermissions)
+		maxChannelPermissions |= permissions
+		minChannelPermissions &= permissions
+	}
+
+	return &cache.GuildWithPermissions{
+		Guild:                 *guild,
+		GuildPermissions:      guildPermissions,
+		MaxChannelPermissions: maxChannelPermissions,
+		MinChannelPermissions: minChannelPermissions,
+	}, nil
+}
+
 func (c *Cache) GetGuilds(ctx context.Context, opts ...cache.CacheOption) ([]*cache.Guild, error) {
 	options := cache.ResolveOptions(opts...)
 
@@ -183,6 +235,46 @@ func (c *Cache) GetGuildChannels(ctx context.Context, guildID snowflake.ID, opts
 	}
 
 	return channels, nil
+}
+
+func (c *Cache) GetGuildChannelsWithPermissions(
+	ctx context.Context,
+	guildID snowflake.ID,
+	userID snowflake.ID,
+	roleIDs []snowflake.ID,
+	opts ...cache.CacheOption,
+) ([]*cache.ChannelWithPermissions, error) {
+	options := cache.ResolveOptions(opts...)
+
+	channels, err := c.cacheStore.GetGuildChannels(ctx, options.AppID, guildID, options.Limit, options.Offset)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, service.ErrNotFound("channels not found")
+		}
+		return nil, err
+	}
+
+	guildPermissions, err := c.ComputeGuildPermissions(ctx, guildID, userID, roleIDs, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compute guild permissions: %w", err)
+	}
+
+	res := make([]*cache.ChannelWithPermissions, 0, len(channels))
+	for _, channel := range channels {
+		guildChannel, ok := channel.Data.(discord.GuildChannel)
+		if !ok {
+			continue
+		}
+
+		permissions := computeChannelPermissions(guildChannel, userID, roleIDs, guildPermissions)
+
+		res = append(res, &cache.ChannelWithPermissions{
+			Channel:     *channel,
+			Permissions: permissions,
+		})
+	}
+
+	return res, nil
 }
 
 func (c *Cache) CountGuildChannels(ctx context.Context, guildID snowflake.ID, opts ...cache.CacheOption) (int, error) {

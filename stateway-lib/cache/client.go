@@ -40,6 +40,26 @@ func (c *CacheClient) GetGuild(ctx context.Context, id snowflake.ID, opts ...Cac
 	})
 }
 
+func (c *CacheClient) GetGuildWithPermissions(
+	ctx context.Context,
+	guildID snowflake.ID,
+	userID snowflake.ID,
+	roleIDs []snowflake.ID,
+	opts ...CacheOption,
+) (*GuildWithPermissions, error) {
+	options := c.options
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	return cacheRequest[*GuildWithPermissions](ctx, c.b, CacheMethodGetGuildWithPermissions, GuildGetWithPermissionsRequest{
+		GuildID: guildID,
+		UserID:  userID,
+		RoleIDs: roleIDs,
+		Options: options,
+	})
+}
+
 func (c *CacheClient) GetGuilds(ctx context.Context, opts ...CacheOption) ([]*Guild, error) {
 	options := c.options
 	for _, opt := range opts {
@@ -161,6 +181,26 @@ func (c *CacheClient) GetGuildChannels(ctx context.Context, guildID snowflake.ID
 
 	return cacheRequest[[]*Channel](ctx, c.b, CacheMethodListChannels, ChannelListRequest{
 		GuildID: &guildID,
+		Options: options,
+	})
+}
+
+func (c *CacheClient) GetGuildChannelsWithPermissions(
+	ctx context.Context,
+	guildID snowflake.ID,
+	userID snowflake.ID,
+	roleIDs []snowflake.ID,
+	opts ...CacheOption,
+) ([]*ChannelWithPermissions, error) {
+	options := c.options
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	return cacheRequest[[]*ChannelWithPermissions](ctx, c.b, CacheMethodListChannels, ChannelListWithPermissionsRequest{
+		GuildID: guildID,
+		UserID:  userID,
+		RoleIDs: roleIDs,
 		Options: options,
 	})
 }

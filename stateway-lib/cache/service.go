@@ -39,6 +39,8 @@ func (s *CacheService) HandleRequest(ctx context.Context, method CacheMethod, re
 		} else {
 			return s.caches.GetGuildChannels(ctx, *req.GuildID, req.Options.Destructure()...)
 		}
+	case ChannelListWithPermissionsRequest:
+		return s.caches.GetGuildChannelsWithPermissions(ctx, req.GuildID, req.UserID, req.RoleIDs, req.Options.Destructure()...)
 	case ChannelSearchRequest:
 		if req.GuildID == nil {
 			return s.caches.SearchChannels(ctx, req.Data, req.Options.Destructure()...)
