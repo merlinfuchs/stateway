@@ -62,6 +62,15 @@ func (c *Cache) GetGuildWithPermissions(
 		return nil, fmt.Errorf("failed to compute guild permissions: %w", err)
 	}
 
+	if guildPermissions.Has(discord.PermissionAdministrator) {
+		return &cache.GuildWithPermissions{
+			Guild:                 *guild,
+			GuildPermissions:      discord.PermissionsAll,
+			MaxChannelPermissions: discord.PermissionsAll,
+			MinChannelPermissions: discord.PermissionsAll,
+		}, nil
+	}
+
 	if abortAtPermissions != 0 && guildPermissions.Has(abortAtPermissions) {
 		return &cache.GuildWithPermissions{
 			Guild:                 *guild,
