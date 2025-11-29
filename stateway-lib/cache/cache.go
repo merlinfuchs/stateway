@@ -12,6 +12,8 @@ type Cache interface {
 	GuildCache
 	ChannelCache
 	RoleCache
+	EmojiCache
+	StickerCache
 }
 
 type GuildCache interface {
@@ -78,4 +80,12 @@ type RoleCache interface {
 	CountGuildRoles(ctx context.Context, guildID snowflake.ID, opts ...CacheOption) (int, error)
 	SearchRoles(ctx context.Context, data json.RawMessage, opts ...CacheOption) ([]*Role, error)
 	SearchGuildRoles(ctx context.Context, guildID snowflake.ID, data json.RawMessage, opts ...CacheOption) ([]*Role, error)
+}
+
+type EmojiCache interface {
+	GetGuildEmojis(ctx context.Context, guildID snowflake.ID, opts ...CacheOption) ([]*Emoji, error)
+}
+
+type StickerCache interface {
+	GetGuildStickers(ctx context.Context, guildID snowflake.ID, opts ...CacheOption) ([]*Sticker, error)
 }

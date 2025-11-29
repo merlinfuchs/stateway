@@ -28,6 +28,8 @@ const (
 	CacheMethodCountRoles                  CacheMethod = "role.count"
 	CacheMethodComputePermissions          CacheMethod = "permissions.compute"
 	CacheMethodMassComputePermissions      CacheMethod = "permissions.mass_compute"
+	CacheMethodListEmojis                  CacheMethod = "emoji.list"
+	CacheMethodListStickers                CacheMethod = "sticker.list"
 )
 
 func (m CacheMethod) UnmarshalRequest(data json.RawMessage) (CacheRequest, error) {
@@ -86,6 +88,14 @@ func (m CacheMethod) UnmarshalRequest(data json.RawMessage) (CacheRequest, error
 		return req, err
 	case CacheMethodMassComputePermissions:
 		var req MassComputePermissionsRequest
+		err := json.Unmarshal(data, &req)
+		return req, err
+	case CacheMethodListEmojis:
+		var req EmojiListRequest
+		err := json.Unmarshal(data, &req)
+		return req, err
+	case CacheMethodListStickers:
+		var req StickerListRequest
 		err := json.Unmarshal(data, &req)
 		return req, err
 	default:
@@ -229,3 +239,17 @@ type MassComputePermissionsRequest struct {
 }
 
 func (r MassComputePermissionsRequest) cacheRequest() {}
+
+type EmojiListRequest struct {
+	GuildID snowflake.ID `json:"guild_id"`
+	Options CacheOptions `json:"options,omitempty"`
+}
+
+func (r EmojiListRequest) cacheRequest() {}
+
+type StickerListRequest struct {
+	GuildID snowflake.ID `json:"guild_id"`
+	Options CacheOptions `json:"options,omitempty"`
+}
+
+func (r StickerListRequest) cacheRequest() {}

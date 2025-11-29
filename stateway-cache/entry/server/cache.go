@@ -552,3 +552,25 @@ func (c *Cache) SearchGuildRoles(ctx context.Context, guildID snowflake.ID, data
 
 	return roles, nil
 }
+
+func (c *Cache) GetGuildEmojis(ctx context.Context, guildID snowflake.ID, opts ...cache.CacheOption) ([]*cache.Emoji, error) {
+	options := cache.ResolveOptions(opts...)
+
+	emojis, err := c.cacheStore.GetGuildEmojis(ctx, options.AppID, guildID, options.Limit, options.Offset)
+	if err != nil {
+		return nil, err
+	}
+
+	return emojis, nil
+}
+
+func (c *Cache) GetGuildStickers(ctx context.Context, guildID snowflake.ID, opts ...cache.CacheOption) ([]*cache.Sticker, error) {
+	options := cache.ResolveOptions(opts...)
+
+	stickers, err := c.cacheStore.GetGuildStickers(ctx, options.AppID, guildID, options.Limit, options.Offset)
+	if err != nil {
+		return nil, err
+	}
+
+	return stickers, nil
+}

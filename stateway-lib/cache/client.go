@@ -382,6 +382,30 @@ func (c *CacheClient) SearchGuildRoles(ctx context.Context, guildID snowflake.ID
 	})
 }
 
+func (c *CacheClient) GetGuildEmojis(ctx context.Context, guildID snowflake.ID, opts ...CacheOption) ([]*Emoji, error) {
+	options := c.options
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	return cacheRequest[[]*Emoji](ctx, c.b, CacheMethodListEmojis, EmojiListRequest{
+		GuildID: guildID,
+		Options: options,
+	})
+}
+
+func (c *CacheClient) GetGuildStickers(ctx context.Context, guildID snowflake.ID, opts ...CacheOption) ([]*Sticker, error) {
+	options := c.options
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	return cacheRequest[[]*Sticker](ctx, c.b, CacheMethodListStickers, StickerListRequest{
+		GuildID: guildID,
+		Options: options,
+	})
+}
+
 func cacheRequest[R any](ctx context.Context, b broker.Broker, method CacheMethod, request CacheRequest) (R, error) {
 	var r R
 

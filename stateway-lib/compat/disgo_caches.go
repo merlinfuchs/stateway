@@ -26,6 +26,8 @@ func NewDisgoCaches(ctx context.Context, cache cache.Cache) *DisgoCaches {
 		discache.WithGuildCache(&GuildCache{ctx: ctx, cache: cache}),
 		discache.WithChannelCache(&ChannelCache{ctx: ctx, cache: cache}),
 		discache.WithRoleCache(&RoleCache{ctx: ctx, cache: cache}),
+		discache.WithEmojiCache(&EmojiCache{ctx: ctx, cache: cache}),
+		discache.WithStickerCache(&StickerCache{ctx: ctx, cache: cache}),
 	)}
 }
 
@@ -384,6 +386,132 @@ func (c *RoleCache) RemoveRole(guildID snowflake.ID, roleID snowflake.ID) (disco
 }
 
 func (c *RoleCache) RemoveRolesByGuildID(guildID snowflake.ID) {
+}
+
+type EmojiCache struct {
+	ctx   context.Context
+	cache cache.EmojiCache
+}
+
+func (c *EmojiCache) EmojiCache() discache.GroupedCache[discord.Emoji] {
+	return &groupCache[discord.Emoji]{
+		getFunc:      c.Emoji,
+		allFunc:      c.EmojisAll,
+		lenFunc:      c.EmojisAllLen,
+		groupLenFunc: c.EmojisLen,
+		groupAllFunc: c.Emojis,
+	}
+}
+
+func (c *EmojiCache) Emoji(guildID snowflake.ID, emojiID snowflake.ID) (discord.Emoji, bool) {
+	return discord.Emoji{}, false
+}
+
+func (c *EmojiCache) EmojisAll() iter.Seq2[snowflake.ID, discord.Emoji] {
+	return nil
+}
+
+func (c *EmojiCache) EmojisAllLen() int {
+	return 0
+}
+
+func (c *EmojiCache) Emojis(guildID snowflake.ID) iter.Seq[discord.Emoji] {
+	ctx, cancel := cacheCtx(c.ctx)
+	defer cancel()
+
+	emojis, err := c.cache.GetGuildEmojis(ctx, guildID)
+	if err != nil {
+		slog.Error(
+			"Failed to get guild emojis from cache",
+			slog.String("guild_id", guildID.String()),
+			slog.Any("error", err),
+		)
+	}
+
+	return func(fn func(discord.Emoji) bool) {
+		for _, emoji := range emojis {
+			if !fn(emoji.Data) {
+				return
+			}
+		}
+	}
+}
+
+func (c *EmojiCache) EmojisLen(guildID snowflake.ID) int {
+	return 0
+}
+
+func (c *EmojiCache) AddEmoji(emoji discord.Emoji) {
+}
+
+func (c *EmojiCache) RemoveEmoji(guildID snowflake.ID, emojiID snowflake.ID) (discord.Emoji, bool) {
+	return discord.Emoji{}, false
+}
+
+func (c *EmojiCache) RemoveEmojisByGuildID(guildID snowflake.ID) {
+}
+
+type StickerCache struct {
+	ctx   context.Context
+	cache cache.StickerCache
+}
+
+func (c *StickerCache) StickerCache() discache.GroupedCache[discord.Sticker] {
+	return &groupCache[discord.Sticker]{
+		getFunc:      c.Sticker,
+		allFunc:      c.StickersAll,
+		lenFunc:      c.StickersAllLen,
+		groupLenFunc: c.StickersLen,
+		groupAllFunc: c.Stickers,
+	}
+}
+
+func (c *StickerCache) Sticker(guildID snowflake.ID, stickerID snowflake.ID) (discord.Sticker, bool) {
+	return discord.Sticker{}, false
+}
+
+func (c *StickerCache) Stickers(guildID snowflake.ID) iter.Seq[discord.Sticker] {
+	ctx, cancel := cacheCtx(c.ctx)
+	defer cancel()
+
+	stickers, err := c.cache.GetGuildStickers(ctx, guildID)
+	if err != nil {
+		slog.Error(
+			"Failed to get guild stickers from cache",
+			slog.String("guild_id", guildID.String()),
+			slog.Any("error", err),
+		)
+	}
+
+	return func(fn func(discord.Sticker) bool) {
+		for _, sticker := range stickers {
+			if !fn(sticker.Data) {
+				return
+			}
+		}
+	}
+}
+
+func (c *StickerCache) StickersAll() iter.Seq2[snowflake.ID, discord.Sticker] {
+	return nil
+}
+
+func (c *StickerCache) StickersAllLen() int {
+	return 0
+}
+
+func (c *StickerCache) StickersLen(guildID snowflake.ID) int {
+	return 0
+}
+
+func (c *StickerCache) AddSticker(sticker discord.Sticker) {
+}
+
+func (c *StickerCache) RemoveSticker(guildID snowflake.ID, stickerID snowflake.ID) (discord.Sticker, bool) {
+	return discord.Sticker{}, false
+}
+
+func (c *StickerCache) RemoveStickersByGuildID(guildID snowflake.ID) {
 }
 
 type anyCache[T any] struct {

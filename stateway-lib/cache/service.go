@@ -82,6 +82,10 @@ func (s *CacheService) HandleRequest(ctx context.Context, method CacheMethod, re
 		} else if req.GuildID != nil {
 			return s.caches.ComputeGuildPermissions(ctx, *req.GuildID, req.UserID, req.RoleIDs, req.Options.Destructure()...)
 		}
+	case EmojiListRequest:
+		return s.caches.GetGuildEmojis(ctx, req.GuildID, req.Options.Destructure()...)
+	case StickerListRequest:
+		return s.caches.GetGuildStickers(ctx, req.GuildID, req.Options.Destructure()...)
 	}
 	return nil, fmt.Errorf("unknown request type: %T", request)
 }
