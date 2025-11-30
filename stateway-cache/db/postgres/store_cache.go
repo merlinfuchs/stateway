@@ -82,6 +82,8 @@ func (c *Client) MassUpsertEntities(ctx context.Context, params store.MassUpsert
 	q := c.Q.WithTx(tx)
 
 	// Process each entity type, logging errors but continuing to commit as many operations as possible
+	// If any error occurs, the upsert for the entity type will be rolled back because it's part of one batch INSERT
+	// TODO?: To fix this we could process each entity type in chunks
 
 	if len(params.Guilds) != 0 {
 		guilds := make([]pgmodel.UpsertGuildsParams, 0, len(params.Guilds))

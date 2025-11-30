@@ -7,7 +7,7 @@ CREATE UNLOGGED TABLE IF NOT EXISTS cache.emojis (
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP NOT NULL,
 
-    PRIMARY KEY (app_id, guild_id, emoji_id)
-);
+    PRIMARY KEY (app_id, guild_id, emoji_id) WITH (fillfactor = 80)
+) WITH (fillfactor = 90);
 
-CREATE INDEX IF NOT EXISTS idx_cache_emojis_app_id_emoji_id ON cache.emojis (app_id, emoji_id);
+CREATE INDEX IF NOT EXISTS idx_cache_emojis_app_id_emoji_id ON cache.emojis (app_id, emoji_id) WITH (fillfactor = 80);

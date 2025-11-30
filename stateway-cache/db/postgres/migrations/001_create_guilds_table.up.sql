@@ -7,5 +7,5 @@ CREATE UNLOGGED TABLE IF NOT EXISTS cache.guilds (
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP NOT NULL,
 
-    PRIMARY KEY (app_id, guild_id)
-);
+    PRIMARY KEY (app_id, guild_id) WITH (fillfactor = 80)
+) WITH (fillfactor = 90);
