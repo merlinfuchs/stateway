@@ -514,8 +514,8 @@ func (s *InMemoryCacheStore) MarkShardEntitiesTainted(ctx context.Context, param
 }
 
 func (s *InMemoryCacheStore) MassUpsertEntities(ctx context.Context, params store.MassUpsertEntitiesParams) error {
-	caches := s.GetCaches(params.AppID)
 	for _, guild := range params.Guilds {
+		caches := s.GetCaches(guild.AppID)
 		caches.Guilds.Put(guild.GuildID, &model.Guild{
 			AppID:     guild.AppID,
 			GuildID:   guild.GuildID,
@@ -525,6 +525,7 @@ func (s *InMemoryCacheStore) MassUpsertEntities(ctx context.Context, params stor
 		})
 	}
 	for _, role := range params.Roles {
+		caches := s.GetCaches(role.AppID)
 		caches.Roles.Put(role.RoleID, &model.Role{
 			AppID:     role.AppID,
 			GuildID:   role.GuildID,
@@ -535,6 +536,7 @@ func (s *InMemoryCacheStore) MassUpsertEntities(ctx context.Context, params stor
 		})
 	}
 	for _, channel := range params.Channels {
+		caches := s.GetCaches(channel.AppID)
 		caches.Channels.Put(channel.ChannelID, &model.Channel{
 			AppID:     channel.AppID,
 			GuildID:   channel.GuildID,
@@ -545,6 +547,7 @@ func (s *InMemoryCacheStore) MassUpsertEntities(ctx context.Context, params stor
 		})
 	}
 	for _, emoji := range params.Emojis {
+		caches := s.GetCaches(emoji.AppID)
 		caches.Emojis.Put(emoji.EmojiID, &model.Emoji{
 			AppID:     emoji.AppID,
 			GuildID:   emoji.GuildID,
@@ -555,6 +558,7 @@ func (s *InMemoryCacheStore) MassUpsertEntities(ctx context.Context, params stor
 		})
 	}
 	for _, sticker := range params.Stickers {
+		caches := s.GetCaches(sticker.AppID)
 		caches.Stickers.Put(sticker.StickerID, &model.Sticker{
 			AppID:     sticker.AppID,
 			GuildID:   sticker.GuildID,

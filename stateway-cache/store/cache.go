@@ -13,7 +13,6 @@ type MarkShardEntitiesTaintedParams struct {
 }
 
 type MassUpsertEntitiesParams struct {
-	AppID    snowflake.ID
 	Guilds   []UpsertGuildParams
 	Roles    []UpsertRoleParams
 	Channels []UpsertChannelParams

@@ -35,10 +35,15 @@ func Run(ctx context.Context, pg *postgres.Client, cfg *config.RootCacheConfig) 
 		return fmt.Errorf("failed to create NATS broker: %w", err)
 	}
 
+	// Create batcher for GUILD_CREATE events
+	// Batch size: 100 guilds, Timeout: 50ms
+	batcher := NewGuildCreateBatcher(cacheStore, 1000, 50*time.Millisecond)
+
 	if len(cfg.Cache.GatewayIDs) == 0 {
 		slog.Info("Listening to events from all gateways")
 		err = broker.Listen(ctx, br, &CacheListener{
 			cacheStore: cacheStore,
+			batcher:    batcher,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to listen to gateway events: %w", err)
@@ -49,12 +54,20 @@ func Run(ctx context.Context, pg *postgres.Client, cfg *config.RootCacheConfig) 
 			err = broker.Listen(ctx, br, &CacheListener{
 				cacheStore: cacheStore,
 				gatewayIDs: []int{gatewayID},
+				batcher:    batcher,
 			})
 			if err != nil {
 				return fmt.Errorf("failed to listen to gateway events: %w", err)
 			}
 		}
 	}
+
+	// Ensure batcher is flushed on shutdown
+	defer func() {
+		if err := batcher.Flush(context.Background()); err != nil {
+			slog.Error("Failed to flush batcher on shutdown", slog.String("error", err.Error()))
+		}
+	}()
 
 	cacheService := cache.NewCacheService(NewCaches(cacheStore))
 	err = broker.Provide(ctx, br, cacheService)
@@ -69,6 +82,7 @@ func Run(ctx context.Context, pg *postgres.Client, cfg *config.RootCacheConfig) 
 type CacheListener struct {
 	cacheStore store.CacheStore
 	gatewayIDs []int
+	batcher    *GuildCreateBatcher
 }
 
 func (l *CacheListener) BalanceKey() string {
@@ -113,86 +127,11 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 			return fmt.Errorf("failed to mark shard guilds as tainted: %w", err)
 		}
 	case gateway.EventGuildCreate:
-		roles := make([]store.UpsertRoleParams, len(e.Roles))
-		for i, role := range e.Roles {
-			roles[i] = store.UpsertRoleParams{
-				AppID:     event.AppID,
-				GuildID:   e.ID,
-				RoleID:    role.ID,
-				Data:      role,
-				CreatedAt: time.Now().UTC(),
-				UpdatedAt: time.Now().UTC(),
-			}
-		}
-
-		channels := make([]store.UpsertChannelParams, 0, len(e.Channels)+len(e.Threads))
-		for _, channel := range e.Channels {
-			channel := ensureChannelGuildID(channel, e.ID)
-			channels = append(channels, store.UpsertChannelParams{
-				AppID:     event.AppID,
-				GuildID:   e.ID,
-				ChannelID: channel.ID(),
-				Data:      channel,
-				CreatedAt: time.Now().UTC(),
-				UpdatedAt: time.Now().UTC(),
-			})
-		}
-		for _, thread := range e.Threads {
-			channel := ensureChannelGuildID(thread, e.ID)
-			channels = append(channels, store.UpsertChannelParams{
-				AppID:     event.AppID,
-				GuildID:   e.ID,
-				ChannelID: thread.ID(),
-				Data:      channel,
-				CreatedAt: time.Now().UTC(),
-				UpdatedAt: time.Now().UTC(),
-			})
-		}
-
-		emojis := make([]store.UpsertEmojiParams, len(e.Emojis))
-		for _, emoji := range e.Emojis {
-			emojis = append(emojis, store.UpsertEmojiParams{
-				AppID:     event.AppID,
-				GuildID:   e.ID,
-				EmojiID:   emoji.ID,
-				Data:      emoji,
-				CreatedAt: time.Now().UTC(),
-				UpdatedAt: time.Now().UTC(),
-			})
-		}
-
-		stickers := make([]store.UpsertStickerParams, len(e.Stickers))
-		for i, sticker := range e.Stickers {
-			stickers[i] = store.UpsertStickerParams{
-				AppID:     event.AppID,
-				GuildID:   e.ID,
-				StickerID: sticker.ID,
-				Data:      sticker,
-				CreatedAt: time.Now().UTC(),
-				UpdatedAt: time.Now().UTC(),
-			}
-		}
-
-		err = l.cacheStore.MassUpsertEntities(ctx, store.MassUpsertEntitiesParams{
-			AppID: event.AppID,
-			Guilds: []store.UpsertGuildParams{
-				{
-					AppID:     event.AppID,
-					GuildID:   e.Guild.ID,
-					Data:      e.Guild,
-					CreatedAt: time.Now().UTC(),
-					UpdatedAt: time.Now().UTC(),
-				},
-			},
-			Roles:    roles,
-			Channels: channels,
-			Emojis:   emojis,
-			Stickers: stickers,
-		})
+		// Use batcher to accumulate multiple GUILD_CREATE events
+		err = l.batcher.Add(ctx, event.AppID, e)
 		if err != nil {
-			return fmt.Errorf("failed to mass upsert entities for guild %s: %w", e.ID, err)
+			return fmt.Errorf("failed to add guild create to batch: %w", err)
 		}
-
 		return nil
 	case gateway.EventGuildUpdate:
 		err = l.cacheStore.UpsertGuilds(ctx, store.UpsertGuildParams{
