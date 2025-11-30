@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/merlinfuchs/stateway/stateway-cache/db/postgres/pgmodel"
@@ -80,14 +81,17 @@ func (c *Client) MassUpsertEntities(ctx context.Context, params store.MassUpsert
 
 	q := c.Q.WithTx(tx)
 
+	// Process each entity type, logging errors but continuing to commit as many operations as possible
+
 	if len(params.Guilds) != 0 {
-		guilds := make([]pgmodel.UpsertGuildsParams, len(params.Guilds))
-		for i, guild := range params.Guilds {
+		guilds := make([]pgmodel.UpsertGuildsParams, 0, len(params.Guilds))
+		for _, guild := range params.Guilds {
 			data, err := json.Marshal(guild.Data)
 			if err != nil {
-				return fmt.Errorf("failed to marshal guild data: %w", err)
+				slog.Error("Failed to marshal guild data", slog.String("error", err.Error()), slog.Int64("guild_id", int64(guild.GuildID)))
+				continue
 			}
-			guilds[i] = pgmodel.UpsertGuildsParams{
+			guilds = append(guilds, pgmodel.UpsertGuildsParams{
 				AppID:   int64(guild.AppID),
 				GuildID: int64(guild.GuildID),
 				Data:    data,
@@ -99,22 +103,29 @@ func (c *Client) MassUpsertEntities(ctx context.Context, params store.MassUpsert
 					Time:  guild.UpdatedAt,
 					Valid: true,
 				},
-			}
+			})
 		}
-		guildsRes := q.UpsertGuilds(ctx, guilds)
-		if err := guildsRes.Close(); err != nil {
-			return fmt.Errorf("failed to close upsert guilds results: %w", err)
+
+		if len(guilds) > 0 {
+			guildsRes := q.UpsertGuilds(ctx, guilds)
+			guildsRes.Exec(func(idx int, err error) {
+				if err != nil {
+					guild := guilds[idx]
+					slog.Error("Failed to upsert guild", slog.String("error", err.Error()), slog.Int64("app_id", guild.AppID), slog.Int64("guild_id", guild.GuildID))
+				}
+			})
 		}
 	}
 
 	if len(params.Roles) != 0 {
-		roles := make([]pgmodel.UpsertRolesParams, len(params.Roles))
-		for i, role := range params.Roles {
+		roles := make([]pgmodel.UpsertRolesParams, 0, len(params.Roles))
+		for _, role := range params.Roles {
 			data, err := json.Marshal(role.Data)
 			if err != nil {
-				return fmt.Errorf("failed to marshal role data: %w", err)
+				slog.Error("Failed to marshal role data", slog.String("error", err.Error()), slog.Int64("role_id", int64(role.RoleID)))
+				continue
 			}
-			roles[i] = pgmodel.UpsertRolesParams{
+			roles = append(roles, pgmodel.UpsertRolesParams{
 				AppID:   int64(role.AppID),
 				GuildID: int64(role.GuildID),
 				RoleID:  int64(role.RoleID),
@@ -127,22 +138,29 @@ func (c *Client) MassUpsertEntities(ctx context.Context, params store.MassUpsert
 					Time:  role.UpdatedAt,
 					Valid: true,
 				},
-			}
+			})
 		}
-		rolesRes := q.UpsertRoles(ctx, roles)
-		if err := rolesRes.Close(); err != nil {
-			return fmt.Errorf("failed to upsert roles: %w", err)
+
+		if len(roles) > 0 {
+			rolesRes := q.UpsertRoles(ctx, roles)
+			rolesRes.Exec(func(idx int, err error) {
+				if err != nil {
+					role := roles[idx]
+					slog.Error("Failed to upsert role", slog.String("error", err.Error()), slog.Int64("app_id", role.AppID), slog.Int64("guild_id", role.GuildID), slog.Int64("role_id", role.RoleID))
+				}
+			})
 		}
 	}
 
 	if len(params.Channels) != 0 {
-		channels := make([]pgmodel.UpsertChannelsParams, len(params.Channels))
-		for i, channel := range params.Channels {
+		channels := make([]pgmodel.UpsertChannelsParams, 0, len(params.Channels))
+		for _, channel := range params.Channels {
 			data, err := json.Marshal(channel.Data)
 			if err != nil {
-				return fmt.Errorf("failed to marshal channel data: %w", err)
+				slog.Error("Failed to marshal channel data", slog.String("error", err.Error()), slog.Int64("channel_id", int64(channel.ChannelID)))
+				continue
 			}
-			channels[i] = pgmodel.UpsertChannelsParams{
+			channels = append(channels, pgmodel.UpsertChannelsParams{
 				AppID:     int64(channel.AppID),
 				GuildID:   int64(channel.GuildID),
 				ChannelID: int64(channel.ChannelID),
@@ -155,22 +173,29 @@ func (c *Client) MassUpsertEntities(ctx context.Context, params store.MassUpsert
 					Time:  channel.UpdatedAt,
 					Valid: true,
 				},
-			}
+			})
 		}
-		channelsRes := q.UpsertChannels(ctx, channels)
-		if err := channelsRes.Close(); err != nil {
-			return fmt.Errorf("failed to upsert channels: %w", err)
+
+		if len(channels) > 0 {
+			channelsRes := q.UpsertChannels(ctx, channels)
+			channelsRes.Exec(func(idx int, err error) {
+				if err != nil {
+					channel := channels[idx]
+					slog.Error("Failed to upsert channel", slog.String("error", err.Error()), slog.Int64("app_id", channel.AppID), slog.Int64("guild_id", channel.GuildID), slog.Int64("channel_id", channel.ChannelID))
+				}
+			})
 		}
 	}
 
 	if len(params.Emojis) != 0 {
-		emojis := make([]pgmodel.UpsertEmojisParams, len(params.Emojis))
-		for i, emoji := range params.Emojis {
+		emojis := make([]pgmodel.UpsertEmojisParams, 0, len(params.Emojis))
+		for _, emoji := range params.Emojis {
 			data, err := json.Marshal(emoji.Data)
 			if err != nil {
-				return fmt.Errorf("failed to marshal emoji data: %w", err)
+				slog.Error("Failed to marshal emoji data", slog.String("error", err.Error()), slog.Int64("emoji_id", int64(emoji.EmojiID)))
+				continue
 			}
-			emojis[i] = pgmodel.UpsertEmojisParams{
+			emojis = append(emojis, pgmodel.UpsertEmojisParams{
 				AppID:   int64(emoji.AppID),
 				GuildID: int64(emoji.GuildID),
 				EmojiID: int64(emoji.EmojiID),
@@ -183,22 +208,29 @@ func (c *Client) MassUpsertEntities(ctx context.Context, params store.MassUpsert
 					Time:  emoji.UpdatedAt,
 					Valid: true,
 				},
-			}
+			})
 		}
-		emojisRes := q.UpsertEmojis(ctx, emojis)
-		if err := emojisRes.Close(); err != nil {
-			return fmt.Errorf("failed to upsert emojis: %w", err)
+
+		if len(emojis) > 0 {
+			emojisRes := q.UpsertEmojis(ctx, emojis)
+			emojisRes.Exec(func(idx int, err error) {
+				if err != nil {
+					emoji := emojis[idx]
+					slog.Error("Failed to upsert emoji", slog.String("error", err.Error()), slog.Int64("app_id", emoji.AppID), slog.Int64("guild_id", emoji.GuildID), slog.Int64("emoji_id", emoji.EmojiID))
+				}
+			})
 		}
 	}
 
 	if len(params.Stickers) != 0 {
-		stickers := make([]pgmodel.UpsertStickersParams, len(params.Stickers))
-		for i, sticker := range params.Stickers {
+		stickers := make([]pgmodel.UpsertStickersParams, 0, len(params.Stickers))
+		for _, sticker := range params.Stickers {
 			data, err := json.Marshal(sticker.Data)
 			if err != nil {
-				return fmt.Errorf("failed to marshal sticker data: %w", err)
+				slog.Error("Failed to marshal sticker data", slog.String("error", err.Error()), slog.Int64("sticker_id", int64(sticker.StickerID)))
+				continue
 			}
-			stickers[i] = pgmodel.UpsertStickersParams{
+			stickers = append(stickers, pgmodel.UpsertStickersParams{
 				AppID:     int64(sticker.AppID),
 				GuildID:   int64(sticker.GuildID),
 				StickerID: int64(sticker.StickerID),
@@ -211,11 +243,17 @@ func (c *Client) MassUpsertEntities(ctx context.Context, params store.MassUpsert
 					Time:  sticker.UpdatedAt,
 					Valid: true,
 				},
-			}
+			})
 		}
-		stickersRes := q.UpsertStickers(ctx, stickers)
-		if err := stickersRes.Close(); err != nil {
-			return fmt.Errorf("failed to upsert stickers: %w", err)
+
+		if len(stickers) > 0 {
+			stickersRes := q.UpsertStickers(ctx, stickers)
+			stickersRes.Exec(func(idx int, err error) {
+				if err != nil {
+					sticker := stickers[idx]
+					slog.Error("Failed to upsert sticker", slog.String("error", err.Error()), slog.Int64("app_id", sticker.AppID), slog.Int64("guild_id", sticker.GuildID), slog.Int64("sticker_id", sticker.StickerID))
+				}
+			})
 		}
 	}
 
