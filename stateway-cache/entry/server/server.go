@@ -125,40 +125,40 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 			}
 		}
 
-		channels := make([]store.UpsertChannelParams, len(e.Channels)+len(e.Threads))
-		for i, channel := range e.Channels {
+		channels := make([]store.UpsertChannelParams, 0, len(e.Channels)+len(e.Threads))
+		for _, channel := range e.Channels {
 			channel := ensureChannelGuildID(channel, e.ID)
-			channels[i] = store.UpsertChannelParams{
+			channels = append(channels, store.UpsertChannelParams{
 				AppID:     event.AppID,
 				GuildID:   e.ID,
 				ChannelID: channel.ID(),
 				Data:      channel,
 				CreatedAt: time.Now().UTC(),
 				UpdatedAt: time.Now().UTC(),
-			}
+			})
 		}
-		for i, thread := range e.Threads {
+		for _, thread := range e.Threads {
 			channel := ensureChannelGuildID(thread, e.ID)
-			channels[i+len(e.Channels)] = store.UpsertChannelParams{
+			channels = append(channels, store.UpsertChannelParams{
 				AppID:     event.AppID,
 				GuildID:   e.ID,
 				ChannelID: thread.ID(),
 				Data:      channel,
 				CreatedAt: time.Now().UTC(),
 				UpdatedAt: time.Now().UTC(),
-			}
+			})
 		}
 
 		emojis := make([]store.UpsertEmojiParams, len(e.Emojis))
-		for i, emoji := range e.Emojis {
-			emojis[i] = store.UpsertEmojiParams{
+		for _, emoji := range e.Emojis {
+			emojis = append(emojis, store.UpsertEmojiParams{
 				AppID:     event.AppID,
 				GuildID:   e.ID,
 				EmojiID:   emoji.ID,
 				Data:      emoji,
 				CreatedAt: time.Now().UTC(),
 				UpdatedAt: time.Now().UTC(),
-			}
+			})
 		}
 
 		stickers := make([]store.UpsertStickerParams, len(e.Stickers))
@@ -190,7 +190,7 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 			Stickers: stickers,
 		})
 		if err != nil {
-			return fmt.Errorf("failed to mass upsert entities: %w", err)
+			return fmt.Errorf("failed to mass upsert entities for guild %s: %w", e.ID, err)
 		}
 
 		return nil
