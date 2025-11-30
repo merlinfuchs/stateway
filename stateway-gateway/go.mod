@@ -3,7 +3,7 @@ module github.com/merlinfuchs/stateway/stateway-gateway
 go 1.25.0
 
 require (
-	github.com/disgoorg/disgo v0.19.0-rc.11.0.20251109195943-e8f035b3937d
+	github.com/disgoorg/disgo v0.19.0-rc.12.0.20251129154446-772cdb62ec7e
 	github.com/disgoorg/snowflake/v2 v2.0.3
 	github.com/golang-migrate/migrate/v4 v4.19.0
 	github.com/gorilla/websocket v1.5.3

@@ -99,7 +99,6 @@ func (m *AppManager) populateApps(ctx context.Context, lastUpdate time.Time) {
 
 	for _, app := range apps {
 		if app.UpdatedAt.After(lastUpdate) {
-			lastUpdate = app.UpdatedAt
 			m.addOrUpdateApp(ctx, app)
 		}
 	}

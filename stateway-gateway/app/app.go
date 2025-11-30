@@ -2,11 +2,14 @@ package app
 
 import (
 	"context"
+	"errors"
 	"io"
 	"log/slog"
+	"net/http"
 	"time"
 
 	disgateway "github.com/disgoorg/disgo/gateway"
+	"github.com/disgoorg/disgo/rest"
 	"github.com/disgoorg/disgo/sharding"
 	"github.com/disgoorg/snowflake/v2"
 	"github.com/merlinfuchs/stateway/stateway-gateway/model"
@@ -72,6 +75,21 @@ func (a *App) Run(ctx context.Context) {
 	}
 
 	logger := slog.Default().With("group_id", a.model.GroupID, "app_name", a.model.DisplayName, "app_id", a.model.ID.String())
+
+	// Check if the bot token is valid
+	restClient := rest.New(rest.NewClient(a.model.DiscordBotToken))
+	_, err = restClient.GetCurrentApplication(rest.WithCtx(ctx))
+	if err != nil {
+		var restErr *rest.Error
+		if errors.As(err, &restErr) {
+			if restErr.Response != nil && restErr.Response.StatusCode == http.StatusUnauthorized {
+				a.disable(ctx, gateway.AppDisabledCodeInvalidToken, "Invalid authentication token")
+				return
+			}
+		}
+		slog.Error("Failed to get current application", slog.Any("error", err))
+		return
+	}
 
 	shardManager := sharding.New(
 		a.model.DiscordBotToken,
