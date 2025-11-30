@@ -71,6 +71,8 @@ func (a *App) Run(ctx context.Context) {
 		return
 	}
 
+	logger := slog.Default().With("group_id", a.model.GroupID, "app_name", a.model.DisplayName, "app_id", a.model.ID.String())
+
 	shardManager := sharding.New(
 		a.model.DiscordBotToken,
 		func(g disgateway.Gateway, eventType disgateway.EventType, sequenceNumber int, ev disgateway.EventData) {
@@ -82,12 +84,12 @@ func (a *App) Run(ctx context.Context) {
 			NewIdentifyRateLimiter(a.identifyRateLimitStore, a.model.ID, shardConcurrency),
 		),
 		sharding.WithShardIDsWithStates(shards),
-		sharding.WithLogger(slog.Default()),
+		sharding.WithLogger(logger),
 		sharding.WithGatewayConfigOpts(
 			disgateway.WithIntents(intents),
 			disgateway.WithEnableRawEvents(true),
 			disgateway.WithPresenceOpts(presenceOpts...),
-			disgateway.WithLogger(slog.Default()),
+			disgateway.WithLogger(logger),
 			disgateway.WithAutoReconnect(true),
 		),
 		sharding.WithCloseHandler(func(gateway disgateway.Gateway, err error, reconnect bool) {

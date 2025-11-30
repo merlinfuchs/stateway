@@ -92,5 +92,6 @@ type GatewayAppPresenceActivityConfig struct {
 }
 
 type CacheConfig struct {
+	InMemory   bool  `toml:"in_memory"`
 	GatewayIDs []int `toml:"gateway_ids"`
 }

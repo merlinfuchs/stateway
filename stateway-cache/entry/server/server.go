@@ -22,6 +22,11 @@ func Run(ctx context.Context, pg *postgres.Client, cfg *config.RootCacheConfig) 
 		slog.Any("gateway_ids", cfg.Cache.GatewayIDs),
 	)
 
+	var cacheStore store.CacheStore = pg
+	if cfg.Cache.InMemory {
+		cacheStore = NewInMemoryCacheStore()
+	}
+
 	// Discord some times sends unquoted snowflake IDs, so we need to allow them
 	snowflake.AllowUnquoted = true
 
@@ -33,7 +38,7 @@ func Run(ctx context.Context, pg *postgres.Client, cfg *config.RootCacheConfig) 
 	if len(cfg.Cache.GatewayIDs) == 0 {
 		slog.Info("Listening to events from all gateways")
 		err = broker.Listen(ctx, br, &CacheListener{
-			cacheStore: pg,
+			cacheStore: cacheStore,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to listen to gateway events: %w", err)
@@ -42,7 +47,7 @@ func Run(ctx context.Context, pg *postgres.Client, cfg *config.RootCacheConfig) 
 		for _, gatewayID := range cfg.Cache.GatewayIDs {
 			slog.Info("Listening to events from gateway", slog.Int("gateway_id", gatewayID))
 			err = broker.Listen(ctx, br, &CacheListener{
-				cacheStore: pg,
+				cacheStore: cacheStore,
 				gatewayIDs: []int{gatewayID},
 			})
 			if err != nil {
@@ -51,7 +56,7 @@ func Run(ctx context.Context, pg *postgres.Client, cfg *config.RootCacheConfig) 
 		}
 	}
 
-	cacheService := cache.NewCacheService(NewCaches(pg))
+	cacheService := cache.NewCacheService(NewCaches(cacheStore))
 	err = broker.Provide(ctx, br, cacheService)
 	if err != nil {
 		return fmt.Errorf("failed to provide cache service: %w", err)
@@ -169,6 +174,7 @@ func (l *CacheListener) HandleEvent(ctx context.Context, event *event.GatewayEve
 		}
 
 		err = l.cacheStore.MassUpsertEntities(ctx, store.MassUpsertEntitiesParams{
+			AppID: event.AppID,
 			Guilds: []store.UpsertGuildParams{
 				{
 					AppID:     event.AppID,
