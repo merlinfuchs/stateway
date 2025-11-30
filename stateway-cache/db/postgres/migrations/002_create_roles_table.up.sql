@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS cache.roles (
+CREATE UNLOGGED TABLE IF NOT EXISTS cache.roles (
     app_id BIGINT NOT NULL,
     guild_id BIGINT NOT NULL,
     role_id BIGINT NOT NULL,

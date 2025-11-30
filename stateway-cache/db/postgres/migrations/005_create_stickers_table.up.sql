@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS cache.stickers (
+CREATE UNLOGGED TABLE IF NOT EXISTS cache.stickers (
     app_id BIGINT NOT NULL,
     guild_id BIGINT NOT NULL,
     sticker_id BIGINT NOT NULL,

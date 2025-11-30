@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS cache.channels (
+CREATE UNLOGGED TABLE IF NOT EXISTS cache.channels (
     app_id BIGINT NOT NULL,
     guild_id BIGINT NOT NULL,
     channel_id BIGINT NOT NULL,

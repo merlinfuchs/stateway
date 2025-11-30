@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS cache.guilds (
+CREATE UNLOGGED TABLE IF NOT EXISTS cache.guilds (
     app_id BIGINT NOT NULL,
     guild_id BIGINT NOT NULL,
     data JSONB NOT NULL,

@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS cache.emojis (
+CREATE UNLOGGED TABLE IF NOT EXISTS cache.emojis (
     app_id BIGINT NOT NULL,
     guild_id BIGINT NOT NULL,
     emoji_id BIGINT NOT NULL,
