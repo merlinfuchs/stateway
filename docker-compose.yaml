@@ -13,6 +13,18 @@ services:
       PGDATA: /var/lib/postgresql/data/pgdata
       POSTGRES_HOST_AUTH_METHOD: trust
 
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    ports:
+      - "${CLICKHOUSE_HOST_PORT:-9000}:9000"
+      - "${CLICKHOUSE_HTTP_PORT:-8123}:8123"
+    environment:
+      ALLOW_EMPTY_PASSWORD: 1
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+      CLICKHOUSE_DB: stateway
+    volumes:
+      - stateway-local-clickhouse:/var/lib/clickhouse
+
   nats:
     image: nats:latest
     command: ["-js", "-m", "8222", "-sd", "/data"]
@@ -25,3 +37,4 @@ services:
 volumes:
   stateway-local-postgres:
   stateway-local-nats:
+  stateway-local-clickhouse:

@@ -28,8 +28,20 @@ func (cfg *RootCacheConfig) Validate() error {
 	return validate.Struct(cfg)
 }
 
+type RootAuditConfig struct {
+	Logging  LoggingConfig  `toml:"logging"`
+	Database DatabaseConfig `toml:"database"`
+	Broker   BrokerConfig   `toml:"broker"`
+}
+
+func (cfg *RootAuditConfig) Validate() error {
+	validate := validator.New(validator.WithRequiredStructEnabled())
+	return validate.Struct(cfg)
+}
+
 type DatabaseConfig struct {
-	Postgres PostgresConfig `toml:"postgres"`
+	Postgres   PostgresConfig   `toml:"postgres"`
+	Clickhouse ClickhouseConfig `toml:"clickhouse"`
 }
 
 type LoggingConfig struct {
@@ -41,6 +53,14 @@ type LoggingConfig struct {
 }
 
 type PostgresConfig struct {
+	Host     string `toml:"host" validate:"required"`
+	Port     int    `toml:"port" validate:"required"`
+	DBName   string `toml:"db_name" validate:"required"`
+	User     string `toml:"user" validate:"required"`
+	Password string `toml:"password"`
+}
+
+type ClickhouseConfig struct {
 	Host     string `toml:"host" validate:"required"`
 	Port     int    `toml:"port" validate:"required"`
 	DBName   string `toml:"db_name" validate:"required"`
