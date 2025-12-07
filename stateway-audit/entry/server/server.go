@@ -24,7 +24,14 @@ func Run(ctx context.Context, pg *postgres.Client, ch *clickhouse.Client, cfg *c
 		return fmt.Errorf("failed to create NATS broker: %w", err)
 	}
 
-	batcher := batcher.NewInMemoryBatcher(ch, batcher.InMemoryBatcherConfig{})
+	batcher := batcher.NewJetStreamBatcher(br.JetStream(), ch, batcher.JetStreamBatcherConfig{
+		NamePrefix: cfg.Broker.NamePrefix,
+	})
+	err = batcher.CreateStream(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to create JetStream stream: %w", err)
+	}
+
 	err = batcher.Start(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to start batcher: %w", err)
@@ -53,8 +60,6 @@ func Run(ctx context.Context, pg *postgres.Client, ch *clickhouse.Client, cfg *c
 	if err != nil {
 		return fmt.Errorf("failed to close NATS broker: %w", err)
 	}
-
-	<-batcher.Done()
 
 	return nil
 }

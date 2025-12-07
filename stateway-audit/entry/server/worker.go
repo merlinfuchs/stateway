@@ -77,9 +77,10 @@ func (l *AuditWorker) HandleEvent(ctx context.Context, event *event.GatewayEvent
 	fmt.Printf("data: TYPE %T\n", data)
 
 	switch d := data.(type) {
-	case gateway.EventReady:
 	case gateway.EventChannelUpdate:
 		err = l.handleEntityChange(ctx, event, d.GuildID(), model.EntityTypeChannel, d.GuildChannel.ID(), d.GuildChannel)
+	case gateway.EventGuildAuditLogEntryCreate:
+		// TODO: Match audit log entry to entity change
 	}
 
 	if err != nil {

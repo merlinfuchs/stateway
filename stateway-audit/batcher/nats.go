@@ -29,18 +29,15 @@ type JetStreamBatcher struct {
 	js     jetstream.JetStream
 	store  store.EntityChangeStore
 	config JetStreamBatcherConfig
+
+	streamName   string
+	consumerName string
 }
 
 // JetStreamBatcherConfig holds the configuration for the JetStream batcher.
 type JetStreamBatcherConfig struct {
-	// StreamName is the name of the JetStream stream. Defaults to EntityChangesStreamName.
-	StreamName string
-
-	// StreamSubject is the subject pattern for the stream. Defaults to EntityChangesStreamSubject.
-	StreamSubject string
-
-	// ConsumerName is the name of the durable consumer. Defaults to EntityChangesConsumerName.
-	ConsumerName string
+	// NamePrefix is the prefix of the JetStream stream and consumer names. Defaults to "AUDIT_".
+	NamePrefix string
 
 	// BatchSize is the maximum number of messages to fetch in a single batch.
 	// Defaults to 1000 if not set.
@@ -59,15 +56,6 @@ type JetStreamBatcherConfig struct {
 // store, and configuration.
 func NewJetStreamBatcher(js jetstream.JetStream, store store.EntityChangeStore, config JetStreamBatcherConfig) *JetStreamBatcher {
 	// Set defaults
-	if config.StreamName == "" {
-		config.StreamName = EntityChangesStreamName
-	}
-	if config.StreamSubject == "" {
-		config.StreamSubject = fmt.Sprintf("%s.>", EntityChangesStreamSubject)
-	}
-	if config.ConsumerName == "" {
-		config.ConsumerName = EntityChangesConsumerName
-	}
 	if config.BatchSize == 0 {
 		config.BatchSize = 1000
 	}
@@ -82,14 +70,19 @@ func NewJetStreamBatcher(js jetstream.JetStream, store store.EntityChangeStore, 
 		js:     js,
 		store:  store,
 		config: config,
+
+		streamName:   config.NamePrefix + EntityChangesStreamName,
+		consumerName: config.NamePrefix + EntityChangesConsumerName,
 	}
 }
 
 // CreateStream creates or updates the JetStream stream for entity changes.
 func (b *JetStreamBatcher) CreateStream(ctx context.Context) error {
 	_, err := b.js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{
-		Name:      b.config.StreamName,
-		Subjects:  []string{b.config.StreamSubject},
+		Name: b.streamName,
+		Subjects: []string{
+			fmt.Sprintf("%s.>", EntityChangesStreamSubject),
+		},
 		Retention: jetstream.InterestPolicy, // Interest policy ensures messages are discarded when all consumers have acknowledged them
 		MaxAge:    24 * time.Hour,           // Keep messages for 24 hours
 		MaxBytes:  32 * 1024 * 1024 * 1024,  // 32GB max
@@ -99,7 +92,7 @@ func (b *JetStreamBatcher) CreateStream(ctx context.Context) error {
 		Replicas:  1,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to create or update stream %s: %w", b.config.StreamName, err)
+		return fmt.Errorf("failed to create or update stream %s: %w", b.streamName, err)
 	}
 
 	return nil
@@ -110,9 +103,9 @@ func (b *JetStreamBatcher) CreateStream(ctx context.Context) error {
 // context is cancelled.
 func (b *JetStreamBatcher) Start(ctx context.Context) error {
 	// Create or get the consumer
-	consumer, err := b.js.CreateOrUpdateConsumer(ctx, b.config.StreamName, jetstream.ConsumerConfig{
-		Name:          b.config.ConsumerName,
-		Durable:       b.config.ConsumerName,
+	consumer, err := b.js.CreateOrUpdateConsumer(ctx, b.streamName, jetstream.ConsumerConfig{
+		Name:          b.consumerName,
+		Durable:       b.consumerName,
 		AckPolicy:     jetstream.AckAllPolicy, // Ack all messages up to and including the one being acked
 		MaxAckPending: b.config.MaxAckPending,
 	})
@@ -184,6 +177,8 @@ func (b *JetStreamBatcher) processBatch(ctx context.Context, msgs []jetstream.Ms
 	if len(msgs) == 0 {
 		return
 	}
+
+	slog.Debug("Processing batch of messages", slog.Int("count", len(msgs)))
 
 	// Unmarshal messages into entity changes
 	entityChanges := make([]model.EntityChange, 0, len(msgs))

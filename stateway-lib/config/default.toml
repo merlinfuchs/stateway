@@ -10,10 +10,12 @@ port = 9000
 user = "default"
 db_name = "stateway"
 
-[broker.nats]
-url = "nats://127.0.0.1:4222"
+[broker]
 name_prefix = "STATEWAY_"
 subject_prefix = "stateway."
+
+[broker.nats]
+url = "nats://127.0.0.1:4222"
 
 [gateway]
 gateway_count = 1

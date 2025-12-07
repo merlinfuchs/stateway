@@ -65,6 +65,8 @@ func (b *InMemoryBatcher) Start(ctx context.Context) error {
 			return
 		}
 
+		slog.Debug("Flushing batch of entity changes", slog.Int("count", len(items)))
+
 		// Use context.WithoutCancel to allow the flush to complete even if
 		// the batcher context is cancelled during shutdown
 		flushCtx := context.WithoutCancel(ctx)

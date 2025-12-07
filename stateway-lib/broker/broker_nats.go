@@ -66,6 +66,14 @@ func NewNATSBroker(url string) (*NATSBroker, error) {
 	return broker, nil
 }
 
+func (b *NATSBroker) Connection() *nats.Conn {
+	return b.nc
+}
+
+func (b *NATSBroker) JetStream() jetstream.JetStream {
+	return b.js
+}
+
 func (b *NATSBroker) CreateGatewayStream(ctx context.Context) error {
 	_, err := b.js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{
 		Name:      GatewayStreamName,
