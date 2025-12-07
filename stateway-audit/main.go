@@ -1,7 +1,7 @@
 package main
 
-import "fmt"
+import "github.com/merlinfuchs/stateway/stateway-audit/cmd"
 
 func main() {
-	fmt.Println("Hello, World!")
+	cmd.Execute()
 }

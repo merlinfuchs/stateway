@@ -3,6 +3,7 @@ package batcher
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/friendlycaptcha/batchman"
@@ -33,10 +34,6 @@ type InMemoryBatcherConfig struct {
 	// BufferSize is the size of the internal buffer. If the buffer is full,
 	// Push will return an error. Defaults to 10000 if not set.
 	BufferSize int
-
-	// OnError is an optional callback that will be called when an error occurs
-	// during batch insertion. If not set, errors are silently ignored.
-	OnError func(err error, batchSize int)
 }
 
 // NewInMemoryBatcher creates a new InMemoryBatcher with the given store and configuration.
@@ -76,9 +73,7 @@ func (b *InMemoryBatcher) Start(ctx context.Context) error {
 
 		err := b.store.InsertEntityChanges(flushCtx, items...)
 		if err != nil {
-			if b.config.OnError != nil {
-				b.config.OnError(fmt.Errorf("failed to insert entity changes batch: %w", err), len(items))
-			}
+			slog.Error("Failed to insert entity changes batch", "error", err)
 		}
 	}
 

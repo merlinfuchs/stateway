@@ -1,4 +1,4 @@
-CREATE TABLE entity_changes (
+CREATE TABLE audit_entity_changes (
     -- Entity identification
     app_id      UInt64,
     guild_id    UInt64,
@@ -16,6 +16,7 @@ CREATE TABLE entity_changes (
 
     -- Values as JSON strings (can be scalar, object, or array)
     path       String,           -- JSON path that changed
+    operation  LowCardinality(String), -- 'add', 'remove', 'replace'
     old_value Nullable(String), -- JSON-encoded "before" value (Null when entity was created)
     new_value Nullable(String), -- JSON-encoded "after" value (Null when entity was deleted)
 

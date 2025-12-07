@@ -162,10 +162,11 @@ func (a *App) handleEvent(ctx context.Context, g disgateway.Gateway, _ disgatewa
 			ID:        snowflake.New(time.Now().UTC()),
 			GatewayID: a.cfg.GatewayID,
 			AppID:     a.model.ID,
-			GroupID:   a.model.GroupID,
-			ShardID:   g.ShardID(),
-			Type:      string(e.EventType),
-			Data:      data,
+			// TODO: Set GuildID if available
+			GroupID: a.model.GroupID,
+			ShardID: g.ShardID(),
+			Type:    string(e.EventType),
+			Data:    data,
 		})
 	case disgateway.EventReady:
 		slog.Info(

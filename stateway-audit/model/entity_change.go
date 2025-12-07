@@ -14,6 +14,14 @@ const (
 	EventSourceSynthetic EventSource = "synthetic"
 )
 
+type Operation string
+
+const (
+	OperationAdd     Operation = "ADD"
+	OperationRemove  Operation = "REMOVE"
+	OperationReplace Operation = "REPLACE"
+)
+
 type EntityChange struct {
 	AppID          snowflake.ID    `json:"app_id"`
 	GuildID        snowflake.ID    `json:"guild_id"`
@@ -25,6 +33,7 @@ type EntityChange struct {
 	AuditLogUserID snowflake.ID    `json:"audit_log_user_id"`
 	AuditLogReason string          `json:"audit_log_reason"`
 	Path           string          `json:"path"`
+	Operation      Operation       `json:"operation"`
 	OldValue       json.RawMessage `json:"old_value"`
 	NewValue       json.RawMessage `json:"new_value"`
 	ReceivedAt     time.Time       `json:"received_at"`

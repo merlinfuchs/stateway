@@ -71,13 +71,13 @@ func (pgs *Client) GetMigrater() (*Migrater, error) {
 	}
 	defer db.Close()
 
-	_, err = db.Exec("CREATE SCHEMA IF NOT EXISTS cache")
+	_, err = db.Exec("CREATE SCHEMA IF NOT EXISTS audit")
 	if err != nil {
-		return nil, fmt.Errorf("failed to create cache schema: %w", err)
+		return nil, fmt.Errorf("failed to create audit schema: %w", err)
 	}
 
 	driver, err := postgres.WithInstance(db, &postgres.Config{
-		SchemaName: "cache",
+		SchemaName: "audit",
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to open postgres migration: %w", err)

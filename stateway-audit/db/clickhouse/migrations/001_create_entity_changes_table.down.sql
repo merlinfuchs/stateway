@@ -1,1 +1,1 @@
-DROP TABLE entity_changes;
+DROP TABLE audit_entity_changes;

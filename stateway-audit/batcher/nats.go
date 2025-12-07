@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/merlinfuchs/stateway/stateway-audit/model"
@@ -52,10 +53,6 @@ type JetStreamBatcherConfig struct {
 	// MaxAckPending is the maximum number of unacknowledged messages that can be
 	// in flight. This helps control memory usage. Defaults to 10000 if not set.
 	MaxAckPending int
-
-	// OnError is an optional callback that will be called when an error occurs
-	// during batch insertion. If not set, errors are logged but processing continues.
-	OnError func(err error, batchSize int)
 }
 
 // NewJetStreamBatcher creates a new JetStream batcher with the given JetStream context,
@@ -161,10 +158,8 @@ func (b *JetStreamBatcher) processBatches(ctx context.Context, consumer jetstrea
 					time.Sleep(100 * time.Millisecond)
 					continue
 				}
-				// Log error and continue
-				if b.config.OnError != nil {
-					b.config.OnError(fmt.Errorf("failed to fetch messages: %w", err), 0)
-				}
+
+				slog.Error("Failed to fetch messages", slog.Any("error", err))
 				time.Sleep(1 * time.Second)
 				continue
 			}
@@ -198,14 +193,10 @@ func (b *JetStreamBatcher) processBatch(ctx context.Context, msgs []jetstream.Ms
 		var change model.EntityChange
 		if err := json.Unmarshal(msg.Data(), &change); err != nil {
 			// Log error and nack the message individually
-			if b.config.OnError != nil {
-				b.config.OnError(fmt.Errorf("failed to unmarshal entity change: %w", err), 1)
-			}
+			slog.Error("Failed to unmarshal entity change", slog.Any("error", err))
 			// Nack with delay to retry later
 			if err := msg.NakWithDelay(5 * time.Second); err != nil {
-				if b.config.OnError != nil {
-					b.config.OnError(fmt.Errorf("failed to nack message: %w", err), 1)
-				}
+				slog.Error("Failed to nack message", slog.Any("error", err))
 			}
 			continue
 		}
@@ -225,15 +216,12 @@ func (b *JetStreamBatcher) processBatch(ctx context.Context, msgs []jetstream.Ms
 	err := b.store.InsertEntityChanges(flushCtx, entityChanges...)
 	if err != nil {
 		// Log error and nack all valid messages to retry
-		if b.config.OnError != nil {
-			b.config.OnError(fmt.Errorf("failed to insert entity changes batch: %w", err), len(entityChanges))
-		}
+		slog.Error("Failed to insert entity changes batch", slog.Any("error", err))
+
 		// Nack all valid messages with delay
 		for _, msg := range validMessages {
 			if err := msg.NakWithDelay(5 * time.Second); err != nil {
-				if b.config.OnError != nil {
-					b.config.OnError(fmt.Errorf("failed to nack message: %w", err), 1)
-				}
+				slog.Error("Failed to nack message", slog.Any("error", err))
 			}
 		}
 		return
@@ -243,9 +231,7 @@ func (b *JetStreamBatcher) processBatch(ctx context.Context, msgs []jetstream.Ms
 	if len(validMessages) > 0 {
 		lastMsg := validMessages[len(validMessages)-1]
 		if err := lastMsg.Ack(); err != nil {
-			if b.config.OnError != nil {
-				b.config.OnError(fmt.Errorf("failed to ack last message: %w", err), len(validMessages))
-			}
+			slog.Error("Failed to ack last message", slog.Any("error", err))
 		}
 	}
 }

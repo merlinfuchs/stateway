@@ -32,11 +32,16 @@ type RootAuditConfig struct {
 	Logging  LoggingConfig  `toml:"logging"`
 	Database DatabaseConfig `toml:"database"`
 	Broker   BrokerConfig   `toml:"broker"`
+	Audit    AuditConfig    `toml:"audit"`
 }
 
 func (cfg *RootAuditConfig) Validate() error {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 	return validate.Struct(cfg)
+}
+
+type AuditConfig struct {
+	GatewayIDs []int `toml:"gateway_ids"`
 }
 
 type DatabaseConfig struct {

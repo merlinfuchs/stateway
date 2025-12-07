@@ -12,7 +12,7 @@ func (c *Client) InsertEntityChanges(ctx context.Context, entityChanges ...model
 		return nil
 	}
 
-	batch, err := c.Conn.PrepareBatch(ctx, "INSERT INTO entity_changes")
+	batch, err := c.Conn.PrepareBatch(ctx, "INSERT INTO audit_entity_changes")
 	if err != nil {
 		return fmt.Errorf("failed to prepare batch: %w", err)
 	}
@@ -23,14 +23,15 @@ func (c *Client) InsertEntityChanges(ctx context.Context, entityChanges ...model
 		err := batch.Append(
 			change.AppID,
 			change.GuildID,
-			change.EntityType,
+			string(change.EntityType),
 			change.EntityID,
 			change.EventID,
-			change.EventSource, // event_source in table
+			string(change.EventSource), // event_source in table
 			nullableUint64(uint64(change.AuditLogID)),
 			nullableUint64(uint64(change.AuditLogUserID)),
 			nullableString(change.AuditLogReason),
 			change.Path,
+			string(change.Operation),
 			nullableString(string(change.OldValue)), // Nullable(String) - null when entity was created
 			nullableString(string(change.NewValue)), // Nullable(String) - null when entity was deleted
 			change.ReceivedAt,

@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/merlinfuchs/stateway/stateway-audit/db/clickhouse"
 	"github.com/merlinfuchs/stateway/stateway-audit/db/postgres"
 	"github.com/merlinfuchs/stateway/stateway-audit/entry/server"
 	"github.com/merlinfuchs/stateway/stateway-lib/config"
@@ -37,13 +38,14 @@ var CLI = cli.App{
 					return fmt.Errorf("failed to setup environment: %w", err)
 				}
 
-				err = server.Run(ctx, env.pg, env.cfg)
+				err = server.Run(ctx, env.pg, env.ch, env.cfg)
 				if err != nil {
-					return fmt.Errorf("failed to run cache server: %w", err)
+					return fmt.Errorf("failed to run audit server: %w", err)
 				}
 				return nil
 			},
 		},
+		&databaseCMD,
 	},
 }
 
@@ -55,6 +57,7 @@ func Execute() {
 
 type env struct {
 	pg  *postgres.Client
+	ch  *clickhouse.Client
 	cfg *config.RootAuditConfig
 }
 
@@ -76,8 +79,14 @@ func setupEnv(ctx context.Context, debug bool) (*env, error) {
 		return nil, fmt.Errorf("failed to create postgres client: %w", err)
 	}
 
+	ch, err := clickhouse.New(ctx, clickhouse.ClientConfig(cfg.Database.Clickhouse))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create clickhouse client: %w", err)
+	}
+
 	return &env{
 		pg:  pg,
+		ch:  ch,
 		cfg: cfg,
 	}, nil
 }
