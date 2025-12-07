@@ -21,17 +21,18 @@ func (c *Client) InsertEntityChanges(ctx context.Context, entityChanges ...model
 		// Convert nullable fields to pointers for ClickHouse Nullable types
 		// Empty strings are converted to nil (null in ClickHouse)
 		err := batch.Append(
+			change.AppID,
 			change.GuildID,
 			change.EntityType,
 			change.EntityID,
 			change.EventID,
-			change.Source, // event_source in table
-			nullableUint64(change.AuditLogID),
-			nullableUint64(change.AuditLogUserID),
+			change.EventSource, // event_source in table
+			nullableUint64(uint64(change.AuditLogID)),
+			nullableUint64(uint64(change.AuditLogUserID)),
 			nullableString(change.AuditLogReason),
-			change.Key,
-			nullableString(change.OldValue), // Nullable(String) - null when entity was created
-			nullableString(change.NewValue), // Nullable(String) - null when entity was deleted
+			change.Path,
+			nullableString(string(change.OldValue)), // Nullable(String) - null when entity was created
+			nullableString(string(change.NewValue)), // Nullable(String) - null when entity was deleted
 			change.ReceivedAt,
 			change.ProcessedAt,
 			change.IngestedAt,

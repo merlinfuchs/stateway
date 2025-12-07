@@ -69,7 +69,9 @@ type ClickhouseConfig struct {
 }
 
 type BrokerConfig struct {
-	NATS NATSConfig `toml:"nats"`
+	NATS          NATSConfig `toml:"nats"`
+	NamePrefix    string     `toml:"name_prefix"`
+	SubjectPrefix string     `toml:"subject_prefix"`
 }
 
 type NATSConfig struct {

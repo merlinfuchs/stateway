@@ -1,5 +1,6 @@
 CREATE TABLE entity_changes (
     -- Entity identification
+    app_id      UInt64,
     guild_id    UInt64,
     entity_type LowCardinality(String),   -- 'guild', 'channel', 'role', ...
     entity_id   String,                   -- Discord ID as string
@@ -14,7 +15,7 @@ CREATE TABLE entity_changes (
     audit_log_reason  Nullable(String),
 
     -- Values as JSON strings (can be scalar, object, or array)
-    key       String,           -- JSON key that changed
+    path       String,           -- JSON path that changed
     old_value Nullable(String), -- JSON-encoded "before" value (Null when entity was created)
     new_value Nullable(String), -- JSON-encoded "after" value (Null when entity was deleted)
 
@@ -24,10 +25,11 @@ CREATE TABLE entity_changes (
 )
 ENGINE = MergeTree
 ORDER BY (
+    app_id,
     guild_id,
     entity_type,
     entity_id,
     received_at,
     event_id,
-    key
+    path
 );

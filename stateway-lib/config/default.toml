@@ -6,6 +6,8 @@ db_name = "stateway"
 
 [broker.nats]
 url = "nats://127.0.0.1:4222"
+name_prefix = "STATEWAY_"
+subject_prefix = "stateway."
 
 [gateway]
 gateway_count = 1

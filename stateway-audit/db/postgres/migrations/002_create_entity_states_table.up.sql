@@ -3,7 +3,7 @@ CREATE UNLOGGED TABLE IF NOT EXISTS audit.entity_states (
     guild_id BIGINT NOT NULL,
     entity_type TEXT NOT NULL,
     entity_id BIGINT NOT NULL,
-    data JSONB NOT NULL,
+    data JSONB,
     deleted BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP NOT NULL,
