@@ -9,6 +9,7 @@ import (
 	"github.com/disgoorg/snowflake/v2"
 	"github.com/merlinfuchs/stateway/stateway-lib/broker"
 	"github.com/merlinfuchs/stateway/stateway-lib/event"
+	"github.com/nats-io/nats.go/jetstream"
 )
 
 type DisgoGatewayConfig struct {
@@ -127,12 +128,18 @@ func (l gatewayListener) EventFilter() broker.EventFilter {
 	return l.eventFilter
 }
 
-func (l gatewayListener) HandleEvent(ctx context.Context, event *event.GatewayEvent) error {
+func (l gatewayListener) ConsumerConfig() broker.ConsumerConfig {
+	return broker.ConsumerConfig{
+		AckPolicy: jetstream.AckNonePolicy,
+	}
+}
+
+func (l gatewayListener) HandleEvent(ctx context.Context, event *event.GatewayEvent) (bool, error) {
 	e, err := gateway.UnmarshalEventData(event.Data, gateway.EventType(event.Type))
 	if err != nil {
-		return fmt.Errorf("failed to unmarshal event data: %w", err)
+		return false, fmt.Errorf("failed to unmarshal event data: %w", err)
 	}
 
 	l.handlerFunc(l.gateway, gateway.EventType(event.Type), 0, e)
-	return nil
+	return true, nil
 }

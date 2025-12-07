@@ -137,11 +137,17 @@ func (b *NATSBroker) Listen(ctx context.Context, listener GenericListener) error
 		filterSubjects = append(filterSubjects, fmt.Sprintf("%s.%s", listener.ServiceType(), filter))
 	}
 
+	consumerConfig := listener.ConsumerConfig()
+	if consumerConfig.NackDelay == 0 {
+		consumerConfig.NackDelay = time.Second
+	}
+
 	consumer, err := b.js.CreateOrUpdateConsumer(ctx, stream, jetstream.ConsumerConfig{
 		Name:              listener.BalanceKey(),
 		Durable:           listener.BalanceKey(),
 		FilterSubjects:    filterSubjects,
-		AckPolicy:         jetstream.AckNonePolicy,
+		AckPolicy:         consumerConfig.AckPolicy,
+		MaxAckPending:     consumerConfig.MaxAckPending,
 		InactiveThreshold: time.Minute * 15,
 	})
 	if err != nil {
@@ -158,43 +164,47 @@ func (b *NATSBroker) Listen(ctx context.Context, listener GenericListener) error
 				slog.String("subject", msg.Subject()),
 				slog.String("error", err.Error()),
 			)
-			/* err = msg.NakWithDelay(time.Second)
-			if err != nil {
-				slog.Error(
-					"Failed to nak message",
-					slog.String("subject", msg.Subject()),
-					slog.String("error", err.Error()),
-				)
-			} */
 			return
 		}
 
-		err = listener.HandleEvent(ctx, event)
-		if err != nil {
-			slog.Error(
-				"Failed to handle event",
-				slog.String("subject", msg.Subject()),
-				slog.String("error", err.Error()),
-			)
-			/* err = msg.NakWithDelay(time.Second)
+		handle := func() {
+			ok, err := listener.HandleEvent(ctx, event)
 			if err != nil {
 				slog.Error(
-					"Failed to nak message",
+					"Failed to handle event",
 					slog.String("subject", msg.Subject()),
 					slog.String("error", err.Error()),
 				)
-			} */
-			return
+			}
+
+			if consumerConfig.AckPolicy != jetstream.AckNonePolicy {
+				if ok {
+					err := msg.Ack()
+					if err != nil {
+						slog.Error(
+							"Failed to ack message",
+							slog.String("subject", msg.Subject()),
+							slog.String("error", err.Error()),
+						)
+					}
+				} else {
+					err := msg.NakWithDelay(consumerConfig.NackDelay)
+					if err != nil {
+						slog.Error(
+							"Failed to nak message",
+							slog.String("subject", msg.Subject()),
+							slog.String("error", err.Error()),
+						)
+					}
+				}
+			}
 		}
 
-		/* err = msg.Ack()
-		if err != nil {
-			slog.Error(
-				"Failed to ack message",
-				slog.String("subject", msg.Subject()),
-				slog.String("error", err.Error()),
-			)
-		} */
+		if consumerConfig.Async {
+			go handle()
+		} else {
+			handle()
+		}
 	}, jetstream.ConsumeErrHandler(func(consumeCtx jetstream.ConsumeContext, err error) {
 		slog.Error(
 			"Failed to consume message",

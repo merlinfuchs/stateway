@@ -10,6 +10,7 @@ import (
 	"github.com/merlinfuchs/stateway/stateway-cache/store"
 	"github.com/merlinfuchs/stateway/stateway-lib/broker"
 	"github.com/merlinfuchs/stateway/stateway-lib/event"
+	"github.com/nats-io/nats.go/jetstream"
 )
 
 type CacheWorker struct {
@@ -40,12 +41,18 @@ func (l *CacheWorker) EventFilter() broker.EventFilter {
 	}
 }
 
-func (l *CacheWorker) HandleEvent(ctx context.Context, event *event.GatewayEvent) error {
+func (l *CacheWorker) ConsumerConfig() broker.ConsumerConfig {
+	return broker.ConsumerConfig{
+		AckPolicy: jetstream.AckNonePolicy,
+	}
+}
+
+func (l *CacheWorker) HandleEvent(ctx context.Context, event *event.GatewayEvent) (bool, error) {
 	slog.Debug("Received event:", slog.String("type", event.Type))
 
 	e, err := gateway.UnmarshalEventData(event.Data, gateway.EventType(event.Type))
 	if err != nil {
-		return fmt.Errorf("failed to unmarshal event data: %w", err)
+		return false, fmt.Errorf("failed to unmarshal event data: %w", err)
 	}
 
 	switch e := e.(type) {
@@ -56,7 +63,7 @@ func (l *CacheWorker) HandleEvent(ctx context.Context, event *event.GatewayEvent
 			ShardID:    e.Shard[0],
 		})
 		if err != nil {
-			return fmt.Errorf("failed to mark shard guilds as tainted: %w", err)
+			return false, fmt.Errorf("failed to mark shard guilds as tainted: %w", err)
 		}
 	case gateway.EventGuildCreate:
 		roles := make([]store.UpsertRoleParams, len(e.Roles))
@@ -136,10 +143,10 @@ func (l *CacheWorker) HandleEvent(ctx context.Context, event *event.GatewayEvent
 			Stickers: stickers,
 		})
 		if err != nil {
-			return fmt.Errorf("failed to mass upsert entities for guild %s: %w", e.ID, err)
+			return false, fmt.Errorf("failed to mass upsert entities for guild %s: %w", e.ID, err)
 		}
 
-		return nil
+		return true, nil
 	case gateway.EventGuildUpdate:
 		err = l.cacheStore.UpsertGuilds(ctx, store.UpsertGuildParams{
 			AppID:     event.AppID,
@@ -149,18 +156,18 @@ func (l *CacheWorker) HandleEvent(ctx context.Context, event *event.GatewayEvent
 			UpdatedAt: time.Now().UTC(),
 		})
 		if err != nil {
-			return fmt.Errorf("failed to upsert guild: %w", err)
+			return false, fmt.Errorf("failed to upsert guild: %w", err)
 		}
 	case gateway.EventGuildDelete:
 		if !e.Unavailable {
 			err = l.cacheStore.MarkGuildUnavailable(ctx, event.AppID, e.ID)
 			if err != nil {
-				return fmt.Errorf("failed to mark guild as unavailable: %w", err)
+				return false, fmt.Errorf("failed to mark guild as unavailable: %w", err)
 			}
 		} else {
 			err = l.cacheStore.DeleteGuild(ctx, event.AppID, e.ID)
 			if err != nil {
-				return fmt.Errorf("failed to delete guild: %w", err)
+				return false, fmt.Errorf("failed to delete guild: %w", err)
 			}
 		}
 	case gateway.EventGuildRoleCreate:
@@ -173,7 +180,7 @@ func (l *CacheWorker) HandleEvent(ctx context.Context, event *event.GatewayEvent
 			UpdatedAt: time.Now().UTC(),
 		})
 		if err != nil {
-			return fmt.Errorf("failed to upsert role: %w", err)
+			return false, fmt.Errorf("failed to upsert role: %w", err)
 		}
 	case gateway.EventGuildRoleUpdate:
 		err = l.cacheStore.UpsertRoles(ctx, store.UpsertRoleParams{
@@ -185,12 +192,12 @@ func (l *CacheWorker) HandleEvent(ctx context.Context, event *event.GatewayEvent
 			UpdatedAt: time.Now().UTC(),
 		})
 		if err != nil {
-			return fmt.Errorf("failed to upsert role: %w", err)
+			return false, fmt.Errorf("failed to upsert role: %w", err)
 		}
 	case gateway.EventGuildRoleDelete:
 		err = l.cacheStore.DeleteRole(ctx, event.AppID, e.GuildID, e.RoleID)
 		if err != nil {
-			return fmt.Errorf("failed to delete role: %w", err)
+			return false, fmt.Errorf("failed to delete role: %w", err)
 		}
 	case gateway.EventChannelCreate:
 		err = l.cacheStore.UpsertChannels(ctx, store.UpsertChannelParams{
@@ -202,7 +209,7 @@ func (l *CacheWorker) HandleEvent(ctx context.Context, event *event.GatewayEvent
 			UpdatedAt: time.Now().UTC(),
 		})
 		if err != nil {
-			return fmt.Errorf("failed to upsert channel: %w", err)
+			return false, fmt.Errorf("failed to upsert channel: %w", err)
 		}
 	case gateway.EventChannelUpdate:
 
@@ -215,12 +222,12 @@ func (l *CacheWorker) HandleEvent(ctx context.Context, event *event.GatewayEvent
 			UpdatedAt: time.Now().UTC(),
 		})
 		if err != nil {
-			return fmt.Errorf("failed to upsert channel: %w", err)
+			return false, fmt.Errorf("failed to upsert channel: %w", err)
 		}
 	case gateway.EventChannelDelete:
 		err = l.cacheStore.DeleteChannel(ctx, event.AppID, e.GuildID(), e.ID())
 		if err != nil {
-			return fmt.Errorf("failed to delete channel: %w", err)
+			return false, fmt.Errorf("failed to delete channel: %w", err)
 		}
 	case gateway.EventThreadCreate:
 		err = l.cacheStore.UpsertChannels(ctx, store.UpsertChannelParams{
@@ -232,7 +239,7 @@ func (l *CacheWorker) HandleEvent(ctx context.Context, event *event.GatewayEvent
 			UpdatedAt: time.Now().UTC(),
 		})
 		if err != nil {
-			return fmt.Errorf("failed to upsert thread: %w", err)
+			return false, fmt.Errorf("failed to upsert thread: %w", err)
 		}
 	case gateway.EventThreadUpdate:
 		err = l.cacheStore.UpsertChannels(ctx, store.UpsertChannelParams{
@@ -244,12 +251,12 @@ func (l *CacheWorker) HandleEvent(ctx context.Context, event *event.GatewayEvent
 			UpdatedAt: time.Now().UTC(),
 		})
 		if err != nil {
-			return fmt.Errorf("failed to upsert thread: %w", err)
+			return false, fmt.Errorf("failed to upsert thread: %w", err)
 		}
 	case gateway.EventThreadDelete:
 		err = l.cacheStore.DeleteChannel(ctx, event.AppID, e.GuildID, e.ID)
 		if err != nil {
-			return fmt.Errorf("failed to delete thread: %w", err)
+			return false, fmt.Errorf("failed to delete thread: %w", err)
 		}
 	case gateway.EventGuildEmojisUpdate:
 		emojis := make([]store.UpsertEmojiParams, len(e.Emojis))
@@ -266,7 +273,7 @@ func (l *CacheWorker) HandleEvent(ctx context.Context, event *event.GatewayEvent
 
 		err = l.cacheStore.UpsertEmojis(ctx, emojis...)
 		if err != nil {
-			return fmt.Errorf("failed to upsert emojis: %w", err)
+			return false, fmt.Errorf("failed to upsert emojis: %w", err)
 		}
 	case gateway.EventGuildStickersUpdate:
 		stickers := make([]store.UpsertStickerParams, len(e.Stickers))
@@ -283,9 +290,9 @@ func (l *CacheWorker) HandleEvent(ctx context.Context, event *event.GatewayEvent
 
 		err = l.cacheStore.UpsertStickers(ctx, stickers...)
 		if err != nil {
-			return fmt.Errorf("failed to upsert stickers: %w", err)
+			return false, fmt.Errorf("failed to upsert stickers: %w", err)
 		}
 	}
 
-	return nil
+	return true, nil
 }

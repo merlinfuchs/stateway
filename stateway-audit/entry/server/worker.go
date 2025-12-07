@@ -18,28 +18,29 @@ import (
 	"github.com/merlinfuchs/stateway/stateway-audit/store"
 	"github.com/merlinfuchs/stateway/stateway-lib/broker"
 	"github.com/merlinfuchs/stateway/stateway-lib/event"
+	"github.com/nats-io/nats.go/jetstream"
 )
 
-type ChangeWorkerConfig struct {
+type AuditWorkerConfig struct {
 	GatewayIDs []int
 	NamePrefix string
 }
 
-type ChangeWorker struct {
+type AuditWorker struct {
 	entityStateStore store.EntityStateStore
 	batcher          batcher.Batcher
 	auditLogMatcher  *AuditLogMatcher
 
-	config ChangeWorkerConfig
+	config AuditWorkerConfig
 }
 
-func NewChangeWorker(
+func NewAuditWorker(
 	auditLogMatcher *AuditLogMatcher,
 	entityStateStore store.EntityStateStore,
 	batcher batcher.Batcher,
-	config ChangeWorkerConfig,
-) *ChangeWorker {
-	return &ChangeWorker{
+	config AuditWorkerConfig,
+) *AuditWorker {
+	return &AuditWorker{
 		entityStateStore: entityStateStore,
 		batcher:          batcher,
 		auditLogMatcher:  auditLogMatcher,
@@ -47,7 +48,7 @@ func NewChangeWorker(
 	}
 }
 
-func (l *ChangeWorker) BalanceKey() string {
+func (l *AuditWorker) BalanceKey() string {
 	key := fmt.Sprintf("%s_AUDIT_CHANGE_WORKER", l.config.NamePrefix)
 	for _, gatewayID := range l.config.GatewayIDs {
 		key += fmt.Sprintf("_%d", gatewayID)
@@ -58,10 +59,11 @@ func (l *ChangeWorker) BalanceKey() string {
 	return key
 }
 
-func (l *ChangeWorker) EventFilter() broker.EventFilter {
+func (l *AuditWorker) EventFilter() broker.EventFilter {
 	return broker.EventFilter{
 		GatewayIDs: l.config.GatewayIDs,
 		EventTypes: []string{
+			"guild.audit.log.entry.create",
 			"channel.create",
 			"channel.delete",
 			"channel.update",
@@ -69,12 +71,20 @@ func (l *ChangeWorker) EventFilter() broker.EventFilter {
 	}
 }
 
-func (l *ChangeWorker) HandleEvent(ctx context.Context, event *event.GatewayEvent) error {
+func (l *AuditWorker) ConsumerConfig() broker.ConsumerConfig {
+	return broker.ConsumerConfig{
+		AckPolicy:     jetstream.AckExplicitPolicy,
+		MaxAckPending: 1000,
+		Async:         true,
+	}
+}
+
+func (l *AuditWorker) HandleEvent(ctx context.Context, event *event.GatewayEvent) (bool, error) {
 	slog.Debug("Received event:", slog.String("type", event.Type))
 
 	data, err := gateway.UnmarshalEventData(event.Data, gateway.EventType(event.Type))
 	if err != nil {
-		return fmt.Errorf("failed to unmarshal event data: %w", err)
+		return false, fmt.Errorf("failed to unmarshal event data: %w", err)
 	}
 
 	switch d := data.(type) {
@@ -128,16 +138,17 @@ func (l *ChangeWorker) HandleEvent(ctx context.Context, event *event.GatewayEven
 		)
 	case gateway.EventGuildAuditLogEntryCreate:
 		l.auditLogMatcher.HandleAuditLog(d)
+		return true, nil
 	}
 
 	if err != nil {
-		return fmt.Errorf("failed to handle event: %w", err)
+		return false, fmt.Errorf("failed to handle event: %w", err)
 	}
 
-	return nil
+	return true, nil
 }
 
-func (l *ChangeWorker) handleEntityChange(
+func (l *AuditWorker) handleEntityChange(
 	ctx context.Context,
 	event *event.GatewayEvent,
 	guildID snowflake.ID,
@@ -164,6 +175,7 @@ func (l *ChangeWorker) handleEntityChange(
 				return fmt.Errorf("failed to marshal entity data: %w", err)
 			}
 
+			fmt.Printf("entity state not found, creating new entity change\n")
 			entityChange := model.EntityChange{
 				AppID:       event.AppID,
 				GuildID:     guildID,

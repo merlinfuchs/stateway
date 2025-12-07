@@ -18,6 +18,15 @@ func (c *Client) InsertEntityChanges(ctx context.Context, entityChanges ...model
 	}
 
 	for _, change := range entityChanges {
+		var oldValue *string
+		if len(change.OldValue) > 0 && string(change.OldValue) != "null" {
+			oldValue = nullableString(string(change.OldValue))
+		}
+		var newValue *string
+		if len(change.NewValue) > 0 && string(change.NewValue) != "null" {
+			newValue = nullableString(string(change.NewValue))
+		}
+
 		// Convert nullable fields to pointers for ClickHouse Nullable types
 		// Empty strings are converted to nil (null in ClickHouse)
 		err := batch.Append(
@@ -32,8 +41,8 @@ func (c *Client) InsertEntityChanges(ctx context.Context, entityChanges ...model
 			nullableString(change.AuditLogReason),
 			change.Path,
 			string(change.Operation),
-			nullableString(string(change.OldValue)), // Nullable(String) - null when entity was created
-			nullableString(string(change.NewValue)), // Nullable(String) - null when entity was deleted
+			oldValue, // Nullable(String) - null when entity was created
+			newValue, // Nullable(String) - null when entity was deleted
 			change.ReceivedAt,
 			change.ProcessedAt,
 			change.IngestedAt,

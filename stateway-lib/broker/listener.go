@@ -3,17 +3,20 @@ package broker
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/disgoorg/snowflake/v2"
 	"github.com/merlinfuchs/stateway/stateway-lib/event"
 	"github.com/merlinfuchs/stateway/stateway-lib/service"
+	"github.com/nats-io/nats.go/jetstream"
 )
 
 type GenericListener interface {
 	BalanceKey() string
 	ServiceType() service.ServiceType
 	EventFilter() EventFilter
-	HandleEvent(ctx context.Context, event event.Event) error
+	ConsumerConfig() ConsumerConfig
+	HandleEvent(ctx context.Context, event event.Event) (bool, error)
 }
 
 type genericEventListener[E event.Event] struct {
@@ -33,10 +36,14 @@ func (l *genericEventListener[E]) EventFilter() EventFilter {
 	return l.inner.EventFilter()
 }
 
-func (l *genericEventListener[E]) HandleEvent(ctx context.Context, event event.Event) error {
+func (l *genericEventListener[E]) ConsumerConfig() ConsumerConfig {
+	return l.inner.ConsumerConfig()
+}
+
+func (l *genericEventListener[E]) HandleEvent(ctx context.Context, event event.Event) (bool, error) {
 	e, ok := event.(E)
 	if !ok {
-		return fmt.Errorf("event is not of type %T", e)
+		return false, fmt.Errorf("event is not of type %T", e)
 	}
 
 	return l.inner.HandleEvent(ctx, e)
@@ -45,7 +52,8 @@ func (l *genericEventListener[E]) HandleEvent(ctx context.Context, event event.E
 type EventListener[E event.Event] interface {
 	BalanceKey() string
 	EventFilter() EventFilter
-	HandleEvent(ctx context.Context, event E) error
+	ConsumerConfig() ConsumerConfig
+	HandleEvent(ctx context.Context, event E) (bool, error)
 }
 
 func Listen[E event.Event](ctx context.Context, b Broker, listener EventListener[E]) error {
@@ -57,20 +65,23 @@ func Listen[E event.Event](ctx context.Context, b Broker, listener EventListener
 }
 
 type FuncListener[E event.Event] struct {
-	balanceKey  string
-	eventFilter EventFilter
-	handleEvent func(ctx context.Context, event E) error
+	balanceKey     string
+	eventFilter    EventFilter
+	consumerConfig ConsumerConfig
+	handleEvent    func(ctx context.Context, event E) error
 }
 
 func NewFuncListener[E event.Event](
 	balanceKey string,
 	eventFilter EventFilter,
+	consumerConfig ConsumerConfig,
 	handleEvent func(ctx context.Context, event E) error,
 ) *FuncListener[E] {
 	return &FuncListener[E]{
-		balanceKey:  balanceKey,
-		eventFilter: eventFilter,
-		handleEvent: handleEvent,
+		balanceKey:     balanceKey,
+		eventFilter:    eventFilter,
+		consumerConfig: consumerConfig,
+		handleEvent:    handleEvent,
 	}
 }
 
@@ -82,8 +93,19 @@ func (l *FuncListener[E]) EventFilter() EventFilter {
 	return l.eventFilter
 }
 
+func (l *FuncListener[E]) ListenerConfig() ConsumerConfig {
+	return l.consumerConfig
+}
+
 func (l *FuncListener[E]) HandleEvent(ctx context.Context, event E) error {
 	return l.handleEvent(ctx, event)
+}
+
+type ConsumerConfig struct {
+	AckPolicy     jetstream.AckPolicy
+	MaxAckPending int
+	NackDelay     time.Duration
+	Async         bool
 }
 
 type EventFilter struct {
