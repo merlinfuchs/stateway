@@ -42,6 +42,12 @@ func (h *EventHandler) Run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case event := <-h.queue:
+			slog.Debug(
+				"Publishing event",
+				slog.String("service_type", string(event.ServiceType())),
+				slog.String("event_type", event.EventType()),
+				slog.String("event_id", event.EventID().String()),
+			)
 			err := h.broker.Publish(ctx, event)
 			if err != nil {
 				slog.Error(

@@ -37,9 +37,23 @@ func Run(ctx context.Context, pg *postgres.Client, ch *clickhouse.Client, cfg *c
 		return fmt.Errorf("failed to start batcher: %w", err)
 	}
 
-	err = broker.Listen(ctx, br, NewAuditWorker(
+	auditLogMatcher := NewAuditLogMatcher()
+
+	err = broker.Listen(ctx, br, NewChangeWorker(
+		auditLogMatcher,
 		pg,
 		batcher,
+		ChangeWorkerConfig{
+			GatewayIDs: cfg.Audit.GatewayIDs,
+			NamePrefix: cfg.Broker.NamePrefix,
+		},
+	))
+	if err != nil {
+		return fmt.Errorf("failed to listen to audit events: %w", err)
+	}
+
+	err = broker.Listen(ctx, br, NewAuditWorker(
+		auditLogMatcher,
 		AuditWorkerConfig{
 			GatewayIDs: cfg.Audit.GatewayIDs,
 			NamePrefix: cfg.Broker.NamePrefix,

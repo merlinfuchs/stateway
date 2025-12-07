@@ -178,7 +178,7 @@ func (b *JetStreamBatcher) processBatch(ctx context.Context, msgs []jetstream.Ms
 		return
 	}
 
-	slog.Debug("Processing batch of messages", slog.Int("count", len(msgs)))
+	slog.Debug("Processing batch of changes", slog.Int("count", len(msgs)))
 
 	// Unmarshal messages into entity changes
 	entityChanges := make([]model.EntityChange, 0, len(msgs))
@@ -195,6 +195,7 @@ func (b *JetStreamBatcher) processBatch(ctx context.Context, msgs []jetstream.Ms
 			}
 			continue
 		}
+		change.IngestedAt = time.Now().UTC()
 		entityChanges = append(entityChanges, change)
 		validMessages = append(validMessages, msg)
 	}

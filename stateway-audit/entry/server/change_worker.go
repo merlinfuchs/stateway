@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/gateway"
 	"github.com/disgoorg/snowflake/v2"
 	"github.com/go-openapi/jsonpointer"
@@ -19,32 +20,35 @@ import (
 	"github.com/merlinfuchs/stateway/stateway-lib/event"
 )
 
-type AuditWorkerConfig struct {
+type ChangeWorkerConfig struct {
 	GatewayIDs []int
 	NamePrefix string
 }
 
-type AuditWorker struct {
+type ChangeWorker struct {
 	entityStateStore store.EntityStateStore
 	batcher          batcher.Batcher
+	auditLogMatcher  *AuditLogMatcher
 
-	config AuditWorkerConfig
+	config ChangeWorkerConfig
 }
 
-func NewAuditWorker(
+func NewChangeWorker(
+	auditLogMatcher *AuditLogMatcher,
 	entityStateStore store.EntityStateStore,
 	batcher batcher.Batcher,
-	config AuditWorkerConfig,
-) *AuditWorker {
-	return &AuditWorker{
+	config ChangeWorkerConfig,
+) *ChangeWorker {
+	return &ChangeWorker{
 		entityStateStore: entityStateStore,
 		batcher:          batcher,
+		auditLogMatcher:  auditLogMatcher,
 		config:           config,
 	}
 }
 
-func (l *AuditWorker) BalanceKey() string {
-	key := fmt.Sprintf("%s_AUDIT_WORKER", l.config.NamePrefix)
+func (l *ChangeWorker) BalanceKey() string {
+	key := fmt.Sprintf("%s_AUDIT_CHANGE_WORKER", l.config.NamePrefix)
 	for _, gatewayID := range l.config.GatewayIDs {
 		key += fmt.Sprintf("_%d", gatewayID)
 	}
@@ -54,19 +58,18 @@ func (l *AuditWorker) BalanceKey() string {
 	return key
 }
 
-func (l *AuditWorker) EventFilter() broker.EventFilter {
+func (l *ChangeWorker) EventFilter() broker.EventFilter {
 	return broker.EventFilter{
 		GatewayIDs: l.config.GatewayIDs,
 		EventTypes: []string{
-			"ready",
-			"guild.>",
-			"channel.>",
-			"thread.>",
+			"channel.create",
+			"channel.delete",
+			"channel.update",
 		},
 	}
 }
 
-func (l *AuditWorker) HandleEvent(ctx context.Context, event *event.GatewayEvent) error {
+func (l *ChangeWorker) HandleEvent(ctx context.Context, event *event.GatewayEvent) error {
 	slog.Debug("Received event:", slog.String("type", event.Type))
 
 	data, err := gateway.UnmarshalEventData(event.Data, gateway.EventType(event.Type))
@@ -74,13 +77,57 @@ func (l *AuditWorker) HandleEvent(ctx context.Context, event *event.GatewayEvent
 		return fmt.Errorf("failed to unmarshal event data: %w", err)
 	}
 
-	fmt.Printf("data: TYPE %T\n", data)
-
 	switch d := data.(type) {
+	case gateway.EventChannelCreate:
+		auditLogInfo := l.auditLogMatcher.WaitForAuditLogAny(
+			ctx, d.GuildChannel.ID(),
+			discord.AuditLogEventChannelCreate,
+		)
+
+		err = l.handleEntityChange(
+			ctx,
+			event,
+			d.GuildID(),
+			model.EntityTypeChannel,
+			d.GuildChannel.ID(),
+			d.GuildChannel,
+			auditLogInfo,
+		)
 	case gateway.EventChannelUpdate:
-		err = l.handleEntityChange(ctx, event, d.GuildID(), model.EntityTypeChannel, d.GuildChannel.ID(), d.GuildChannel)
+		auditLogInfo := l.auditLogMatcher.WaitForAuditLogAny(
+			ctx, d.GuildChannel.ID(),
+			discord.AuditLogEventChannelUpdate,
+			discord.AuditLogEventChannelOverwriteCreate,
+			discord.AuditLogEventChannelOverwriteUpdate,
+			discord.AuditLogEventChannelOverwriteDelete,
+		)
+
+		err = l.handleEntityChange(
+			ctx,
+			event,
+			d.GuildID(),
+			model.EntityTypeChannel,
+			d.GuildChannel.ID(),
+			d.GuildChannel,
+			auditLogInfo,
+		)
+	case gateway.EventChannelDelete:
+		auditLogInfo := l.auditLogMatcher.WaitForAuditLogAny(
+			ctx, d.GuildChannel.ID(),
+			discord.AuditLogEventChannelDelete,
+		)
+
+		err = l.handleEntityChange(
+			ctx,
+			event,
+			d.GuildID(),
+			model.EntityTypeChannel,
+			d.GuildChannel.ID(),
+			nil,
+			auditLogInfo,
+		)
 	case gateway.EventGuildAuditLogEntryCreate:
-		// TODO: Match audit log entry to entity change
+		l.auditLogMatcher.HandleAuditLog(d)
 	}
 
 	if err != nil {
@@ -90,13 +137,14 @@ func (l *AuditWorker) HandleEvent(ctx context.Context, event *event.GatewayEvent
 	return nil
 }
 
-func (l *AuditWorker) handleEntityChange(
+func (l *ChangeWorker) handleEntityChange(
 	ctx context.Context,
 	event *event.GatewayEvent,
 	guildID snowflake.ID,
 	entityType model.EntityType,
 	entityID snowflake.ID,
 	data any,
+	auditLogInfo *AuditLogInfo,
 ) error {
 	slog.Debug("Handling entity change", slog.String("entity_type", string(entityType)), slog.String("entity_id", entityID.String()))
 
@@ -105,13 +153,18 @@ func (l *AuditWorker) handleEntityChange(
 	entityState, err := l.entityStateStore.GetEntityState(ctx, event.AppID, guildID, entityType, entityID)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
+			// We never knew about this entity, so we can't create a change for it
+			if data == nil {
+				return nil
+			}
+
 			// Entity was created or previously unknown
 			newData, err := json.Marshal(data)
 			if err != nil {
 				return fmt.Errorf("failed to marshal entity data: %w", err)
 			}
 
-			err = l.batcher.Push(ctx, model.EntityChange{
+			entityChange := model.EntityChange{
 				AppID:       event.AppID,
 				GuildID:     guildID,
 				EntityType:  entityType,
@@ -124,8 +177,14 @@ func (l *AuditWorker) handleEntityChange(
 				NewValue:    newData,
 				ReceivedAt:  time.Now().UTC(),
 				ProcessedAt: time.Now().UTC(),
-				IngestedAt:  time.Now().UTC(),
-			})
+			}
+			if auditLogInfo != nil {
+				entityChange.AuditLogID = auditLogInfo.ID
+				entityChange.AuditLogUserID = auditLogInfo.UserID
+				entityChange.AuditLogReason = auditLogInfo.Reason
+			}
+
+			err = l.batcher.Push(ctx, entityChange)
 			if err != nil {
 				return fmt.Errorf("failed to push entity change: %w", err)
 			}
@@ -150,7 +209,7 @@ func (l *AuditWorker) handleEntityChange(
 
 	if data == nil {
 		// Entity was deleted
-		err = l.batcher.Push(ctx, model.EntityChange{
+		entityChange := model.EntityChange{
 			AppID:       event.AppID,
 			GuildID:     guildID,
 			EntityType:  entityType,
@@ -163,8 +222,14 @@ func (l *AuditWorker) handleEntityChange(
 			NewValue:    nil,
 			ReceivedAt:  time.Now().UTC(),
 			ProcessedAt: time.Now().UTC(),
-			IngestedAt:  time.Now().UTC(),
-		})
+		}
+		if auditLogInfo != nil {
+			entityChange.AuditLogID = auditLogInfo.ID
+			entityChange.AuditLogUserID = auditLogInfo.UserID
+			entityChange.AuditLogReason = auditLogInfo.Reason
+		}
+
+		err = l.batcher.Push(ctx, entityChange)
 		if err != nil {
 			return fmt.Errorf("failed to push entity change: %w", err)
 		}
@@ -210,8 +275,6 @@ func (l *AuditWorker) handleEntityChange(
 		return nil
 	}
 
-	// TODO: Wait for audit log event
-
 	for _, entry := range diff {
 		path, err := formatChangePath(entry.Path)
 		if err != nil {
@@ -220,7 +283,7 @@ func (l *AuditWorker) handleEntityChange(
 
 		// Replace operation
 		if len(entry.Remove) == 1 && len(entry.Add) == 1 {
-			err = l.batcher.Push(ctx, model.EntityChange{
+			entityChange := model.EntityChange{
 				AppID:       event.AppID,
 				GuildID:     guildID,
 				EntityType:  entityType,
@@ -233,8 +296,13 @@ func (l *AuditWorker) handleEntityChange(
 				NewValue:    json.RawMessage(entry.Add[0].Json()),
 				ReceivedAt:  time.Now().UTC(),
 				ProcessedAt: time.Now().UTC(),
-				IngestedAt:  time.Now().UTC(),
-			})
+			}
+			if auditLogInfo != nil {
+				entityChange.AuditLogID = auditLogInfo.ID
+				entityChange.AuditLogUserID = auditLogInfo.UserID
+				entityChange.AuditLogReason = auditLogInfo.Reason
+			}
+			err = l.batcher.Push(ctx, entityChange)
 			if err != nil {
 				return fmt.Errorf("failed to push entity change: %w", err)
 			}
@@ -243,7 +311,7 @@ func (l *AuditWorker) handleEntityChange(
 
 		// Add operations
 		for _, value := range entry.Add {
-			err = l.batcher.Push(ctx, model.EntityChange{
+			entityChange := model.EntityChange{
 				AppID:       event.AppID,
 				GuildID:     guildID,
 				EntityType:  entityType,
@@ -256,8 +324,13 @@ func (l *AuditWorker) handleEntityChange(
 				NewValue:    json.RawMessage(value.Json()),
 				ReceivedAt:  time.Now().UTC(),
 				ProcessedAt: time.Now().UTC(),
-				IngestedAt:  time.Now().UTC(),
-			})
+			}
+			if auditLogInfo != nil {
+				entityChange.AuditLogID = auditLogInfo.ID
+				entityChange.AuditLogUserID = auditLogInfo.UserID
+				entityChange.AuditLogReason = auditLogInfo.Reason
+			}
+			err = l.batcher.Push(ctx, entityChange)
 			if err != nil {
 				return fmt.Errorf("failed to push entity change: %w", err)
 			}
@@ -265,7 +338,7 @@ func (l *AuditWorker) handleEntityChange(
 
 		// Remove operations
 		for _, value := range entry.Remove {
-			err = l.batcher.Push(ctx, model.EntityChange{
+			entityChange := model.EntityChange{
 				AppID:       event.AppID,
 				GuildID:     guildID,
 				EntityType:  entityType,
@@ -278,8 +351,13 @@ func (l *AuditWorker) handleEntityChange(
 				NewValue:    nil,
 				ReceivedAt:  time.Now().UTC(),
 				ProcessedAt: time.Now().UTC(),
-				IngestedAt:  time.Now().UTC(),
-			})
+			}
+			if auditLogInfo != nil {
+				entityChange.AuditLogID = auditLogInfo.ID
+				entityChange.AuditLogUserID = auditLogInfo.UserID
+				entityChange.AuditLogReason = auditLogInfo.Reason
+			}
+			err = l.batcher.Push(ctx, entityChange)
 			if err != nil {
 				return fmt.Errorf("failed to push entity change: %w", err)
 			}
