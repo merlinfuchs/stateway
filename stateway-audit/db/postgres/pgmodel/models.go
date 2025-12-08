@@ -8,6 +8,14 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type AuditConfig struct {
+	AppID     int64
+	GuildID   int64
+	Enabled   bool
+	CreatedAt pgtype.Timestamp
+	UpdatedAt pgtype.Timestamp
+}
+
 type AuditEntityState struct {
 	AppID      int64
 	GuildID    int64

@@ -3,8 +3,11 @@ package clickhouse
 import (
 	"context"
 	"fmt"
+	"time"
 
+	"github.com/disgoorg/snowflake/v2"
 	"github.com/merlinfuchs/stateway/stateway-audit/model"
+	"github.com/merlinfuchs/stateway/stateway-audit/store"
 )
 
 func (c *Client) InsertEntityChanges(ctx context.Context, entityChanges ...model.EntityChange) error {
@@ -35,17 +38,19 @@ func (c *Client) InsertEntityChanges(ctx context.Context, entityChanges ...model
 			string(change.EntityType),
 			change.EntityID,
 			change.EventID,
-			string(change.EventSource), // event_source in table
-			nullableUint64(uint64(change.AuditLogID)),
-			nullableUint64(uint64(change.AuditLogUserID)),
-			nullableString(change.AuditLogReason),
+			change.EventType,
+			string(change.EventSource),
+			nullableSnowflake(change.AuditLogID),
+			nullableAuditLogAction(change.AuditLogAction),
+			nullableSnowflake(change.AuditLogUserID),
+			change.AuditLogReason,
 			change.Path,
 			string(change.Operation),
-			oldValue, // Nullable(String) - null when entity was created
-			newValue, // Nullable(String) - null when entity was deleted
+			oldValue,
+			newValue,
 			change.ReceivedAt,
 			change.ProcessedAt,
-			change.IngestedAt,
+			time.Now().UTC(),
 		)
 		if err != nil {
 			return fmt.Errorf("failed to append entity change to batch: %w", err)
@@ -57,6 +62,25 @@ func (c *Client) InsertEntityChanges(ctx context.Context, entityChanges ...model
 	}
 
 	return nil
+}
+
+func (c *Client) GetEntityChanges(ctx context.Context, params store.GetEntityChangesParams) ([]*model.EntityChange, error) {
+	return nil, nil
+}
+
+func nullableAuditLogAction(v *int) *uint16 {
+	if v == nil {
+		return nil
+	}
+	action := uint16(*v)
+	return &action
+}
+
+func nullableSnowflake(v *snowflake.ID) *uint64 {
+	if v == nil {
+		return nil
+	}
+	return nullableUint64(uint64(*v))
 }
 
 func nullableUint64(v uint64) *uint64 {

@@ -9,6 +9,7 @@ import (
 	"github.com/merlinfuchs/stateway/stateway-audit/batcher"
 	"github.com/merlinfuchs/stateway/stateway-audit/db/clickhouse"
 	"github.com/merlinfuchs/stateway/stateway-audit/db/postgres"
+	"github.com/merlinfuchs/stateway/stateway-lib/audit"
 	"github.com/merlinfuchs/stateway/stateway-lib/broker"
 	"github.com/merlinfuchs/stateway/stateway-lib/config"
 )
@@ -35,6 +36,12 @@ func Run(ctx context.Context, pg *postgres.Client, ch *clickhouse.Client, cfg *c
 	err = batcher.Start(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to start batcher: %w", err)
+	}
+
+	auditor := NewAuditor(ch, pg)
+	err = broker.Provide(ctx, br, audit.NewAuditService(auditor))
+	if err != nil {
+		return fmt.Errorf("failed to provide audit logger: %w", err)
 	}
 
 	auditLogMatcher := NewAuditLogMatcher()

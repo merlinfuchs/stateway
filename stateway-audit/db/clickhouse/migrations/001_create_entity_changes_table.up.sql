@@ -7,10 +7,12 @@ CREATE TABLE audit_entity_changes (
 
     -- Event identification
     event_id     String,                 -- unique ID for this logical event
-    event_source LowCardinality(String), -- 'discord', 'synthetic'
+    event_type   LowCardinality(String), -- 'GUILD_CREATE', 'GUILD_UPDATE', 'CHANNEL_CREATE', ...
+    event_source LowCardinality(String), -- 'dispatch', 'guild_sync'
 
     -- Information from the audit log
     audit_log_id      Nullable(UInt64),
+    audit_log_action  Nullable(UInt16),
     audit_log_user_id Nullable(UInt64),
     audit_log_reason  Nullable(String),
 

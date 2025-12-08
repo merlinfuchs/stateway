@@ -13,8 +13,9 @@ import (
 // AuditLogInfo contains information from an audit log entry
 type AuditLogInfo struct {
 	ID     snowflake.ID
+	Action int
 	UserID snowflake.ID
-	Reason string
+	Reason *string
 }
 
 // auditLogKey is used as a key for matching audit log entries
@@ -51,14 +52,11 @@ func (m *AuditLogMatcher) HandleAuditLog(auditLog gateway.EventGuildAuditLogEntr
 	}
 
 	// Prepare audit log info
-	reason := ""
-	if entry.Reason != nil {
-		reason = *entry.Reason
-	}
 	auditLogInfo := &AuditLogInfo{
 		ID:     entry.ID,
+		Action: int(actionType),
 		UserID: entry.UserID,
-		Reason: reason,
+		Reason: entry.Reason,
 	}
 
 	// Check for listener waiting for this targetID and actionType

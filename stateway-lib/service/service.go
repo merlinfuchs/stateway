@@ -9,6 +9,7 @@ type ServiceType string
 const (
 	ServiceTypeGateway ServiceType = "gateway"
 	ServiceTypeCache   ServiceType = "cache"
+	ServiceTypeAudit   ServiceType = "audit"
 )
 
 type Response struct {

@@ -195,7 +195,6 @@ func (b *JetStreamBatcher) processBatch(ctx context.Context, msgs []jetstream.Ms
 			}
 			continue
 		}
-		change.IngestedAt = time.Now().UTC()
 		entityChanges = append(entityChanges, change)
 		validMessages = append(validMessages, msg)
 	}

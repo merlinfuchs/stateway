@@ -5,20 +5,13 @@ import (
 	"time"
 
 	"github.com/disgoorg/snowflake/v2"
-)
-
-type EntityType string
-
-const (
-	EntityTypeGuild   EntityType = "guild"
-	EntityTypeChannel EntityType = "channel"
-	EntityTypeRole    EntityType = "role"
+	"github.com/merlinfuchs/stateway/stateway-lib/audit"
 )
 
 type EntityState struct {
 	AppID      snowflake.ID
 	GuildID    snowflake.ID
-	EntityType EntityType
+	EntityType audit.EntityType
 	EntityID   snowflake.ID
 	Data       json.RawMessage
 	Deleted    bool

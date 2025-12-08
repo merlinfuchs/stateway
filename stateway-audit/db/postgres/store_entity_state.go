@@ -10,11 +10,12 @@ import (
 	"github.com/merlinfuchs/stateway/stateway-audit/db/postgres/pgmodel"
 	"github.com/merlinfuchs/stateway/stateway-audit/model"
 	"github.com/merlinfuchs/stateway/stateway-audit/store"
+	"github.com/merlinfuchs/stateway/stateway-lib/audit"
 )
 
 var _ store.EntityStateStore = (*Client)(nil)
 
-func (c *Client) GetEntityState(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, entityType model.EntityType, entityID snowflake.ID) (*model.EntityState, error) {
+func (c *Client) GetEntityState(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, entityType audit.EntityType, entityID snowflake.ID) (*model.EntityState, error) {
 	row, err := c.Q.GetEntityState(ctx, pgmodel.GetEntityStateParams{
 		AppID:      int64(appID),
 		GuildID:    int64(guildID),
@@ -55,7 +56,7 @@ func rowToEntityState(row pgmodel.AuditEntityState) (*model.EntityState, error) 
 	return &model.EntityState{
 		AppID:      snowflake.ID(row.AppID),
 		GuildID:    snowflake.ID(row.GuildID),
-		EntityType: model.EntityType(row.EntityType),
+		EntityType: audit.EntityType(row.EntityType),
 		EntityID:   snowflake.ID(row.EntityID),
 		Data:       row.Data,
 		Deleted:    row.Deleted,

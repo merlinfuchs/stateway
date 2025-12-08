@@ -73,10 +73,6 @@ func (b *InMemoryBatcher) Start(ctx context.Context) error {
 		flushCtx, cancel := context.WithTimeout(flushCtx, 30*time.Second)
 		defer cancel()
 
-		for i := range items {
-			items[i].IngestedAt = time.Now().UTC()
-		}
-
 		err := b.store.InsertEntityChanges(flushCtx, items...)
 		if err != nil {
 			slog.Error("Failed to insert entity changes batch", "error", err)
