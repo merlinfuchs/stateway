@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/gateway"
 	"github.com/merlinfuchs/stateway/stateway-cache/store"
 	"github.com/merlinfuchs/stateway/stateway-lib/broker"
@@ -80,7 +81,7 @@ func (l *CacheWorker) HandleEvent(ctx context.Context, event *event.GatewayEvent
 
 		channels := make([]store.UpsertChannelParams, 0, len(e.Channels)+len(e.Threads))
 		for _, channel := range e.Channels {
-			channel := ensureChannelGuildID(channel, e.ID)
+			channel := discord.ApplyGuildIDToChannel(channel, e.ID)
 			channels = append(channels, store.UpsertChannelParams{
 				AppID:     event.AppID,
 				GuildID:   e.ID,
@@ -91,12 +92,12 @@ func (l *CacheWorker) HandleEvent(ctx context.Context, event *event.GatewayEvent
 			})
 		}
 		for _, thread := range e.Threads {
-			channel := ensureChannelGuildID(thread, e.ID)
+			thread := discord.ApplyGuildIDToChannel(thread, e.ID)
 			channels = append(channels, store.UpsertChannelParams{
 				AppID:     event.AppID,
 				GuildID:   e.ID,
 				ChannelID: thread.ID(),
-				Data:      channel,
+				Data:      thread,
 				CreatedAt: time.Now().UTC(),
 				UpdatedAt: time.Now().UTC(),
 			})
