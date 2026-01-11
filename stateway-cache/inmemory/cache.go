@@ -302,7 +302,7 @@ func (s *InMemoryCacheStore) MarkGuildUnavailable(ctx context.Context, appID sno
 	}
 
 	if guild == nil {
-		return store.ErrNotFound
+		return nil
 	}
 
 	g := *guild.(*model.Guild)
