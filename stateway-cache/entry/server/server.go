@@ -23,11 +23,7 @@ func Run(ctx context.Context, pg *postgres.Client, cfg *config.RootCacheConfig) 
 	var cacheStore store.CacheStore = pg
 	if cfg.Cache.InMemory {
 		slog.Info("Using in-memory cache store")
-		var err error
-		cacheStore, err = inmemory.NewInMemoryCacheStore()
-		if err != nil {
-			return fmt.Errorf("failed to create in-memory cache store: %w", err)
-		}
+		cacheStore = inmemory.NewMapCacheStore()
 	}
 
 	// Discord some times sends unquoted snowflake IDs, so we need to allow them

@@ -114,6 +114,12 @@ func (o CacheOptions) Destructure() []CacheOption {
 	if o.AppID != 0 {
 		res = append(res, WithAppID(o.AppID))
 	}
+	if o.Limit > 0 {
+		res = append(res, WithLimit(o.Limit))
+	}
+	if o.Offset > 0 {
+		res = append(res, WithOffset(o.Offset))
+	}
 	return res
 }
 

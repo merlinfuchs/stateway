@@ -67,7 +67,7 @@ var testGuilds = []store.UpsertGuildParams{
 }
 
 func TestInMemoryGuildCache(t *testing.T) {
-	cache, err := NewInMemoryCacheStore()
+	cache, err := NewMemDBCacheStore()
 	if err != nil {
 		t.Fatalf("failed to create in-memory cache store: %v", err)
 	}
@@ -97,7 +97,7 @@ func TestInMemoryGuildCache(t *testing.T) {
 }
 
 func TestInMemoryCacheInsertPerformance(t *testing.T) {
-	cache, err := NewInMemoryCacheStore()
+	cache, err := NewMemDBCacheStore()
 	if err != nil {
 		t.Fatalf("failed to create in-memory cache store: %v", err)
 	}

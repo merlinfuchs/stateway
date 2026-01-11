@@ -11,7 +11,7 @@ import (
 	"github.com/merlinfuchs/stateway/stateway-cache/store"
 )
 
-var cacheSchema = &memdb.DBSchema{
+var memDBCacheSchema = &memdb.DBSchema{
 	Tables: map[string]*memdb.TableSchema{
 		"guilds": {
 			Name: "guilds",
@@ -180,21 +180,21 @@ var cacheSchema = &memdb.DBSchema{
 	},
 }
 
-var _ store.CacheStore = (*InMemoryCacheStore)(nil)
+var _ store.CacheStore = (*MemDBCacheStore)(nil)
 
-type InMemoryCacheStore struct {
+type MemDBCacheStore struct {
 	db *memdb.MemDB
 }
 
-func NewInMemoryCacheStore() (*InMemoryCacheStore, error) {
-	db, err := memdb.NewMemDB(cacheSchema)
+func NewMemDBCacheStore() (*MemDBCacheStore, error) {
+	db, err := memdb.NewMemDB(memDBCacheSchema)
 	if err != nil {
 		return nil, err
 	}
-	return &InMemoryCacheStore{db: db}, nil
+	return &MemDBCacheStore{db: db}, nil
 }
 
-func (s *InMemoryCacheStore) GetGuild(ctx context.Context, appID snowflake.ID, guildID snowflake.ID) (*model.Guild, error) {
+func (s *MemDBCacheStore) GetGuild(ctx context.Context, appID snowflake.ID, guildID snowflake.ID) (*model.Guild, error) {
 	txn := s.db.Txn(false)
 	defer txn.Abort()
 
@@ -210,7 +210,7 @@ func (s *InMemoryCacheStore) GetGuild(ctx context.Context, appID snowflake.ID, g
 	return guild.(*model.Guild), nil
 }
 
-func (s *InMemoryCacheStore) GetGuildOwnerID(ctx context.Context, appID snowflake.ID, guildID snowflake.ID) (snowflake.ID, error) {
+func (s *MemDBCacheStore) GetGuildOwnerID(ctx context.Context, appID snowflake.ID, guildID snowflake.ID) (snowflake.ID, error) {
 	txn := s.db.Txn(false)
 	defer txn.Abort()
 
@@ -226,7 +226,7 @@ func (s *InMemoryCacheStore) GetGuildOwnerID(ctx context.Context, appID snowflak
 	return guild.(*model.Guild).Data.OwnerID, nil
 }
 
-func (s *InMemoryCacheStore) GetGuilds(ctx context.Context, appID snowflake.ID, limit int, offset int) ([]*model.Guild, error) {
+func (s *MemDBCacheStore) GetGuilds(ctx context.Context, appID snowflake.ID, limit int, offset int) ([]*model.Guild, error) {
 	txn := s.db.Txn(false)
 	defer txn.Abort()
 
@@ -250,7 +250,7 @@ func (s *InMemoryCacheStore) GetGuilds(ctx context.Context, appID snowflake.ID, 
 	return guilds, nil
 }
 
-func (s *InMemoryCacheStore) CheckGuildExist(ctx context.Context, appID snowflake.ID, guildID snowflake.ID) (bool, error) {
+func (s *MemDBCacheStore) CheckGuildExist(ctx context.Context, appID snowflake.ID, guildID snowflake.ID) (bool, error) {
 	txn := s.db.Txn(false)
 	defer txn.Abort()
 
@@ -262,7 +262,7 @@ func (s *InMemoryCacheStore) CheckGuildExist(ctx context.Context, appID snowflak
 	return guild != nil, nil
 }
 
-func (s *InMemoryCacheStore) UpsertGuilds(ctx context.Context, guilds ...store.UpsertGuildParams) error {
+func (s *MemDBCacheStore) UpsertGuilds(ctx context.Context, guilds ...store.UpsertGuildParams) error {
 	txn := s.db.Txn(true)
 	defer txn.Abort()
 
@@ -292,7 +292,7 @@ func (s *InMemoryCacheStore) UpsertGuilds(ctx context.Context, guilds ...store.U
 	return nil
 }
 
-func (s *InMemoryCacheStore) MarkGuildUnavailable(ctx context.Context, appID snowflake.ID, guildID snowflake.ID) error {
+func (s *MemDBCacheStore) MarkGuildUnavailable(ctx context.Context, appID snowflake.ID, guildID snowflake.ID) error {
 	txn := s.db.Txn(true)
 	defer txn.Abort()
 
@@ -318,7 +318,7 @@ func (s *InMemoryCacheStore) MarkGuildUnavailable(ctx context.Context, appID sno
 	return nil
 }
 
-func (s *InMemoryCacheStore) DeleteGuild(ctx context.Context, appID snowflake.ID, guildID snowflake.ID) error {
+func (s *MemDBCacheStore) DeleteGuild(ctx context.Context, appID snowflake.ID, guildID snowflake.ID) error {
 	txn := s.db.Txn(true)
 	defer txn.Abort()
 
@@ -331,13 +331,13 @@ func (s *InMemoryCacheStore) DeleteGuild(ctx context.Context, appID snowflake.ID
 	return nil
 }
 
-func (s *InMemoryCacheStore) SearchGuilds(ctx context.Context, params store.SearchGuildsParams) ([]*model.Guild, error) {
+func (s *MemDBCacheStore) SearchGuilds(ctx context.Context, params store.SearchGuildsParams) ([]*model.Guild, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
 // CacheRoleStore methods
 
-func (s *InMemoryCacheStore) GetGuildRole(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, roleID snowflake.ID) (*model.Role, error) {
+func (s *MemDBCacheStore) GetGuildRole(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, roleID snowflake.ID) (*model.Role, error) {
 	txn := s.db.Txn(false)
 	defer txn.Abort()
 
@@ -353,7 +353,7 @@ func (s *InMemoryCacheStore) GetGuildRole(ctx context.Context, appID snowflake.I
 	return role.(*model.Role), nil
 }
 
-func (s *InMemoryCacheStore) GetRole(ctx context.Context, appID snowflake.ID, roleID snowflake.ID) (*model.Role, error) {
+func (s *MemDBCacheStore) GetRole(ctx context.Context, appID snowflake.ID, roleID snowflake.ID) (*model.Role, error) {
 	txn := s.db.Txn(false)
 	defer txn.Abort()
 
@@ -369,7 +369,7 @@ func (s *InMemoryCacheStore) GetRole(ctx context.Context, appID snowflake.ID, ro
 	return role.(*model.Role), nil
 }
 
-func (s *InMemoryCacheStore) GetGuildRoles(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, limit int, offset int) ([]*model.Role, error) {
+func (s *MemDBCacheStore) GetGuildRoles(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, limit int, offset int) ([]*model.Role, error) {
 	txn := s.db.Txn(false)
 	defer txn.Abort()
 
@@ -397,7 +397,7 @@ func (s *InMemoryCacheStore) GetGuildRoles(ctx context.Context, appID snowflake.
 	return roles, nil
 }
 
-func (s *InMemoryCacheStore) GetGuildRolesByIDs(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, roleIDs []snowflake.ID) ([]*model.Role, error) {
+func (s *MemDBCacheStore) GetGuildRolesByIDs(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, roleIDs []snowflake.ID) ([]*model.Role, error) {
 	txn := s.db.Txn(false)
 	defer txn.Abort()
 
@@ -415,7 +415,7 @@ func (s *InMemoryCacheStore) GetGuildRolesByIDs(ctx context.Context, appID snowf
 	return roles, nil
 }
 
-func (s *InMemoryCacheStore) GetRoles(ctx context.Context, appID snowflake.ID, limit int, offset int) ([]*model.Role, error) {
+func (s *MemDBCacheStore) GetRoles(ctx context.Context, appID snowflake.ID, limit int, offset int) ([]*model.Role, error) {
 	txn := s.db.Txn(false)
 	defer txn.Abort()
 
@@ -439,15 +439,15 @@ func (s *InMemoryCacheStore) GetRoles(ctx context.Context, appID snowflake.ID, l
 	return roles, nil
 }
 
-func (s *InMemoryCacheStore) SearchGuildRoles(ctx context.Context, params store.SearchGuildRolesParams) ([]*model.Role, error) {
+func (s *MemDBCacheStore) SearchGuildRoles(ctx context.Context, params store.SearchGuildRolesParams) ([]*model.Role, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (s *InMemoryCacheStore) SearchRoles(ctx context.Context, params store.SearchRolesParams) ([]*model.Role, error) {
+func (s *MemDBCacheStore) SearchRoles(ctx context.Context, params store.SearchRolesParams) ([]*model.Role, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (s *InMemoryCacheStore) CountGuildRoles(ctx context.Context, appID snowflake.ID, guildID snowflake.ID) (int, error) {
+func (s *MemDBCacheStore) CountGuildRoles(ctx context.Context, appID snowflake.ID, guildID snowflake.ID) (int, error) {
 	txn := s.db.Txn(false)
 	defer txn.Abort()
 
@@ -466,7 +466,7 @@ func (s *InMemoryCacheStore) CountGuildRoles(ctx context.Context, appID snowflak
 	return count, nil
 }
 
-func (s *InMemoryCacheStore) CountRoles(ctx context.Context, appID snowflake.ID) (int, error) {
+func (s *MemDBCacheStore) CountRoles(ctx context.Context, appID snowflake.ID) (int, error) {
 	txn := s.db.Txn(false)
 	defer txn.Abort()
 
@@ -483,7 +483,7 @@ func (s *InMemoryCacheStore) CountRoles(ctx context.Context, appID snowflake.ID)
 	return count, nil
 }
 
-func (s *InMemoryCacheStore) UpsertRoles(ctx context.Context, roles ...store.UpsertRoleParams) error {
+func (s *MemDBCacheStore) UpsertRoles(ctx context.Context, roles ...store.UpsertRoleParams) error {
 	txn := s.db.Txn(true)
 	defer txn.Abort()
 
@@ -514,7 +514,7 @@ func (s *InMemoryCacheStore) UpsertRoles(ctx context.Context, roles ...store.Ups
 	return nil
 }
 
-func (s *InMemoryCacheStore) DeleteRole(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, roleID snowflake.ID) error {
+func (s *MemDBCacheStore) DeleteRole(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, roleID snowflake.ID) error {
 	txn := s.db.Txn(true)
 	defer txn.Abort()
 
@@ -529,7 +529,7 @@ func (s *InMemoryCacheStore) DeleteRole(ctx context.Context, appID snowflake.ID,
 
 // CacheChannelStore methods
 
-func (s *InMemoryCacheStore) GetGuildChannel(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, channelID snowflake.ID) (*model.Channel, error) {
+func (s *MemDBCacheStore) GetGuildChannel(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, channelID snowflake.ID) (*model.Channel, error) {
 	txn := s.db.Txn(false)
 	defer txn.Abort()
 
@@ -545,7 +545,7 @@ func (s *InMemoryCacheStore) GetGuildChannel(ctx context.Context, appID snowflak
 	return channel.(*model.Channel), nil
 }
 
-func (s *InMemoryCacheStore) GetChannel(ctx context.Context, appID snowflake.ID, channelID snowflake.ID) (*model.Channel, error) {
+func (s *MemDBCacheStore) GetChannel(ctx context.Context, appID snowflake.ID, channelID snowflake.ID) (*model.Channel, error) {
 	txn := s.db.Txn(false)
 	defer txn.Abort()
 
@@ -561,7 +561,7 @@ func (s *InMemoryCacheStore) GetChannel(ctx context.Context, appID snowflake.ID,
 	return channel.(*model.Channel), nil
 }
 
-func (s *InMemoryCacheStore) GetGuildChannels(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, limit int, offset int) ([]*model.Channel, error) {
+func (s *MemDBCacheStore) GetGuildChannels(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, limit int, offset int) ([]*model.Channel, error) {
 	txn := s.db.Txn(false)
 	defer txn.Abort()
 
@@ -589,7 +589,7 @@ func (s *InMemoryCacheStore) GetGuildChannels(ctx context.Context, appID snowfla
 	return channels, nil
 }
 
-func (s *InMemoryCacheStore) GetChannels(ctx context.Context, appID snowflake.ID, limit int, offset int) ([]*model.Channel, error) {
+func (s *MemDBCacheStore) GetChannels(ctx context.Context, appID snowflake.ID, limit int, offset int) ([]*model.Channel, error) {
 	txn := s.db.Txn(false)
 	defer txn.Abort()
 
@@ -613,7 +613,7 @@ func (s *InMemoryCacheStore) GetChannels(ctx context.Context, appID snowflake.ID
 	return channels, nil
 }
 
-func (s *InMemoryCacheStore) GetChannelsByType(ctx context.Context, appID snowflake.ID, types []int, limit int, offset int) ([]*model.Channel, error) {
+func (s *MemDBCacheStore) GetChannelsByType(ctx context.Context, appID snowflake.ID, types []int, limit int, offset int) ([]*model.Channel, error) {
 	txn := s.db.Txn(false)
 	defer txn.Abort()
 
@@ -649,15 +649,15 @@ func (s *InMemoryCacheStore) GetChannelsByType(ctx context.Context, appID snowfl
 	return channels, nil
 }
 
-func (s *InMemoryCacheStore) SearchGuildChannels(ctx context.Context, params store.SearchGuildChannelsParams) ([]*model.Channel, error) {
+func (s *MemDBCacheStore) SearchGuildChannels(ctx context.Context, params store.SearchGuildChannelsParams) ([]*model.Channel, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (s *InMemoryCacheStore) SearchChannels(ctx context.Context, params store.SearchChannelsParams) ([]*model.Channel, error) {
+func (s *MemDBCacheStore) SearchChannels(ctx context.Context, params store.SearchChannelsParams) ([]*model.Channel, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (s *InMemoryCacheStore) CountGuildChannels(ctx context.Context, appID snowflake.ID, guildID snowflake.ID) (int, error) {
+func (s *MemDBCacheStore) CountGuildChannels(ctx context.Context, appID snowflake.ID, guildID snowflake.ID) (int, error) {
 	txn := s.db.Txn(false)
 	defer txn.Abort()
 
@@ -676,7 +676,7 @@ func (s *InMemoryCacheStore) CountGuildChannels(ctx context.Context, appID snowf
 	return count, nil
 }
 
-func (s *InMemoryCacheStore) CountChannels(ctx context.Context, appID snowflake.ID) (int, error) {
+func (s *MemDBCacheStore) CountChannels(ctx context.Context, appID snowflake.ID) (int, error) {
 	txn := s.db.Txn(false)
 	defer txn.Abort()
 
@@ -693,7 +693,7 @@ func (s *InMemoryCacheStore) CountChannels(ctx context.Context, appID snowflake.
 	return count, nil
 }
 
-func (s *InMemoryCacheStore) UpsertChannels(ctx context.Context, channels ...store.UpsertChannelParams) error {
+func (s *MemDBCacheStore) UpsertChannels(ctx context.Context, channels ...store.UpsertChannelParams) error {
 	txn := s.db.Txn(true)
 	defer txn.Abort()
 
@@ -724,7 +724,7 @@ func (s *InMemoryCacheStore) UpsertChannels(ctx context.Context, channels ...sto
 	return nil
 }
 
-func (s *InMemoryCacheStore) DeleteChannel(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, channelID snowflake.ID) error {
+func (s *MemDBCacheStore) DeleteChannel(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, channelID snowflake.ID) error {
 	txn := s.db.Txn(true)
 	defer txn.Abort()
 
@@ -739,7 +739,7 @@ func (s *InMemoryCacheStore) DeleteChannel(ctx context.Context, appID snowflake.
 
 // CacheEmojiStore methods
 
-func (s *InMemoryCacheStore) GetGuildEmoji(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, emojiID snowflake.ID) (*model.Emoji, error) {
+func (s *MemDBCacheStore) GetGuildEmoji(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, emojiID snowflake.ID) (*model.Emoji, error) {
 	txn := s.db.Txn(false)
 	defer txn.Abort()
 
@@ -755,7 +755,7 @@ func (s *InMemoryCacheStore) GetGuildEmoji(ctx context.Context, appID snowflake.
 	return emoji.(*model.Emoji), nil
 }
 
-func (s *InMemoryCacheStore) GetEmoji(ctx context.Context, appID snowflake.ID, emojiID snowflake.ID) (*model.Emoji, error) {
+func (s *MemDBCacheStore) GetEmoji(ctx context.Context, appID snowflake.ID, emojiID snowflake.ID) (*model.Emoji, error) {
 	txn := s.db.Txn(false)
 	defer txn.Abort()
 
@@ -771,7 +771,7 @@ func (s *InMemoryCacheStore) GetEmoji(ctx context.Context, appID snowflake.ID, e
 	return emoji.(*model.Emoji), nil
 }
 
-func (s *InMemoryCacheStore) GetGuildEmojis(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, limit int, offset int) ([]*model.Emoji, error) {
+func (s *MemDBCacheStore) GetGuildEmojis(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, limit int, offset int) ([]*model.Emoji, error) {
 	txn := s.db.Txn(false)
 	defer txn.Abort()
 
@@ -799,7 +799,7 @@ func (s *InMemoryCacheStore) GetGuildEmojis(ctx context.Context, appID snowflake
 	return emojis, nil
 }
 
-func (s *InMemoryCacheStore) GetEmojis(ctx context.Context, appID snowflake.ID, limit int, offset int) ([]*model.Emoji, error) {
+func (s *MemDBCacheStore) GetEmojis(ctx context.Context, appID snowflake.ID, limit int, offset int) ([]*model.Emoji, error) {
 	txn := s.db.Txn(false)
 	defer txn.Abort()
 
@@ -823,15 +823,15 @@ func (s *InMemoryCacheStore) GetEmojis(ctx context.Context, appID snowflake.ID, 
 	return emojis, nil
 }
 
-func (s *InMemoryCacheStore) SearchGuildEmojis(ctx context.Context, params store.SearchGuildEmojisParams) ([]*model.Emoji, error) {
+func (s *MemDBCacheStore) SearchGuildEmojis(ctx context.Context, params store.SearchGuildEmojisParams) ([]*model.Emoji, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (s *InMemoryCacheStore) SearchEmojis(ctx context.Context, params store.SearchEmojisParams) ([]*model.Emoji, error) {
+func (s *MemDBCacheStore) SearchEmojis(ctx context.Context, params store.SearchEmojisParams) ([]*model.Emoji, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (s *InMemoryCacheStore) CountGuildEmojis(ctx context.Context, appID snowflake.ID, guildID snowflake.ID) (int, error) {
+func (s *MemDBCacheStore) CountGuildEmojis(ctx context.Context, appID snowflake.ID, guildID snowflake.ID) (int, error) {
 	txn := s.db.Txn(false)
 	defer txn.Abort()
 
@@ -850,7 +850,7 @@ func (s *InMemoryCacheStore) CountGuildEmojis(ctx context.Context, appID snowfla
 	return count, nil
 }
 
-func (s *InMemoryCacheStore) CountEmojis(ctx context.Context, appID snowflake.ID) (int, error) {
+func (s *MemDBCacheStore) CountEmojis(ctx context.Context, appID snowflake.ID) (int, error) {
 	txn := s.db.Txn(false)
 	defer txn.Abort()
 
@@ -867,7 +867,7 @@ func (s *InMemoryCacheStore) CountEmojis(ctx context.Context, appID snowflake.ID
 	return count, nil
 }
 
-func (s *InMemoryCacheStore) UpsertEmojis(ctx context.Context, emojis ...store.UpsertEmojiParams) error {
+func (s *MemDBCacheStore) UpsertEmojis(ctx context.Context, emojis ...store.UpsertEmojiParams) error {
 	txn := s.db.Txn(true)
 	defer txn.Abort()
 
@@ -898,7 +898,7 @@ func (s *InMemoryCacheStore) UpsertEmojis(ctx context.Context, emojis ...store.U
 	return nil
 }
 
-func (s *InMemoryCacheStore) DeleteEmoji(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, emojiID snowflake.ID) error {
+func (s *MemDBCacheStore) DeleteEmoji(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, emojiID snowflake.ID) error {
 	txn := s.db.Txn(true)
 	defer txn.Abort()
 
@@ -913,7 +913,7 @@ func (s *InMemoryCacheStore) DeleteEmoji(ctx context.Context, appID snowflake.ID
 
 // CacheStickerStore methods
 
-func (s *InMemoryCacheStore) GetSticker(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, stickerID snowflake.ID) (*model.Sticker, error) {
+func (s *MemDBCacheStore) GetSticker(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, stickerID snowflake.ID) (*model.Sticker, error) {
 	txn := s.db.Txn(false)
 	defer txn.Abort()
 
@@ -929,11 +929,11 @@ func (s *InMemoryCacheStore) GetSticker(ctx context.Context, appID snowflake.ID,
 	return sticker.(*model.Sticker), nil
 }
 
-func (s *InMemoryCacheStore) GetGuildSticker(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, stickerID snowflake.ID) (*model.Sticker, error) {
+func (s *MemDBCacheStore) GetGuildSticker(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, stickerID snowflake.ID) (*model.Sticker, error) {
 	return s.GetSticker(ctx, appID, guildID, stickerID)
 }
 
-func (s *InMemoryCacheStore) GetStickers(ctx context.Context, appID snowflake.ID, limit int, offset int) ([]*model.Sticker, error) {
+func (s *MemDBCacheStore) GetStickers(ctx context.Context, appID snowflake.ID, limit int, offset int) ([]*model.Sticker, error) {
 	txn := s.db.Txn(false)
 	defer txn.Abort()
 
@@ -957,7 +957,7 @@ func (s *InMemoryCacheStore) GetStickers(ctx context.Context, appID snowflake.ID
 	return stickers, nil
 }
 
-func (s *InMemoryCacheStore) GetGuildStickers(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, limit int, offset int) ([]*model.Sticker, error) {
+func (s *MemDBCacheStore) GetGuildStickers(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, limit int, offset int) ([]*model.Sticker, error) {
 	txn := s.db.Txn(false)
 	defer txn.Abort()
 
@@ -985,15 +985,15 @@ func (s *InMemoryCacheStore) GetGuildStickers(ctx context.Context, appID snowfla
 	return stickers, nil
 }
 
-func (s *InMemoryCacheStore) SearchStickers(ctx context.Context, params store.SearchStickersParams) ([]*model.Sticker, error) {
+func (s *MemDBCacheStore) SearchStickers(ctx context.Context, params store.SearchStickersParams) ([]*model.Sticker, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (s *InMemoryCacheStore) SearchGuildStickers(ctx context.Context, params store.SearchGuildStickersParams) ([]*model.Sticker, error) {
+func (s *MemDBCacheStore) SearchGuildStickers(ctx context.Context, params store.SearchGuildStickersParams) ([]*model.Sticker, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (s *InMemoryCacheStore) CountGuildStickers(ctx context.Context, appID snowflake.ID, guildID snowflake.ID) (int, error) {
+func (s *MemDBCacheStore) CountGuildStickers(ctx context.Context, appID snowflake.ID, guildID snowflake.ID) (int, error) {
 	txn := s.db.Txn(false)
 	defer txn.Abort()
 
@@ -1012,7 +1012,7 @@ func (s *InMemoryCacheStore) CountGuildStickers(ctx context.Context, appID snowf
 	return count, nil
 }
 
-func (s *InMemoryCacheStore) CountStickers(ctx context.Context, appID snowflake.ID) (int, error) {
+func (s *MemDBCacheStore) CountStickers(ctx context.Context, appID snowflake.ID) (int, error) {
 	txn := s.db.Txn(false)
 	defer txn.Abort()
 
@@ -1029,7 +1029,7 @@ func (s *InMemoryCacheStore) CountStickers(ctx context.Context, appID snowflake.
 	return count, nil
 }
 
-func (s *InMemoryCacheStore) UpsertStickers(ctx context.Context, stickers ...store.UpsertStickerParams) error {
+func (s *MemDBCacheStore) UpsertStickers(ctx context.Context, stickers ...store.UpsertStickerParams) error {
 	txn := s.db.Txn(true)
 	defer txn.Abort()
 
@@ -1060,7 +1060,7 @@ func (s *InMemoryCacheStore) UpsertStickers(ctx context.Context, stickers ...sto
 	return nil
 }
 
-func (s *InMemoryCacheStore) DeleteSticker(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, stickerID snowflake.ID) error {
+func (s *MemDBCacheStore) DeleteSticker(ctx context.Context, appID snowflake.ID, guildID snowflake.ID, stickerID snowflake.ID) error {
 	txn := s.db.Txn(true)
 	defer txn.Abort()
 
@@ -1075,12 +1075,12 @@ func (s *InMemoryCacheStore) DeleteSticker(ctx context.Context, appID snowflake.
 
 // CacheStore methods
 
-func (s *InMemoryCacheStore) MarkShardEntitiesTainted(ctx context.Context, params store.MarkShardEntitiesTaintedParams) error {
+func (s *MemDBCacheStore) MarkShardEntitiesTainted(ctx context.Context, params store.MarkShardEntitiesTaintedParams) error {
 	// Not implemented for in-memory store
 	return nil
 }
 
-func (s *InMemoryCacheStore) MassUpsertEntities(ctx context.Context, params store.MassUpsertEntitiesParams) error {
+func (s *MemDBCacheStore) MassUpsertEntities(ctx context.Context, params store.MassUpsertEntitiesParams) error {
 	txn := s.db.Txn(true)
 	defer txn.Abort()
 
