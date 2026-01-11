@@ -32,6 +32,10 @@ var CLI = cli.App{
 					Usage: "The ID of the gateway to run (0-based index).",
 				},
 				&cli.BoolFlag{
+					Name:  "no-resume",
+					Usage: "Disable resuming of shard sessions.",
+				},
+				&cli.BoolFlag{
 					Name:  "debug",
 					Usage: "Enable debug logging.",
 				},
@@ -51,6 +55,10 @@ var CLI = cli.App{
 
 				if c.IsSet("gateway-id") {
 					env.cfg.Gateway.GatewayID = c.Int("gateway-id")
+				}
+
+				if c.IsSet("no-resume") {
+					env.cfg.Gateway.NoResume = c.Bool("no-resume")
 				}
 
 				err = server.Run(ctx, env.pg, env.cfg)

@@ -21,6 +21,7 @@ import (
 type AppConfig struct {
 	GatewayCount int
 	GatewayID    int
+	NoResume     bool
 }
 
 type App struct {
@@ -63,7 +64,7 @@ func (a *App) Run(ctx context.Context) {
 	intents := intentsFromConfig(config)
 	presenceOpts := presenceOptsFromConfig(config)
 
-	shardCount, shardConcurrency, shards, err := a.shardsFromApp(ctx, a.cfg.GatewayCount, a.cfg.GatewayID)
+	shardCount, shardConcurrency, shards, err := a.shardsFromApp(ctx, a.cfg.GatewayCount, a.cfg.GatewayID, a.cfg.NoResume)
 	if err != nil {
 		slog.Error("Failed to get shards", slog.Any("error", err))
 		return

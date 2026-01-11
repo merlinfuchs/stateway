@@ -15,6 +15,7 @@ import (
 type AppManagerConfig struct {
 	GatewayCount int
 	GatewayID    int
+	NoResume     bool
 }
 
 type AppManager struct {

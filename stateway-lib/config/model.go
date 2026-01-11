@@ -88,6 +88,7 @@ type GatewayConfig struct {
 	GatewayID    int                  `toml:"gateway_id"`
 	Groups       []GatewayGroupConfig `toml:"groups"`
 	Apps         []GatewayAppConfig   `toml:"apps"`
+	NoResume     bool                 `toml:"no_resume"`
 }
 
 type GatewayGroupConfig struct {

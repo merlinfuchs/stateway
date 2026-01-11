@@ -42,6 +42,7 @@ func Run(ctx context.Context, pg *postgres.Client, cfg *config.RootGatewayConfig
 		app.AppManagerConfig{
 			GatewayCount: cfg.Gateway.GatewayCount,
 			GatewayID:    cfg.Gateway.GatewayID,
+			NoResume:     cfg.Gateway.NoResume,
 		},
 		pg,
 		pg,

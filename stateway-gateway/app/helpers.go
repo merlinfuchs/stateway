@@ -18,7 +18,7 @@ import (
 
 const resumeTimeout = time.Minute
 
-func (a *App) shardsFromApp(ctx context.Context, gatewayCount int, gatewayID int) (int, int, map[int]sharding.ShardState, error) {
+func (a *App) shardsFromApp(ctx context.Context, gatewayCount int, gatewayID int, noResume bool) (int, int, map[int]sharding.ShardState, error) {
 	shardCount := a.model.ShardCount
 	if shardCount == 0 {
 		shardCount = 1
@@ -35,18 +35,21 @@ func (a *App) shardsFromApp(ctx context.Context, gatewayCount int, gatewayID int
 		// otherwise, we are splitting the app shards across the gateways
 		// shardID % gatewayCount gives us the index of the gateway that should run the shard
 		if shardCount == 1 || shardID%gatewayCount == gatewayID {
-			shardSession, err := a.shardSessionStore.GetLastShardSession(ctx, a.model.ID, shardID, shardCount)
-			if err != nil && !errors.Is(err, store.ErrNotFound) {
-				return 0, 0, nil, fmt.Errorf("failed to get last shard session: %w", err)
-			}
-
 			var state sharding.ShardState
-			// We only try to resume the shard if it hasn't been invalidated and it's been updated in the last resumeTimeout
-			if shardSession != nil && !shardSession.InvalidatedAt.Valid && shardSession.UpdatedAt.After(time.Now().UTC().Add(-resumeTimeout)) {
-				state = sharding.ShardState{
-					SessionID: shardSession.ID,
-					ResumeURL: shardSession.ResumeURL,
-					Sequence:  shardSession.LastSequence,
+
+			if !noResume {
+				shardSession, err := a.shardSessionStore.GetLastShardSession(ctx, a.model.ID, shardID, shardCount)
+				if err != nil && !errors.Is(err, store.ErrNotFound) {
+					return 0, 0, nil, fmt.Errorf("failed to get last shard session: %w", err)
+				}
+
+				// We only try to resume the shard if it hasn't been invalidated and it's been updated in the last resumeTimeout
+				if shardSession != nil && !shardSession.InvalidatedAt.Valid && shardSession.UpdatedAt.After(time.Now().UTC().Add(-resumeTimeout)) {
+					state = sharding.ShardState{
+						SessionID: shardSession.ID,
+						ResumeURL: shardSession.ResumeURL,
+						Sequence:  shardSession.LastSequence,
+					}
 				}
 			}
 
