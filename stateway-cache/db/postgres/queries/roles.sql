@@ -42,5 +42,8 @@ ON CONFLICT (app_id, guild_id, role_id) DO UPDATE SET
 -- name: DeleteRole :exec
 DELETE FROM cache.roles WHERE app_id = $1 AND guild_id = $2 AND role_id = $3;
 
+-- name: DeleteGuildRoles :exec
+DELETE FROM cache.roles WHERE app_id = $1 AND guild_id = $2;
+
 -- name: MarkShardRolesTainted :exec
 UPDATE cache.roles SET tainted = TRUE WHERE app_id = $1 AND guild_id % @shard_count = @shard_id;

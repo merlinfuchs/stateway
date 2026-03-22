@@ -160,7 +160,7 @@ func (l *CacheWorker) HandleEvent(ctx context.Context, event *event.GatewayEvent
 			return false, fmt.Errorf("failed to upsert guild: %w", err)
 		}
 	case gateway.EventGuildDelete:
-		if !e.Unavailable {
+		if e.Unavailable {
 			err = l.cacheStore.MarkGuildUnavailable(ctx, event.AppID, e.ID)
 			if err != nil {
 				return false, fmt.Errorf("failed to mark guild as unavailable: %w", err)

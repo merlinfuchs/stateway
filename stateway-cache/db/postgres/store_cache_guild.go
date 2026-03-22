@@ -156,10 +156,31 @@ func (c *Client) MarkGuildUnavailable(ctx context.Context, appID snowflake.ID, g
 }
 
 func (c *Client) DeleteGuild(ctx context.Context, appID snowflake.ID, guildID snowflake.ID) error {
-	return c.Q.DeleteGuild(ctx, pgmodel.DeleteGuildParams{
-		AppID:   int64(appID),
-		GuildID: int64(guildID),
-	})
+	tx, err := c.DB.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	q := c.Q.WithTx(tx)
+
+	if err := q.DeleteGuildRoles(ctx, pgmodel.DeleteGuildRolesParams{AppID: int64(appID), GuildID: int64(guildID)}); err != nil {
+		return fmt.Errorf("failed to delete guild roles: %w", err)
+	}
+	if err := q.DeleteGuildChannels(ctx, pgmodel.DeleteGuildChannelsParams{AppID: int64(appID), GuildID: int64(guildID)}); err != nil {
+		return fmt.Errorf("failed to delete guild channels: %w", err)
+	}
+	if err := q.DeleteGuildEmojis(ctx, pgmodel.DeleteGuildEmojisParams{AppID: int64(appID), GuildID: int64(guildID)}); err != nil {
+		return fmt.Errorf("failed to delete guild emojis: %w", err)
+	}
+	if err := q.DeleteGuildStickers(ctx, pgmodel.DeleteGuildStickersParams{AppID: int64(appID), GuildID: int64(guildID)}); err != nil {
+		return fmt.Errorf("failed to delete guild stickers: %w", err)
+	}
+	if err := q.DeleteGuild(ctx, pgmodel.DeleteGuildParams{AppID: int64(appID), GuildID: int64(guildID)}); err != nil {
+		return fmt.Errorf("failed to delete guild: %w", err)
+	}
+
+	return tx.Commit(ctx)
 }
 
 func rowToGuild(row pgmodel.CacheGuild) (*model.Guild, error) {

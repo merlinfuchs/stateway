@@ -35,6 +35,7 @@ type App struct {
 	eventHandler           event.EventHandler
 
 	shardManager sharding.ShardManager
+	onClose      func()
 }
 
 func NewApp(
@@ -146,8 +147,16 @@ func (a *App) handleClose(ctx context.Context, g disgateway.Gateway, err error, 
 		slog.Any("error", err),
 	)
 
-	a.disableIfFatal(ctx, err)
 	a.invalidateSession(ctx, g)
+
+	if a.disableIfFatal(ctx, err) {
+		return
+	}
+
+	// Shard died with a non-fatal error, signal manager to restart
+	if a.onClose != nil {
+		a.onClose()
+	}
 }
 
 func (a *App) handleEvent(ctx context.Context, g disgateway.Gateway, _ disgateway.EventType, _ int, ev disgateway.EventData) {

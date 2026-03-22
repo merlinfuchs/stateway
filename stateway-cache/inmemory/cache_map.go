@@ -179,22 +179,66 @@ func (s *MapCacheStore) MarkGuildUnavailable(ctx context.Context, appID snowflak
 
 func (s *MapCacheStore) DeleteGuild(ctx context.Context, appID snowflake.ID, guildID snowflake.ID) error {
 	s.guildsMu.Lock()
-	defer s.guildsMu.Unlock()
-
 	appGuilds, ok := s.guilds[appID]
-	if !ok {
-		return nil
+	if ok {
+		delete(appGuilds, guildID)
+		if len(appGuilds) == 0 {
+			delete(s.guilds, appID)
+		}
 	}
+	s.guildsMu.Unlock()
 
-	_, ok = appGuilds[guildID]
-	if !ok {
-		return nil
+	s.rolesMu.Lock()
+	if appRoles, ok := s.rolesByGuild[appID]; ok {
+		if guildRoles, ok := appRoles[guildID]; ok {
+			for roleID := range guildRoles {
+				if appAllRoles, ok := s.roles[appID]; ok {
+					delete(appAllRoles, roleID)
+				}
+			}
+			delete(appRoles, guildID)
+		}
 	}
+	s.rolesMu.Unlock()
 
-	delete(appGuilds, guildID)
-	if len(appGuilds) == 0 {
-		delete(s.guilds, appID)
+	s.channelsMu.Lock()
+	if appChannels, ok := s.channelsByGuild[appID]; ok {
+		if guildChannels, ok := appChannels[guildID]; ok {
+			for channelID := range guildChannels {
+				if appAllChannels, ok := s.channels[appID]; ok {
+					delete(appAllChannels, channelID)
+				}
+			}
+			delete(appChannels, guildID)
+		}
 	}
+	s.channelsMu.Unlock()
+
+	s.emojisMu.Lock()
+	if appEmojis, ok := s.emojisByGuild[appID]; ok {
+		if guildEmojis, ok := appEmojis[guildID]; ok {
+			for emojiID := range guildEmojis {
+				if appAllEmojis, ok := s.emojis[appID]; ok {
+					delete(appAllEmojis, emojiID)
+				}
+			}
+			delete(appEmojis, guildID)
+		}
+	}
+	s.emojisMu.Unlock()
+
+	s.stickersMu.Lock()
+	if appStickers, ok := s.stickersByGuild[appID]; ok {
+		if guildStickers, ok := appStickers[guildID]; ok {
+			for stickerID := range guildStickers {
+				if appAllStickers, ok := s.stickers[appID]; ok {
+					delete(appAllStickers, stickerID)
+				}
+			}
+			delete(appStickers, guildID)
+		}
+	}
+	s.stickersMu.Unlock()
 
 	return nil
 }
