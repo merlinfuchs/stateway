@@ -45,5 +45,8 @@ ON CONFLICT (app_id, guild_id, channel_id) DO UPDATE SET
 -- name: DeleteChannel :exec
 DELETE FROM cache.channels WHERE app_id = $1 AND guild_id = $2 AND channel_id = $3;
 
+-- name: DeleteGuildChannels :exec
+DELETE FROM cache.channels WHERE app_id = $1 AND guild_id = $2;
+
 -- name: MarkShardChannelsTainted :exec
 UPDATE cache.channels SET tainted = TRUE WHERE app_id = $1 AND guild_id % @shard_count = @shard_id;

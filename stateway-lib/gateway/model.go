@@ -28,11 +28,14 @@ type App struct {
 type AppDisabledCode string
 
 const (
-	AppDisabledCodeUnknown           AppDisabledCode = "unknown"
-	AppDisabledCodeInvalidToken      AppDisabledCode = "invalid_token"
-	AppDisabledCodeInvalidIntents    AppDisabledCode = "invalid_intents"
-	AppDisabledCodeDisallowedIntents AppDisabledCode = "disallowed_intents"
-	AppDisabledConstraintExceeded    AppDisabledCode = "constraint_exceeded"
+	AppDisabledCodeUnknown            AppDisabledCode = "unknown"
+	AppDisabledCodeInvalidToken       AppDisabledCode = "invalid_token"
+	AppDisabledCodeInvalidIntents     AppDisabledCode = "invalid_intents"
+	AppDisabledCodeDisallowedIntents  AppDisabledCode = "disallowed_intents"
+	AppDisabledConstraintExceeded     AppDisabledCode = "constraint_exceeded"
+	AppDisabledCodeInvalidShard       AppDisabledCode = "invalid_shard"
+	AppDisabledCodeShardingRequired   AppDisabledCode = "sharding_required"
+	AppDisabledCodeInvalidAPIVersion  AppDisabledCode = "invalid_api_version"
 )
 
 type AppConstraints struct {

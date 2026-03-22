@@ -322,8 +322,19 @@ func (s *MemDBCacheStore) DeleteGuild(ctx context.Context, appID snowflake.ID, g
 	txn := s.db.Txn(true)
 	defer txn.Abort()
 
-	_, err := txn.DeleteAll("guilds", "id", appID, guildID)
-	if err != nil {
+	if _, err := txn.DeleteAll("guilds", "id", appID, guildID); err != nil {
+		return err
+	}
+	if _, err := txn.DeleteAll("roles", "guild_id", guildID); err != nil {
+		return err
+	}
+	if _, err := txn.DeleteAll("channels", "guild_id", guildID); err != nil {
+		return err
+	}
+	if _, err := txn.DeleteAll("emojis", "guild_id", guildID); err != nil {
+		return err
+	}
+	if _, err := txn.DeleteAll("stickers", "guild_id", guildID); err != nil {
 		return err
 	}
 

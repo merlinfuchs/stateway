@@ -104,15 +104,15 @@ func (l *CacheWorker) HandleEvent(ctx context.Context, event *event.GatewayEvent
 		}
 
 		emojis := make([]store.UpsertEmojiParams, len(e.Emojis))
-		for _, emoji := range e.Emojis {
-			emojis = append(emojis, store.UpsertEmojiParams{
+		for i, emoji := range e.Emojis {
+			emojis[i] = store.UpsertEmojiParams{
 				AppID:     event.AppID,
 				GuildID:   e.ID,
 				EmojiID:   emoji.ID,
 				Data:      emoji,
 				CreatedAt: time.Now().UTC(),
 				UpdatedAt: time.Now().UTC(),
-			})
+			}
 		}
 
 		stickers := make([]store.UpsertStickerParams, len(e.Stickers))
@@ -160,7 +160,7 @@ func (l *CacheWorker) HandleEvent(ctx context.Context, event *event.GatewayEvent
 			return false, fmt.Errorf("failed to upsert guild: %w", err)
 		}
 	case gateway.EventGuildDelete:
-		if !e.Unavailable {
+		if e.Unavailable {
 			err = l.cacheStore.MarkGuildUnavailable(ctx, event.AppID, e.ID)
 			if err != nil {
 				return false, fmt.Errorf("failed to mark guild as unavailable: %w", err)

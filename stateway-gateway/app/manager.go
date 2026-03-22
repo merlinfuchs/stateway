@@ -129,6 +129,12 @@ func (m *AppManager) addOrUpdateApp(ctx context.Context, app *model.App) {
 			m.identifyRateLimitStore,
 			m.eventHandler,
 		)
+		newApp.onClose = func() {
+			m.Lock()
+			defer m.Unlock()
+			slog.Info("App shard died, removing for restart", slog.String("app_id", app.ID.String()))
+			delete(m.apps, app.ID)
+		}
 		m.apps[app.ID] = newApp
 		go newApp.Run(ctx)
 	}

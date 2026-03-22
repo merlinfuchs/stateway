@@ -39,5 +39,8 @@ ON CONFLICT (app_id, guild_id, sticker_id) DO UPDATE SET
 -- name: DeleteSticker :exec
 DELETE FROM cache.stickers WHERE app_id = $1 AND guild_id = $2 AND sticker_id = $3;
 
+-- name: DeleteGuildStickers :exec
+DELETE FROM cache.stickers WHERE app_id = $1 AND guild_id = $2;
+
 -- name: MarkShardStickersTainted :exec
 UPDATE cache.stickers SET tainted = TRUE WHERE app_id = $1 AND guild_id % @shard_count = @shard_id;

@@ -18,9 +18,12 @@ func (c *Client) TryLockBucket(ctx context.Context, appID snowflake.ID, bucketKe
 	}
 
 	txQ := c.Q.WithTx(tx)
+	// Encode 64-bit appID and bucketKey into two int32 values for PostgreSQL advisory lock
+	// First parameter: upper 32 bits of appID
+	// Second parameter: lower 32 bits of appID XOR'd with bucketKey to ensure uniqueness
 	locked, err := txQ.TryLockBucket(ctx, pgmodel.TryLockBucketParams{
-		PgTryAdvisoryXactLock:   int32(appID << 32),
-		PgTryAdvisoryXactLock_2: int32(bucketKey),
+		PgTryAdvisoryXactLock:   int32(appID >> 32),
+		PgTryAdvisoryXactLock_2: int32(uint32(appID) ^ uint32(bucketKey)),
 	})
 	if err != nil {
 		return res, fmt.Errorf("failed to try lock bucket: %w", err)

@@ -39,5 +39,8 @@ ON CONFLICT (app_id, guild_id, emoji_id) DO UPDATE SET
 -- name: DeleteEmoji :exec
 DELETE FROM cache.emojis WHERE app_id = $1 AND guild_id = $2 AND emoji_id = $3;
 
+-- name: DeleteGuildEmojis :exec
+DELETE FROM cache.emojis WHERE app_id = $1 AND guild_id = $2;
+
 -- name: MarkShardEmojisTainted :exec
 UPDATE cache.emojis SET tainted = TRUE WHERE app_id = $1 AND guild_id % @shard_count = @shard_id;
