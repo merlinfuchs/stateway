@@ -145,6 +145,14 @@ func (a *App) disableIfFatal(ctx context.Context, err error) bool {
 }
 
 func (a *App) disable(ctx context.Context, code gateway.AppDisabledCode, message string) {
+	slog.Warn(
+		"Disabling app due to fatal error",
+		slog.String("app_id", a.model.ID.String()),
+		slog.String("group_id", a.model.GroupID),
+		slog.String("code", string(code)),
+		slog.String("message", message),
+	)
+
 	err := a.appStore.DisableApp(ctx, store.DisableAppParams{
 		ID:              a.model.ID,
 		DisabledCode:    code,
