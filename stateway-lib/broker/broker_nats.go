@@ -83,7 +83,7 @@ func (b *NATSBroker) CreateGatewayStream(ctx context.Context) error {
 		MaxBytes:  32 * 1024 * 1024 * 1024, // 32GB
 		MaxMsgs:   -1,
 		Discard:   jetstream.DiscardOld,
-		Storage:   jetstream.FileStorage,
+		Storage:   jetstream.MemoryStorage,
 		Replicas:  1,
 	})
 	if err != nil && !errors.Is(err, jetstream.ErrStreamNotFound) {
